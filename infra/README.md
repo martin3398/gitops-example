@@ -29,3 +29,15 @@ This directory provisions AWS infrastructure for a 5-node kubeadm cluster:
 - SSH ingress is optional and disabled by default.
 - Outputs include an Ansible-friendly inventory map.
 - `backend.hcl` is local-only configuration and should not be committed.
+- Security group rules are managed via standalone ingress rule resources.
+
+## Operations
+
+- Plan/apply workflow:
+  - `tofu plan -out phase1-infra.tfplan`
+  - `tofu apply "phase1-infra.tfplan"`
+- Destroy workflow:
+  - `tofu plan -destroy -out destroy.tfplan`
+  - `tofu apply "destroy.tfplan"`
+- Handoff output for bootstrap:
+  - `tofu output -json ansible_inventory`

@@ -89,8 +89,13 @@ Planned layout:
   - Root include file: `.gitlab-ci.yml`
   - OpenTofu pipeline: `.gitlab/ci/opentofu.yml`
 - Local runner setup: `docker-compose.runner.yml`
+- Phase 1 infrastructure runbook: `docs/phase1-infra-runbook.md`
+- GitLab runner and CI variables guide: `docs/gitlab-runner-and-ci-vars.md`
 
 ## Status
 
-Planning and documentation baseline is in place.
-Implementation starts with Phase 1.
+Phase 1 infrastructure baseline is implemented:
+- OpenTofu AWS networking + IAM + 5-node EC2 topology
+- S3 + DynamoDB remote state workflow
+- GitLab CI pipeline for OpenTofu (check/plan/manual apply/manual destroy)
+- Local Docker Compose GitLab runner path for early testing
