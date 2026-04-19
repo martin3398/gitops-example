@@ -99,3 +99,8 @@ Phase 1 infrastructure baseline is implemented:
 - S3 + DynamoDB remote state workflow
 - GitLab CI pipeline for OpenTofu (check/plan/manual apply/manual destroy)
 - Local Docker Compose GitLab runner path for early testing
+
+Ansible Iteration 1 scaffold is now in place:
+- SSM-first Ansible configuration
+- OpenTofu `ansible_inventory` to Ansible `hosts.yml` generator (includes required SSM transfer bucket var)
+- Connectivity smoke playbook and initial Ansible runbook (`ansible/README.md`)

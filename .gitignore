@@ -23,3 +23,7 @@ infra/backend.hcl
 .DS_Store
 .idea/
 .vscode/
+
+# Generated Ansible inventory artifacts
+ansible/inventories/lab/hosts.yml
+ansible/inventories/lab/ansible_inventory.json

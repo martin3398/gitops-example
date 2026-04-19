@@ -1,0 +1,17 @@
+---
+- name: Connectivity and identity smoke checks
+  hosts: k8s_cluster
+  gather_facts: true
+  tasks:
+    - name: Verify host is reachable
+      ansible.builtin.ping:
+
+    - name: Show host identity
+      ansible.builtin.debug:
+        msg:
+          - "host={{ inventory_hostname }}"
+          - "role={{ node_role | default('unknown') }}"
+          - "private_ip={{ private_ip | default('n/a') }}"
+          - "instance_id={{ instance_id | default('n/a') }}"
+          - "az={{ az | default('n/a') }}"
+          - "hostname={{ ansible_hostname | default('n/a') }}"
