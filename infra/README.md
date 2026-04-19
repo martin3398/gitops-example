@@ -12,10 +12,13 @@ This directory provisions AWS infrastructure for a 5-node kubeadm cluster:
    - `cp terraform.tfvars.example terraform.tfvars`
 2. Update `allowed_admin_cidrs` in `terraform.tfvars`.
 3. Keep `enable_ssh_from_admin_cidrs = false` for SSM-only access (recommended).
-3. Initialize and plan:
-   - `tofu init`
+4. Configure remote state backend (recommended):
+   - `cp backend.hcl.example backend.hcl`
+   - Edit `backend.hcl` and set your real S3 bucket name.
+5. Initialize and plan:
+   - `tofu init -backend-config=backend.hcl`
    - `tofu plan`
-4. Apply:
+6. Apply:
    - `tofu apply`
 
 ## Notes
@@ -25,3 +28,4 @@ This directory provisions AWS infrastructure for a 5-node kubeadm cluster:
 - IAM instance profile includes AmazonSSMManagedInstanceCore for Session Manager access.
 - SSH ingress is optional and disabled by default.
 - Outputs include an Ansible-friendly inventory map.
+- `backend.hcl` is local-only configuration and should not be committed.

@@ -17,6 +17,7 @@ override.tf.json
 
 # Plan output
 *.tfplan
+infra/backend.hcl
 
 # OS/editor noise
 .DS_Store
