@@ -1,0 +1,24 @@
+# OpenTofu/Terraform local artifacts
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Local variable files (keep only examples tracked)
+*.tfvars
+*.auto.tfvars
+!*.tfvars.example
+
+# Plan output
+*.tfplan
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/

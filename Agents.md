@@ -111,6 +111,7 @@ Exit criteria:
 - Define resource requests/limits for all workloads.
 - Document every major component with install, operate, and failure runbook notes.
 - Include teardown steps for cost control.
+- For this lab workflow, the human operator executes shell/OpenTofu/Ansible commands manually; agents provide plans, file changes, and command guidance only.
 
 ## Suggested Repository Layout
 - `infra/` OpenTofu/Terraform infrastructure code
