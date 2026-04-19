@@ -1,4 +1,4 @@
-# Ansible Iterations 1-2 (SSM-first)
+# Ansible Iterations 1-3 (SSM-first)
 
 This directory contains the first Ansible iteration for the lab:
 - inventory handoff from OpenTofu outputs
@@ -9,6 +9,13 @@ Iteration 2 adds base node preparation:
 - package baseline for Kubernetes host prerequisites
 - kernel module and sysctl preparation
 - swap disablement and validation checks
+
+Iteration 3 adds runtime and Kubernetes node binaries:
+- containerd installation and `SystemdCgroup = true` configuration
+- Kubernetes apt repository setup and package installation (`kubelet`, `kubeadm`, `kubectl`)
+- package hold and service validation for `containerd` and `kubelet`
+
+Note: During iteration 3 (pre-bootstrap), `kubelet` is expected to be enabled but may not be `running` until kubeadm init/join is completed.
 
 Kubernetes bootstrap (kubeadm init/join) is not included yet.
 
@@ -100,6 +107,20 @@ ansible-playbook -i inventories/lab/hosts.yml playbooks/base.yml --tags base
 ```
 
 Second run should show minimal changes.
+
+Run runtime preparation (iteration 3):
+
+```bash
+cd ansible
+ansible-playbook -i inventories/lab/hosts.yml playbooks/runtime.yml --tags runtime
+```
+
+Runtime idempotency check:
+
+```bash
+cd ansible
+ansible-playbook -i inventories/lab/hosts.yml playbooks/runtime.yml --tags runtime
+```
 
 ## Groups and Variables
 

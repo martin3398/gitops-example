@@ -1,0 +1,43 @@
+---
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download Kubernetes apt repository key
+  ansible.builtin.get_url:
+    url: "https://pkgs.k8s.io/core:/stable:/v{{ runtime_kubernetes_version }}/deb/Release.key"
+    dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure Kubernetes apt repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/kubernetes.list
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v{{ runtime_kubernetes_version }}/deb/ /
+
+- name: Install Kubernetes node packages
+  ansible.builtin.apt:
+    name: "{{ runtime_k8s_packages }}"
+    state: present
+    update_cache: true
+
+- name: Hold Kubernetes node packages
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop: "{{ runtime_k8s_packages }}"
+
+- name: Ensure kubelet service is enabled and started
+  ansible.builtin.service:
+    name: kubelet
+    enabled: true
+    state: started

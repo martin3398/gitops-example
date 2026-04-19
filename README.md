@@ -109,3 +109,8 @@ Ansible Iteration 2 base preparation is implemented:
 - base playbook and role scaffold (`ansible/playbooks/base.yml`, `ansible/roles/base/`)
 - package baseline, kernel modules, Kubernetes sysctl settings, and swap disablement
 - runtime validation checks for swap and sysctl values
+
+Ansible Iteration 3 runtime preparation is implemented:
+- runtime playbook and role scaffold (`ansible/playbooks/runtime.yml`, `ansible/roles/runtime/`)
+- containerd install/config with `SystemdCgroup = true`
+- Kubernetes node packages (`kubelet`, `kubeadm`, `kubectl`) with package hold and service checks

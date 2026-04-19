@@ -1,0 +1,19 @@
+---
+- name: Include containerd tasks
+  ansible.builtin.import_tasks: containerd.yml
+  tags:
+    - runtime
+    - containerd
+
+- name: Include Kubernetes packages tasks
+  ansible.builtin.import_tasks: kubernetes-packages.yml
+  tags:
+    - runtime
+    - kubernetes
+    - packages
+
+- name: Include runtime validation tasks
+  ansible.builtin.import_tasks: validate.yml
+  tags:
+    - runtime
+    - validate

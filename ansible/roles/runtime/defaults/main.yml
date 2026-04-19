@@ -1,0 +1,9 @@
+---
+runtime_containerd_config_path: /etc/containerd/config.toml
+
+runtime_kubernetes_version: "1.30"
+
+runtime_k8s_packages:
+  - kubelet
+  - kubeadm
+  - kubectl
