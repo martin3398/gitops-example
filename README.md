@@ -85,6 +85,10 @@ Planned layout:
 ## Key Documents
 
 - Agent prompt and project execution guidance: `Agents.md`
+- CI pipeline configuration:
+  - Root include file: `.gitlab-ci.yml`
+  - OpenTofu pipeline: `.gitlab/ci/opentofu.yml`
+- Local runner setup: `docker-compose.runner.yml`
 
 ## Status
 
