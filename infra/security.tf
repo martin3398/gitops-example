@@ -3,22 +3,6 @@ resource "aws_security_group" "control_plane" {
   description = "Security group for Kubernetes control-plane nodes"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description = "All TCP from cluster nodes"
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "tcp"
-    self        = true
-  }
-
-  ingress {
-    description = "All UDP from cluster nodes"
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "udp"
-    self        = true
-  }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -58,22 +42,6 @@ resource "aws_security_group" "worker" {
   name        = "${local.name_prefix}-worker-sg"
   description = "Security group for Kubernetes worker nodes"
   vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description = "All TCP from workers"
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "tcp"
-    self        = true
-  }
-
-  ingress {
-    description = "All UDP from workers"
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "udp"
-    self        = true
-  }
 
   egress {
     from_port   = 0
@@ -133,4 +101,40 @@ resource "aws_vpc_security_group_ingress_rule" "worker_from_control_plane_udp" {
   ip_protocol                  = "udp"
   to_port                      = 65535
   description                  = "All UDP from control planes"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "control_plane_self_tcp" {
+  security_group_id            = aws_security_group.control_plane.id
+  referenced_security_group_id = aws_security_group.control_plane.id
+  from_port                    = 0
+  ip_protocol                  = "tcp"
+  to_port                      = 65535
+  description                  = "All TCP from control planes"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "control_plane_self_udp" {
+  security_group_id            = aws_security_group.control_plane.id
+  referenced_security_group_id = aws_security_group.control_plane.id
+  from_port                    = 0
+  ip_protocol                  = "udp"
+  to_port                      = 65535
+  description                  = "All UDP from control planes"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "worker_self_tcp" {
+  security_group_id            = aws_security_group.worker.id
+  referenced_security_group_id = aws_security_group.worker.id
+  from_port                    = 0
+  ip_protocol                  = "tcp"
+  to_port                      = 65535
+  description                  = "All TCP from workers"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "worker_self_udp" {
+  security_group_id            = aws_security_group.worker.id
+  referenced_security_group_id = aws_security_group.worker.id
+  from_port                    = 0
+  ip_protocol                  = "udp"
+  to_port                      = 65535
+  description                  = "All UDP from workers"
 }
