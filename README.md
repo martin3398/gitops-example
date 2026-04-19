@@ -104,3 +104,8 @@ Ansible Iteration 1 scaffold is now in place:
 - SSM-first Ansible configuration
 - OpenTofu `ansible_inventory` to Ansible `hosts.yml` generator (includes required SSM transfer bucket var)
 - Connectivity smoke playbook and initial Ansible runbook (`ansible/README.md`)
+
+Ansible Iteration 2 base preparation is implemented:
+- base playbook and role scaffold (`ansible/playbooks/base.yml`, `ansible/roles/base/`)
+- package baseline, kernel modules, Kubernetes sysctl settings, and swap disablement
+- runtime validation checks for swap and sysctl values

@@ -1,0 +1,17 @@
+---
+- name: Persist Kubernetes sysctl settings
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-kubernetes-cri.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {% for key, value in base_sysctl.items() %}
+      {{ key }} = {{ value }}
+      {% endfor %}
+  notify: Reload sysctl
+
+- name: Apply Kubernetes sysctl settings at runtime
+  ansible.builtin.command: "sysctl -w {{ item.key }}={{ item.value }}"
+  changed_when: false
+  loop: "{{ base_sysctl | dict2items }}"

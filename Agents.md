@@ -112,6 +112,7 @@ Exit criteria:
 - Document every major component with install, operate, and failure runbook notes.
 - Include teardown steps for cost control.
 - For this lab workflow, the human operator executes shell/OpenTofu/Ansible commands manually; agents provide plans, file changes, and command guidance only.
+- Agents must never execute shell/OpenTofu/Ansible commands for this repository. Command execution is always manual by the human operator.
 - OpenTofu state backend for this lab uses S3 with DynamoDB locking; avoid local-state-only workflows once backend is initialized.
 - Infrastructure apply/destroy operations in CI remain manual-gated.
 

@@ -1,0 +1,30 @@
+---
+- name: Include package setup tasks
+  ansible.builtin.import_tasks: packages.yml
+  tags:
+    - base
+    - packages
+
+- name: Include kernel module tasks
+  ansible.builtin.import_tasks: kernel.yml
+  tags:
+    - base
+    - kernel
+
+- name: Include sysctl tasks
+  ansible.builtin.import_tasks: sysctl.yml
+  tags:
+    - base
+    - sysctl
+
+- name: Include swap tasks
+  ansible.builtin.import_tasks: swap.yml
+  tags:
+    - base
+    - swap
+
+- name: Include validation tasks
+  ansible.builtin.import_tasks: validate.yml
+  tags:
+    - base
+    - validate

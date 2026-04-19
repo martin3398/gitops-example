@@ -1,11 +1,16 @@
-# Ansible Iteration 1 (SSM-first)
+# Ansible Iterations 1-2 (SSM-first)
 
 This directory contains the first Ansible iteration for the lab:
 - inventory handoff from OpenTofu outputs
 - SSM-based connectivity model
 - smoke validation playbook
 
-No host configuration or Kubernetes bootstrap is included yet.
+Iteration 2 adds base node preparation:
+- package baseline for Kubernetes host prerequisites
+- kernel module and sysctl preparation
+- swap disablement and validation checks
+
+Kubernetes bootstrap (kubeadm init/join) is not included yet.
 
 ## Prerequisites
 
@@ -79,6 +84,22 @@ Run smoke checks:
 ANSIBLE_CONFIG=ansible/ansible.cfg \
 ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/smoke.yml
 ```
+
+Run base preparation (iteration 2):
+
+```bash
+cd ansible
+ansible-playbook -i inventories/lab/hosts.yml playbooks/base.yml --tags base
+```
+
+Idempotency check:
+
+```bash
+cd ansible
+ansible-playbook -i inventories/lab/hosts.yml playbooks/base.yml --tags base
+```
+
+Second run should show minimal changes.
 
 ## Groups and Variables
 

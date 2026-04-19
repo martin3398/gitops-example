@@ -1,0 +1,16 @@
+---
+- name: Ensure modules-load config for Kubernetes exists
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k8s.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {% for module in base_kernel_modules %}
+      {{ module }}
+      {% endfor %}
+
+- name: Ensure required kernel modules are loaded
+  ansible.builtin.command: "modprobe {{ item }}"
+  changed_when: false
+  loop: "{{ base_kernel_modules }}"

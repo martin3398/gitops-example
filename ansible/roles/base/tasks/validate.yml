@@ -1,0 +1,24 @@
+---
+- name: Gather active swaps
+  ansible.builtin.command: swapon --summary --noheadings
+  register: active_swaps
+  changed_when: false
+
+- name: Assert swap is disabled
+  ansible.builtin.assert:
+    that:
+      - active_swaps.stdout_lines | length == 0
+    fail_msg: "Swap is still active on {{ inventory_hostname }}"
+
+- name: Verify required sysctl runtime values
+  ansible.builtin.command: "sysctl -n {{ item.key }}"
+  loop: "{{ base_sysctl | dict2items }}"
+  register: sysctl_checks
+  changed_when: false
+
+- name: Assert sysctl runtime values are correct
+  ansible.builtin.assert:
+    that:
+      - item.stdout | trim == item.item.value
+    fail_msg: "{{ item.item.key }} expected {{ item.item.value }} but got {{ item.stdout | trim }}"
+  loop: "{{ sysctl_checks.results }}"
