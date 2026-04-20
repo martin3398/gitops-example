@@ -1,2 +1,15 @@
+stages:
+  - tofu_check
+  - tofu_plan
+  - tofu_apply
+  - ansible_check
+  - ansible_inventory
+  - ansible_smoke
+  - ansible_base
+  - ansible_runtime
+  - ansible_bootstrap
+  - tofu_destroy
+
 include:
   - local: ".gitlab/ci/opentofu.yml"
+  - local: ".gitlab/ci/ansible.yml"

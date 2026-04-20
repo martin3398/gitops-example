@@ -119,3 +119,8 @@ Ansible Iteration 4 kubeadm bootstrap automation is implemented:
 - cluster bootstrap playbook (`ansible/playbooks/cluster-bootstrap.yml`) covering 4A-4D
 - first control-plane init, Cilium installation via Cilium CLI, join workflows for additional control planes/workers
 - cluster-level validation checks for node readiness and critical kube-system control-plane pods
+
+GitLab CI now includes Ansible automation stages:
+- inventory generation from OpenTofu apply artifact
+- smoke, base, runtime, and bootstrap jobs (manual-gated on `main`)
+- runbooks in `docs/gitlab-runner-and-ci-vars.md` and `docs/ansible-ci-runbook.md`
