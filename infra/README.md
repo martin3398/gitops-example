@@ -41,3 +41,8 @@ This directory provisions AWS infrastructure for a 5-node kubeadm cluster:
   - `tofu apply "destroy.tfplan"`
 - Handoff output for bootstrap:
   - `tofu output -json ansible_inventory`
+
+## Status
+
+- [x] Implemented and in active use
+- [x] Produces required Ansible handoff output

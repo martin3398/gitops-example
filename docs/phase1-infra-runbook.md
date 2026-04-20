@@ -5,7 +5,7 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
 ## Scope
 
 - Provisions AWS infrastructure only.
-- Does not bootstrap Kubernetes yet (Ansible + kubeadm is next).
+- Kubernetes bootstrap is handled in `ansible/` and documented in `ansible/README.md`.
 
 ## What Gets Created
 
@@ -76,3 +76,10 @@ Preferred resolution is importing those existing rule IDs into state instead of 
 - 3 control-plane and 2 worker instances exist.
 - State is remote (S3) and locking is active (DynamoDB).
 - Outputs provide clean handoff data for Ansible bootstrap.
+
+## Current Completion Status
+
+- [x] Infra provisioning workflow implemented
+- [x] Remote state + locking implemented
+- [x] CI plan/apply/destroy flow implemented
+- [x] Handoff output (`ansible_inventory`) implemented

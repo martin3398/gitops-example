@@ -21,6 +21,40 @@ It uses AWS EC2 for convenience, but follows a self-managed approach designed to
 - CI/CD with `GitLab CI/CD`
 - Open-source platform tooling deployed with Helm via Flux
 
+## Progress Checklist
+
+Use this as the single source of truth for what is done and what is next.
+
+### Core Technologies
+
+- [x] OpenTofu/Terraform (AWS infra + remote state + CI)
+- [x] Ansible (host prep + kubeadm bootstrap + CI stages)
+- [x] Kubernetes (kubeadm, 3 control planes + 2 workers)
+- [x] containerd runtime
+- [x] Cilium CNI
+- [ ] Flux GitOps bootstrap
+- [ ] ingress-nginx
+- [ ] cert-manager
+- [ ] Monitoring/logging baseline (kube-prometheus-stack + Loki + Grafana)
+- [ ] Application GitOps delivery (sample app + Postgres)
+- [ ] Backups (Velero + restore drill)
+- [ ] Policy/security controls (Kyverno/Gatekeeper, Trivy, network policies)
+
+### Delivery Steps
+
+- [x] Phase 1.1: AWS VPC, IAM, EC2 topology (3 CP + 2 workers)
+- [x] Phase 1.2: Ansible inventory + SSM-first connectivity
+- [x] Phase 1.3: Base node preparation (kernel/sysctl/swap/packages)
+- [x] Phase 1.4: Runtime install (containerd + kubelet/kubeadm/kubectl)
+- [x] Phase 1.5: Cluster bootstrap (kubeadm init/join + Cilium + validation)
+- [x] Phase 1.6: GitLab CI stages for Ansible (manual-gated)
+- [ ] Phase 2.1: Flux bootstrap and repository structure under `kubernetes/`
+- [ ] Phase 2.2: Platform add-ons via Flux (ingress + cert-manager)
+- [ ] Phase 2.3: Observability baseline via Flux
+- [ ] Phase 2.4: App delivery flow (build/test/publish + GitOps update)
+- [ ] Phase 3: Advanced tooling labs (Vault, MongoDB, Kafka, Ceph)
+- [ ] Phase 4: Resilience + backup + policy/security hardening
+
 ## Stack (Planned)
 
 - Provisioning: OpenTofu/Terraform
@@ -91,6 +125,7 @@ Planned layout:
 - Local runner setup: `docker-compose.runner.yml`
 - Phase 1 infrastructure runbook: `docs/phase1-infra-runbook.md`
 - GitLab runner and CI variables guide: `docs/gitlab-runner-and-ci-vars.md`
+- Ansible CI execution runbook: `docs/ansible-ci-runbook.md`
 
 ## Status
 
