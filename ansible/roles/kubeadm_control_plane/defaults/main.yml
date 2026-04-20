@@ -1,0 +1,7 @@
+---
+kubeadm_kubernetes_version: stable
+kubeadm_control_plane_endpoint: "{{ hostvars[groups['control_plane'][0]].private_ip }}:6443"
+kubeadm_pod_subnet: 192.168.0.0/16
+kubeadm_service_subnet: 10.96.0.0/12
+kubeadm_cri_socket: unix:///run/containerd/containerd.sock
+kubeadm_upload_certs: true

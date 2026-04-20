@@ -1,4 +1,4 @@
-# Ansible Iterations 1-3 (SSM-first)
+# Ansible Iterations 1-4 (SSM-first)
 
 This directory contains the first Ansible iteration for the lab:
 - inventory handoff from OpenTofu outputs
@@ -16,6 +16,12 @@ Iteration 3 adds runtime and Kubernetes node binaries:
 - package hold and service validation for `containerd` and `kubelet`
 
 Note: During iteration 3 (pre-bootstrap), `kubelet` is expected to be enabled but may not be `running` until kubeadm init/join is completed.
+
+Iteration 4 adds cluster bootstrap automation (4A-4D):
+- 4A: first control plane `kubeadm init`
+- 4B: Cilium CNI installation via Cilium CLI
+- 4C: join remaining control planes and workers
+- 4D: cluster-level validation from first control plane
 
 Kubernetes bootstrap (kubeadm init/join) is not included yet.
 
@@ -121,6 +127,17 @@ Runtime idempotency check:
 cd ansible
 ansible-playbook -i inventories/lab/hosts.yml playbooks/runtime.yml --tags runtime
 ```
+
+Run full cluster bootstrap (iterations 4A-4D):
+
+```bash
+cd ansible
+ansible-playbook -i inventories/lab/hosts.yml playbooks/cluster-bootstrap.yml --tags bootstrap
+```
+
+Notes for 4B Cilium install:
+- Cilium version is pinned to `1.19.3` in `roles/cni/defaults/main.yml`.
+- Cilium CLI version is pinned separately (`v0.19.2`) and installed on the first control plane if missing or version-mismatched.
 
 ## Groups and Variables
 

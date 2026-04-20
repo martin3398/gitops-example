@@ -1,0 +1,4 @@
+---
+cluster_validate_retries: 30
+cluster_validate_delay: 10
+cluster_validate_expected_nodes: 5

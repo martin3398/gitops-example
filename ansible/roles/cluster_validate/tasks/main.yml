@@ -1,0 +1,36 @@
+---
+- name: Wait for all nodes to register
+  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes --no-headers
+  register: cluster_nodes
+  changed_when: false
+  retries: "{{ cluster_validate_retries }}"
+  delay: "{{ cluster_validate_delay }}"
+  until: cluster_nodes.stdout_lines | length >= cluster_validate_expected_nodes
+
+- name: Wait until all nodes are Ready
+  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes --no-headers
+  register: cluster_nodes_ready
+  changed_when: false
+  retries: "{{ cluster_validate_retries }}"
+  delay: "{{ cluster_validate_delay }}"
+  until: (cluster_nodes_ready.stdout_lines | reject('search', '\\bReady\\b') | list | length) == 0
+
+- name: Check core kube-system pods
+  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get pods -n kube-system
+  register: kube_system_pods
+  changed_when: false
+
+- name: Verify cilium daemonset rollout
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf
+    rollout status daemonset/cilium -n kube-system --timeout=5m
+  register: cluster_validate_cilium_rollout
+  changed_when: false
+
+- name: Assert API server and controller manager pods are present
+  ansible.builtin.assert:
+    that:
+      - "'kube-apiserver' in kube_system_pods.stdout"
+      - "'kube-controller-manager' in kube_system_pods.stdout"
+      - "'kube-scheduler' in kube_system_pods.stdout"
+    fail_msg: "One or more critical control-plane pods are missing from kube-system namespace."

@@ -1,0 +1,16 @@
+---
+cni_wait_retries: 30
+cni_wait_delay: 10
+
+cilium_version: "1.19.3"
+cilium_cli_version: "v0.19.2"
+cilium_cli_download_base_url: https://github.com/cilium/cilium-cli/releases/download
+cilium_cli_arch_map:
+  x86_64: amd64
+  amd64: amd64
+  aarch64: arm64
+  arm64: arm64
+
+cilium_wait_timeout: 10m
+
+cilium_cli_path: /usr/local/bin/cilium

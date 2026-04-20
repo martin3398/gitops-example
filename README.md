@@ -114,3 +114,8 @@ Ansible Iteration 3 runtime preparation is implemented:
 - runtime playbook and role scaffold (`ansible/playbooks/runtime.yml`, `ansible/roles/runtime/`)
 - containerd install/config with `SystemdCgroup = true`
 - Kubernetes node packages (`kubelet`, `kubeadm`, `kubectl`) with package hold and service checks
+
+Ansible Iteration 4 kubeadm bootstrap automation is implemented:
+- cluster bootstrap playbook (`ansible/playbooks/cluster-bootstrap.yml`) covering 4A-4D
+- first control-plane init, Cilium installation via Cilium CLI, join workflows for additional control planes/workers
+- cluster-level validation checks for node readiness and critical kube-system control-plane pods

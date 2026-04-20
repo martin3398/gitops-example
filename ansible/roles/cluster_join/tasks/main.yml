@@ -1,0 +1,42 @@
+---
+- name: Check if host already joined
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubelet_conf_stat
+
+- name: Ensure join command exists for control plane
+  ansible.builtin.assert:
+    that:
+      - hostvars[groups['control_plane'][0]].cluster_control_plane_join_command is defined
+    fail_msg: "Missing cluster_control_plane_join_command fact from first control plane host."
+  when:
+    - inventory_hostname in groups['control_plane']
+    - inventory_hostname != groups['control_plane'][0]
+
+- name: Ensure join command exists for worker
+  ansible.builtin.assert:
+    that:
+      - hostvars[groups['control_plane'][0]].cluster_worker_join_command is defined
+    fail_msg: "Missing cluster_worker_join_command fact from first control plane host."
+  when: inventory_hostname in groups['workers']
+
+- name: Join additional control plane node
+  ansible.builtin.command: >-
+    {{ hostvars[groups['control_plane'][0]].cluster_control_plane_join_command }}
+    --cri-socket {{ cluster_join_cri_socket }}
+  register: cluster_join_control_plane_result
+  changed_when: "'This node has joined the cluster' in (cluster_join_control_plane_result.stdout | default(''))"
+  when:
+    - inventory_hostname in groups['control_plane']
+    - inventory_hostname != groups['control_plane'][0]
+    - not kubelet_conf_stat.stat.exists
+
+- name: Join worker node
+  ansible.builtin.command: >-
+    {{ hostvars[groups['control_plane'][0]].cluster_worker_join_command }}
+    --cri-socket {{ cluster_join_cri_socket }}
+  register: cluster_join_worker_result
+  changed_when: "'This node has joined the cluster' in (cluster_join_worker_result.stdout | default(''))"
+  when:
+    - inventory_hostname in groups['workers']
+    - not kubelet_conf_stat.stat.exists

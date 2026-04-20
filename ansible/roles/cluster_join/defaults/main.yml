@@ -1,0 +1,2 @@
+---
+cluster_join_cri_socket: unix:///run/containerd/containerd.sock
