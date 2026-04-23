@@ -8,6 +8,8 @@ stages:
   - ansible_base
   - ansible_runtime
   - ansible_bootstrap
+  - ansible_flux
+  - app_delivery
   - tofu_destroy
 
 include:

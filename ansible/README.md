@@ -1,4 +1,4 @@
-# Ansible Iterations 1-4 (SSM-first)
+# Ansible Iterations 1-5 (SSM-first)
 
 This directory contains the first Ansible iteration for the lab:
 - inventory handoff from OpenTofu outputs
@@ -24,6 +24,11 @@ Iteration 4 adds cluster bootstrap automation (4A-4D):
 - 4D: cluster-level validation from first control plane
 
 Kubernetes bootstrap (kubeadm init/join) is included in `playbooks/cluster-bootstrap.yml`.
+
+Iteration 5 adds Flux bootstrap handoff automation:
+- install Flux controllers on the first control plane
+- apply Git source and root Kustomizations from `kubernetes/flux/clusters/lab`
+- validate Flux `GitRepository` and `Kustomization` readiness
 
 ## Prerequisites
 
@@ -133,6 +138,17 @@ Run full cluster bootstrap (iterations 4A-4D):
 ```bash
 cd ansible
 ansible-playbook -i inventories/lab/hosts.yml playbooks/cluster-bootstrap.yml --tags bootstrap
+```
+
+Run Flux bootstrap handoff (iteration 5):
+
+```bash
+cd ansible
+export FLUX_GIT_SSH_PRIVATE_KEY_B64="$(base64 -w0 ../flux-gitlab)"
+export FLUX_GIT_KNOWN_HOSTS_B64="$(printf 'gitlab.com ssh-ed25519 <host-key>' | base64 -w0)"
+export FLUX_GIT_SSH_PRIVATE_KEY="$(printf '%s' "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)"
+export FLUX_GIT_KNOWN_HOSTS="$(printf '%s' "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)"
+ansible-playbook -i inventories/lab/hosts.yml playbooks/flux-bootstrap.yml --tags flux
 ```
 
 Notes for 4B Cilium install:

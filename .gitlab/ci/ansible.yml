@@ -26,6 +26,7 @@ ansible:lint_inventory:
     - ansible-playbook -i "localhost," --syntax-check ansible/playbooks/base.yml
     - ansible-playbook -i "localhost," --syntax-check ansible/playbooks/runtime.yml
     - ansible-playbook -i "localhost," --syntax-check ansible/playbooks/cluster-bootstrap.yml
+    - ansible-playbook -i "localhost," --syntax-check ansible/playbooks/flux-bootstrap.yml
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -109,6 +110,26 @@ ansible:bootstrap:
   script:
     - test -f ansible/inventories/lab/hosts.yml
     - ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/cluster-bootstrap.yml --tags bootstrap
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
+    - when: never
+
+ansible:flux_bootstrap:
+  extends: .ansible_defaults
+  stage: ansible_flux
+  resource_group: infra
+  needs:
+    - job: ansible:inventory
+      artifacts: true
+    - job: ansible:bootstrap
+  script:
+    - test -f ansible/inventories/lab/hosts.yml
+    - test -n "$FLUX_GIT_SSH_PRIVATE_KEY_B64"
+    - test -n "$FLUX_GIT_KNOWN_HOSTS_B64"
+    - export FLUX_GIT_SSH_PRIVATE_KEY="$(printf '%s' "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)"
+    - export FLUX_GIT_KNOWN_HOSTS="$(printf '%s' "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)"
+    - ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/flux-bootstrap.yml --tags flux
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success

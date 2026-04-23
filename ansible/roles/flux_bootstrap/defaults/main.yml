@@ -1,0 +1,25 @@
+---
+flux_bootstrap_namespace: flux-system
+flux_bootstrap_version: "2.4.0"
+flux_bootstrap_repo_url: ssh://git@gitlab.com/martin3398/gitops-showcase.git
+flux_bootstrap_branch: main
+flux_bootstrap_path: ./kubernetes/flux/clusters/lab
+flux_bootstrap_components:
+  - source-controller
+  - kustomize-controller
+  - helm-controller
+  - notification-controller
+flux_bootstrap_interval: 5m
+flux_bootstrap_timeout: 5m
+flux_bootstrap_ready_retries: 30
+flux_bootstrap_ready_delay: 10
+flux_bootstrap_arch_map:
+  x86_64: amd64
+  amd64: amd64
+  aarch64: arm64
+  arm64: arm64
+flux_bootstrap_cli_path: /usr/local/bin/flux
+flux_bootstrap_known_hosts_path: /root/.ssh/known_hosts
+flux_bootstrap_private_key_path: /root/.ssh/flux-system
+flux_git_ssh_private_key: "{{ lookup('env', 'FLUX_GIT_SSH_PRIVATE_KEY') | default('', true) }}"
+flux_git_known_hosts: "{{ lookup('env', 'FLUX_GIT_KNOWN_HOSTS') | default('', true) }}"

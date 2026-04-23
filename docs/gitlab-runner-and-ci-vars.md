@@ -29,6 +29,7 @@ Recommended registration values:
 - `.gitlab-ci.yml`
 - `.gitlab/ci/opentofu.yml`
 - `.gitlab/ci/ansible.yml`
+- `.gitlab/ci/apps.yml`
 
 ## Required GitLab CI/CD Variables
 
@@ -56,6 +57,24 @@ The Ansible pipeline reuses:
 - `AWS_REGION` for SSM region and inventory generation
 - `TF_STATE_BUCKET` as the SSM transfer bucket (passed to inventory generator `--ssm-bucket`)
 
+Flux bootstrap in Ansible uses:
+- `FLUX_GIT_SSH_PRIVATE_KEY_B64` (base64-encoded read-only deploy key private key for Flux source access)
+- `FLUX_GIT_KNOWN_HOSTS_B64` (base64-encoded GitLab SSH known_hosts line)
+
+Encoding examples:
+
+```bash
+base64 -w0 flux-gitlab
+printf 'gitlab.com ssh-ed25519 <host-key>' | base64 -w0
+```
+
+GitOps image-update job uses:
+- `GITOPS_BOT_USER`
+- `GITOPS_BOT_EMAIL`
+- `GITOPS_PUSH_TOKEN` (write token for repository updates)
+- `APP_IMAGE_REPOSITORY`
+- `APP_IMAGE_TAG`
+
 ## Job Behavior
 
 Pipeline stage order:
@@ -68,6 +87,8 @@ Pipeline stage order:
 - `ansible_base`
 - `ansible_runtime`
 - `ansible_bootstrap`
+- `ansible_flux`
+- `app_delivery`
 - `tofu_destroy`
 
 - `tofu:fmt_validate`: MR + main
@@ -80,6 +101,8 @@ Pipeline stage order:
 - `ansible:base`: automatic on main after `ansible:smoke`
 - `ansible:runtime`: automatic on main after `ansible:base`
 - `ansible:bootstrap`: automatic on main after `ansible:runtime`
+- `ansible:flux_bootstrap`: automatic on main after `ansible:bootstrap`
+- `app:update_gitops_image`: automatic on main after `ansible:flux_bootstrap` when app image variables and push token are set
 
 Ansible jobs are intentionally serially ordered and run automatically after the provision gate.
 
@@ -99,3 +122,5 @@ Without this variable, destroy job remains unavailable.
 - If Ansible jobs fail with `TargetNotConnected`, instances may not be SSM-online yet after apply; wait and retry.
 - If Ansible jobs fail during module transfer, confirm CI identity has S3 access to `TF_STATE_BUCKET`.
 - If inventory generation fails, ensure `tofu:apply` completed and produced `infra/outputs.json` artifact.
+- If Flux bootstrap fails with source auth errors, verify `FLUX_GIT_SSH_PRIVATE_KEY_B64` and `FLUX_GIT_KNOWN_HOSTS_B64` decode to valid values.
+- If GitOps update job fails to push, verify `GITOPS_PUSH_TOKEN` scope and branch protection settings.

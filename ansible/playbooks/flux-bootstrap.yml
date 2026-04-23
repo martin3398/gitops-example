@@ -1,0 +1,10 @@
+---
+- name: Bootstrap Flux on first control plane
+  hosts: control_plane[0]
+  become: true
+  gather_facts: true
+  roles:
+    - role: flux_bootstrap
+      tags:
+        - flux
+        - bootstrap

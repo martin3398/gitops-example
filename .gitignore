@@ -27,3 +27,5 @@ infra/backend.hcl
 # Generated Ansible inventory artifacts
 ansible/inventories/lab/hosts.yml
 ansible/inventories/lab/ansible_inventory.json
+
+.cert

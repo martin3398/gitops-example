@@ -11,6 +11,7 @@ The Ansible jobs are split into ordered stages:
 3. `ansible:base`
 4. `ansible:runtime`
 5. `ansible:bootstrap`
+6. `ansible:flux_bootstrap`
 
 `ansible:inventory` depends on `tofu:apply` and consumes its `infra/outputs.json` artifact.
 
@@ -64,3 +65,18 @@ Successful sequence should result in:
 - smoke connectivity passing all hosts
 - base and runtime playbooks converged
 - cluster bootstrap completed with all nodes Ready
+- Flux bootstrap completed with `lab-repo`, `platform`, and `apps` ready in `flux-system`
+
+## Flux Bootstrap Variables
+
+Required for `ansible:flux_bootstrap`:
+
+- `FLUX_GIT_SSH_PRIVATE_KEY_B64`: base64-encoded private key matching the read-only GitLab deploy key
+- `FLUX_GIT_KNOWN_HOSTS_B64`: base64-encoded GitLab SSH known_hosts line (for example `gitlab.com ssh-ed25519 ...`)
+
+Encoding example:
+
+```bash
+base64 -w0 flux-gitlab
+printf 'gitlab.com ssh-ed25519 <host-key>' | base64 -w0
+```

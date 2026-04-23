@@ -1,0 +1,217 @@
+---
+- name: Validate Flux bootstrap secrets are provided
+  ansible.builtin.assert:
+    that:
+      - flux_git_ssh_private_key | length > 0
+      - flux_git_known_hosts | length > 0
+    fail_msg: "FLUX_GIT_SSH_PRIVATE_KEY and FLUX_GIT_KNOWN_HOSTS must be provided."
+
+- name: Check kubeconfig presence on first control plane
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: flux_bootstrap_admin_conf_stat
+
+- name: Fail if kubeconfig is missing
+  ansible.builtin.assert:
+    that:
+      - flux_bootstrap_admin_conf_stat.stat.exists
+    fail_msg: "/etc/kubernetes/admin.conf is missing. Run cluster bootstrap first."
+
+- name: Ensure Kubernetes API is reachable before Flux bootstrap
+  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get --raw=/readyz
+  register: flux_bootstrap_apiserver_readyz
+  changed_when: false
+  retries: 30
+  delay: 10
+  until: "'ok' in (flux_bootstrap_apiserver_readyz.stdout | default(''))"
+
+- name: Ensure root kubeconfig directory exists
+  ansible.builtin.file:
+    path: /root/.kube
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Copy admin kubeconfig for root
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /root/.kube/config
+    owner: root
+    group: root
+    mode: "0600"
+    remote_src: true
+
+- name: Ensure SSH directory for root exists
+  ansible.builtin.file:
+    path: /root/.ssh
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Write Flux deploy key private key
+  ansible.builtin.copy:
+    content: "{{ flux_git_ssh_private_key }}\n"
+    dest: "{{ flux_bootstrap_private_key_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Ensure GitLab SSH host key is present
+  ansible.builtin.known_hosts:
+    path: "{{ flux_bootstrap_known_hosts_path }}"
+    name: gitlab.com
+    key: "{{ flux_git_known_hosts }}"
+
+- name: Resolve Flux CLI architecture
+  ansible.builtin.set_fact:
+    flux_bootstrap_arch: "{{ flux_bootstrap_arch_map[ansible_architecture] | default('amd64') }}"
+
+- name: Check if Flux CLI is already installed
+  ansible.builtin.command: "{{ flux_bootstrap_cli_path }} --version"
+  register: flux_bootstrap_cli_version
+  changed_when: false
+  failed_when: false
+
+- name: Determine if Flux CLI version matches desired version
+  ansible.builtin.set_fact:
+    flux_bootstrap_cli_needs_install: "{{ flux_bootstrap_cli_version.rc != 0 or flux_bootstrap_version not in (flux_bootstrap_cli_version.stdout | default('')) }}"
+
+- name: Download Flux install archive
+  ansible.builtin.get_url:
+    url: "https://github.com/fluxcd/flux2/releases/download/v{{ flux_bootstrap_version }}/flux_{{ flux_bootstrap_version }}_linux_{{ flux_bootstrap_arch }}.tar.gz"
+    dest: /tmp/flux-cli.tar.gz
+    mode: "0644"
+  when: flux_bootstrap_cli_needs_install
+
+- name: Create temporary Flux extraction directory
+  ansible.builtin.file:
+    path: /tmp/flux-cli
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: flux_bootstrap_cli_needs_install
+
+- name: Extract Flux install archive
+  ansible.builtin.unarchive:
+    src: /tmp/flux-cli.tar.gz
+    dest: /tmp/flux-cli
+    remote_src: true
+  when: flux_bootstrap_cli_needs_install
+
+- name: Install Flux CLI binary
+  ansible.builtin.copy:
+    src: /tmp/flux-cli/flux
+    dest: "{{ flux_bootstrap_cli_path }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  when: flux_bootstrap_cli_needs_install
+
+- name: Ensure Flux namespace exists
+  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf create namespace {{ flux_bootstrap_namespace }}
+  register: flux_bootstrap_namespace_create
+  changed_when: "'created' in (flux_bootstrap_namespace_create.stdout | default(''))"
+  failed_when:
+    - flux_bootstrap_namespace_create.rc != 0
+    - "'AlreadyExists' not in (flux_bootstrap_namespace_create.stderr | default(''))"
+
+- name: Apply Flux controllers
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    {{ flux_bootstrap_cli_path }} install
+    --namespace {{ flux_bootstrap_namespace }}
+    --components {{ flux_bootstrap_components | join(',') }}
+    --network-policy=false
+    --watch-all-namespaces=true
+    --toleration-keys=node-role.kubernetes.io/control-plane
+    --export |
+    kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
+  args:
+    executable: /bin/bash
+  register: flux_bootstrap_install_apply
+  changed_when: "'configured' in (flux_bootstrap_install_apply.stdout | default('')) or 'created' in (flux_bootstrap_install_apply.stdout | default(''))"
+
+- name: Create temporary Flux sync directory
+  ansible.builtin.file:
+    path: /tmp/flux-sync
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Copy Flux sync manifests to control plane
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../kubernetes/flux/clusters/lab/"
+    dest: /tmp/flux-sync/
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Apply Flux Git deploy key secret
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    kubectl --kubeconfig /etc/kubernetes/admin.conf create secret generic flux-system
+    --namespace {{ flux_bootstrap_namespace }}
+    --from-file=identity={{ flux_bootstrap_private_key_path }}
+    --from-literal=known_hosts='{{ flux_git_known_hosts | replace("'", "'\"'\"'") }}'
+    --dry-run=client -o yaml |
+    kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
+  args:
+    executable: /bin/bash
+  register: flux_bootstrap_secret_apply
+  changed_when: "'configured' in (flux_bootstrap_secret_apply.stdout | default('')) or 'created' in (flux_bootstrap_secret_apply.stdout | default(''))"
+  no_log: true
+
+- name: Apply Flux source and kustomization manifests
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf apply
+    --kustomize /tmp/flux-sync
+  register: flux_bootstrap_sync_apply
+  changed_when: "'configured' in (flux_bootstrap_sync_apply.stdout | default('')) or 'created' in (flux_bootstrap_sync_apply.stdout | default(''))"
+
+- name: Wait for Flux GitRepository Ready condition with retry
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf wait
+    --for=condition=Ready
+    --timeout=15s
+    gitrepositories.source.toolkit.fluxcd.io/lab-repo
+    -n {{ flux_bootstrap_namespace }}
+  register: flux_bootstrap_gitrepository_ready
+  changed_when: false
+  failed_when: false
+  retries: "{{ flux_bootstrap_ready_retries }}"
+  delay: "{{ flux_bootstrap_ready_delay }}"
+  until: flux_bootstrap_gitrepository_ready.rc == 0
+
+- name: Wait for Flux platform Kustomization Ready condition with retry
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf wait
+    --for=condition=Ready
+    --timeout=15s
+    kustomizations.kustomize.toolkit.fluxcd.io/platform
+    -n {{ flux_bootstrap_namespace }}
+  register: flux_bootstrap_platform_ready
+  changed_when: false
+  failed_when: false
+  retries: "{{ flux_bootstrap_ready_retries }}"
+  delay: "{{ flux_bootstrap_ready_delay }}"
+  until: flux_bootstrap_platform_ready.rc == 0
+
+- name: Wait for Flux apps Kustomization Ready condition with retry
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf wait
+    --for=condition=Ready
+    --timeout=15s
+    kustomizations.kustomize.toolkit.fluxcd.io/apps
+    -n {{ flux_bootstrap_namespace }}
+  register: flux_bootstrap_apps_ready
+  changed_when: false
+  failed_when: false
+  retries: "{{ flux_bootstrap_ready_retries }}"
+  delay: "{{ flux_bootstrap_ready_delay }}"
+  until: flux_bootstrap_apps_ready.rc == 0
