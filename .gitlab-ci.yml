@@ -1,8 +1,8 @@
 stages:
   - tofu_check
+  - ansible_check
   - tofu_plan
   - tofu_apply
-  - ansible_check
   - ansible_inventory
   - ansible_smoke
   - ansible_base

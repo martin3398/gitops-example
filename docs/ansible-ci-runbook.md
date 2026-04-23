@@ -1,10 +1,10 @@
 # Ansible CI Runbook
 
-This runbook describes how to run the Ansible automation stages in GitLab CI after infrastructure apply.
+This runbook describes how Ansible automation stages execute in GitLab CI after infrastructure apply.
 
 ## Pipeline Ordering
 
-The Ansible jobs are split into manual, ordered stages:
+The Ansible jobs are split into ordered stages:
 
 1. `ansible:inventory`
 2. `ansible:smoke`
@@ -19,10 +19,15 @@ The Ansible jobs are split into manual, ordered stages:
 On `main` branch:
 
 1. Run `tofu:plan`
-2. Manually trigger `tofu:apply`
-3. Manually trigger Ansible jobs in order
+2. Manually trigger `tofu:apply` (provision gate)
+3. Ansible jobs run automatically in order
 
 All Ansible jobs use `resource_group: infra` to prevent concurrent infrastructure/cluster mutation.
+
+## Pipeline Gates
+
+- Gate 1 (provision): `tofu:apply` is manual on `main` and triggers infra + ordered Ansible automation.
+- Gate 2 (destroy): `tofu:destroy` is manual on `main` and requires `DESTROY_CONFIRM=yes`.
 
 ## Variables and Reuse
 

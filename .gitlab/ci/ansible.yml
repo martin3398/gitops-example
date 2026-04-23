@@ -48,8 +48,7 @@ ansible:inventory:
     expire_in: 7 days
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
-      allow_failure: false
+      when: on_success
     - when: never
 
 ansible:smoke:
@@ -64,8 +63,7 @@ ansible:smoke:
     - ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/smoke.yml
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
-      allow_failure: false
+      when: on_success
     - when: never
 
 ansible:base:
@@ -81,8 +79,7 @@ ansible:base:
     - ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/base.yml --tags base
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
-      allow_failure: false
+      when: on_success
     - when: never
 
 ansible:runtime:
@@ -98,8 +95,7 @@ ansible:runtime:
     - ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/runtime.yml --tags runtime
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
-      allow_failure: false
+      when: on_success
     - when: never
 
 ansible:bootstrap:
@@ -115,6 +111,5 @@ ansible:bootstrap:
     - ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/cluster-bootstrap.yml --tags bootstrap
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
-      allow_failure: false
+      when: on_success
     - when: never

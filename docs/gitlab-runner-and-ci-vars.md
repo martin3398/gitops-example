@@ -73,15 +73,15 @@ Pipeline stage order:
 - `tofu:fmt_validate`: MR + main
 - `ansible:lint_inventory`: MR + main (playbook syntax checks)
 - `tofu:plan`: MR + main
-- `tofu:apply`: manual on main
+- `tofu:apply`: manual on main (single provision gate)
 - `tofu:destroy`: manual on main and only if `DESTROY_CONFIRM=yes`
-- `ansible:inventory`: manual on main (requires `tofu:apply` artifacts)
-- `ansible:smoke`: manual on main
-- `ansible:base`: manual on main
-- `ansible:runtime`: manual on main
-- `ansible:bootstrap`: manual on main
+- `ansible:inventory`: automatic on main after `tofu:apply` (requires `tofu:apply` artifacts)
+- `ansible:smoke`: automatic on main after `ansible:inventory`
+- `ansible:base`: automatic on main after `ansible:smoke`
+- `ansible:runtime`: automatic on main after `ansible:base`
+- `ansible:bootstrap`: automatic on main after `ansible:runtime`
 
-Ansible jobs are intentionally manual-gated and serially ordered.
+Ansible jobs are intentionally serially ordered and run automatically after the provision gate.
 
 ## Destroy Safety Gate
 

@@ -23,7 +23,7 @@ Iteration 4 adds cluster bootstrap automation (4A-4D):
 - 4C: join remaining control planes and workers
 - 4D: cluster-level validation from first control plane
 
-Kubernetes bootstrap (kubeadm init/join) is not included yet.
+Kubernetes bootstrap (kubeadm init/join) is included in `playbooks/cluster-bootstrap.yml`.
 
 ## Prerequisites
 

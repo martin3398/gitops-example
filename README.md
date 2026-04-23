@@ -157,5 +157,12 @@ Ansible Iteration 4 kubeadm bootstrap automation is implemented:
 
 GitLab CI now includes Ansible automation stages:
 - inventory generation from OpenTofu apply artifact
-- smoke, base, runtime, and bootstrap jobs (manual-gated on `main`)
+- smoke, base, runtime, and bootstrap jobs (auto-sequenced after manual `tofu:apply` on `main`)
 - runbooks in `docs/gitlab-runner-and-ci-vars.md` and `docs/ansible-ci-runbook.md`
+
+Current pipeline gates on `main`:
+- manual gate 1: `tofu:apply` provisions infrastructure and then runs the full Ansible sequence
+- manual gate 2: `tofu:destroy` tears everything down (requires `DESTROY_CONFIRM=yes`)
+
+Phase 2 (Flux + platform add-ons + app delivery) remains pending:
+- `kubernetes/` repository structure and Flux bootstrap are not implemented yet
