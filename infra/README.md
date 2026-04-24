@@ -30,6 +30,7 @@ This directory provisions AWS infrastructure for a 5-node kubeadm cluster:
 - Outputs include an Ansible-friendly inventory map.
 - `backend.hcl` is local-only configuration and should not be committed.
 - Security group rules are managed via standalone ingress rule resources.
+- Default environment naming in examples is `dev`.
 
 ## Operations
 

@@ -67,6 +67,11 @@ Successful sequence should result in:
 - cluster bootstrap completed with all nodes Ready
 - Flux bootstrap completed with `dev-repo`, `platform`, and `apps` ready in `flux-system`
 
+Additional checks after bootstrap:
+
+- `kubectl -n flux-system get imagerepositories,imagepolicies,imageupdateautomations`
+- `podinfo` image automation objects should appear from `kubernetes/apps/dev/podinfo/` after `apps` becomes Ready
+
 ## Flux Bootstrap Variables
 
 Required for `ansible:flux_bootstrap`:

@@ -72,7 +72,7 @@ Exit criteria:
 4. Add GitLab CI/CD pipelines:
    - test/build images
    - publish images
-   - update GitOps manifests/values
+   - use Flux image automation to update GitOps manifests/values
 
 Exit criteria:
 - Git push triggers CI and Flux reconciliation

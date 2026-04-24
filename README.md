@@ -83,7 +83,7 @@ Use this as the single source of truth for what is done and what is next.
 - Bootstrap Flux from GitLab
 - Install platform add-ons via Helm through Flux
 - Deploy frontend + 1-2 microservices + Postgres primary/replica
-- Add GitLab pipelines for build/test/publish and GitOps update flow
+- Add GitLab pipelines for build/test/publish and use Flux image automation for GitOps image updates
 
 ### Phase 3 - Advanced Tooling
 - Add Vault, MongoDB, Kafka, and Ceph one by one
@@ -110,6 +110,12 @@ Planned layout:
 - Ansible manages host setup and cluster bootstrap only.
 - Flux manages all long-lived Kubernetes resources.
 - Avoid manual drift: persistent changes should be committed to Git.
+
+## Environment Naming
+
+- The active environment name is `dev`.
+- Flux cluster entrypoint is `kubernetes/flux/clusters/dev/`.
+- Platform and app overlays are under `kubernetes/platform/dev/` and `kubernetes/apps/dev/`.
 
 ## Local Environment Variables
 
@@ -218,6 +224,11 @@ GitOps structure and first Flux-managed chart are implemented:
 Flux image automation for apps is implemented:
 - `ImageRepository`, `ImagePolicy` (stable semver `>=6.0.0 <7.0.0`), and `ImageUpdateAutomation` for podinfo
 - image updates commit directly to `main` and are then reconciled by Flux
+
+Established deployment model:
+- Git is the desired-state source of truth for cluster resources under `kubernetes/`.
+- Container registry is the artifact source (images/charts), not the desired-state source.
+- CI builds and publishes images; Flux selects allowed image tags and updates manifests via image automation.
 
 Current pipeline gates on `main`:
 - manual gate 1: `tofu:apply` provisions infrastructure and then runs the full Ansible sequence

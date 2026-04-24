@@ -71,6 +71,11 @@ Flux image automation for app updates uses:
 - write-capable Git credential for Flux (`flux-system` secret used by `GitRepository/dev-repo`)
 - no CI variables are required for app image-tag Git commits
 
+Environment naming:
+- current environment is `dev`
+- state key default is `gitops-showcase/dev/infra.tfstate`
+- Flux entrypoint path is `kubernetes/flux/clusters/dev/`
+
 ## Job Behavior
 
 Pipeline stage order:

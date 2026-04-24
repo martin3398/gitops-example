@@ -1,6 +1,6 @@
 # Ansible Iterations 1-5 (SSM-first)
 
-This directory contains the first Ansible iteration for the lab:
+This directory contains the first Ansible iteration for the environment:
 - inventory handoff from OpenTofu outputs
 - SSM-based connectivity model
 - smoke validation playbook
@@ -29,6 +29,10 @@ Iteration 5 adds Flux bootstrap handoff automation:
 - install Flux controllers on the first control plane
 - apply Git source and root Kustomizations from `kubernetes/flux/clusters/dev`
 - validate Flux `GitRepository` and `Kustomization` readiness
+
+Active environment naming:
+- inventory path: `ansible/inventories/dev/hosts.yml`
+- Flux Git source object: `GitRepository/dev-repo`
 
 Flux image automation is configured under `kubernetes/apps/dev/podinfo/`:
 - `ImageRepository` tracks available tags from `ghcr.io/stefanprodan/podinfo`

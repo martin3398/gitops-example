@@ -41,8 +41,8 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
    - `cp infra/terraform.tfvars.example infra/terraform.tfvars`
    - `cp infra/backend.hcl.example infra/backend.hcl`
 2. Update values:
-   - `infra/terraform.tfvars`: `allowed_admin_cidrs`, optional instance sizes
-   - `infra/backend.hcl`: real state bucket name
+    - `infra/terraform.tfvars`: `allowed_admin_cidrs`, optional instance sizes
+    - `infra/backend.hcl`: real state bucket name and `key` path (default is `gitops-showcase/dev/infra.tfstate`)
 3. Run OpenTofu:
    - `cd infra`
    - `tofu init -migrate-state -backend-config=backend.hcl` (first remote-state migration only)
