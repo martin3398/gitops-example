@@ -1,0 +1,16 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  interval: 5m
+  dependsOn:
+    - name: platform
+  sourceRef:
+    kind: GitRepository
+    name: dev-repo
+  path: ./kubernetes/apps/dev
+  prune: true
+  wait: true
+  timeout: 2m

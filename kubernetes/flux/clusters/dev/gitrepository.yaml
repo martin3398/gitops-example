@@ -1,0 +1,12 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: dev-repo
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: ssh://git@gitlab.com/martin3398/gitops-showcase.git
+  ref:
+    branch: main
+  secretRef:
+    name: flux-system

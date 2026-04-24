@@ -32,10 +32,11 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Kubernetes (kubeadm, 3 control planes + 2 workers)
 - [x] containerd runtime
 - [x] Cilium CNI
-- [ ] Flux GitOps bootstrap
+- [x] Flux GitOps bootstrap automation
 - [ ] ingress-nginx
 - [ ] cert-manager
 - [ ] Monitoring/logging baseline (kube-prometheus-stack + Loki + Grafana)
+- [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
 - [ ] Application GitOps delivery (sample app + Postgres)
 - [ ] Backups (Velero + restore drill)
 - [ ] Policy/security controls (Kyverno/Gatekeeper, Trivy, network policies)
@@ -48,10 +49,10 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Phase 1.4: Runtime install (containerd + kubelet/kubeadm/kubectl)
 - [x] Phase 1.5: Cluster bootstrap (kubeadm init/join + Cilium + validation)
 - [x] Phase 1.6: GitLab CI stages for Ansible (manual-gated)
-- [ ] Phase 2.1: Flux bootstrap and repository structure under `kubernetes/`
+- [x] Phase 2.1: Flux bootstrap and repository structure under `kubernetes/`
 - [ ] Phase 2.2: Platform add-ons via Flux (ingress + cert-manager)
 - [ ] Phase 2.3: Observability baseline via Flux
-- [ ] Phase 2.4: App delivery flow (build/test/publish + GitOps update)
+- [x] Phase 2.4 (partial): Flux image automation wired for app image updates
 - [ ] Phase 3: Advanced tooling labs (Vault, MongoDB, Kafka, Ceph)
 - [ ] Phase 4: Resilience + backup + policy/security hardening
 
@@ -110,6 +111,48 @@ Planned layout:
 - Flux manages all long-lived Kubernetes resources.
 - Avoid manual drift: persistent changes should be committed to Git.
 
+## Local Environment Variables
+
+For local Ansible/OpenTofu workflow convenience, keep your shell env in a local `.env` file:
+
+1. Create local env file from template:
+
+```bash
+cp .env.example .env
+```
+
+2. Update values in `.env` for your account/profile.
+
+3. Load variables in your shell when working in this repo:
+
+```bash
+set -a; source .env; set +a
+```
+
+Notes:
+- `.env` is local-only and gitignored.
+- `.env.example` is a safe template tracked in git.
+
+## Task Runner
+
+This repository now includes a root `Taskfile.yml` that mirrors the current CI jobs for local execution.
+
+Common usage:
+
+```bash
+task -l
+task env:check
+task pipeline:check
+task tofu:plan
+task tofu:apply
+task ansible:all
+```
+
+Task groups:
+- OpenTofu: `tofu:*`
+- Ansible: `ansible:*`
+- Pipeline orchestrators: `pipeline:*`
+
 ## Cost and Safety Notes
 
 - A 5-node cluster is not free-tier friendly; keep instance sizes small and monitor cost.
@@ -122,6 +165,7 @@ Planned layout:
 - CI pipeline configuration:
   - Root include file: `.gitlab-ci.yml`
   - OpenTofu pipeline: `.gitlab/ci/opentofu.yml`
+  - Ansible pipeline: `.gitlab/ci/ansible.yml`
 - Local runner setup: `docker-compose.runner.yml`
 - Phase 1 infrastructure runbook: `docs/phase1-infra-runbook.md`
 - GitLab runner and CI variables guide: `docs/gitlab-runner-and-ci-vars.md`
@@ -155,14 +199,30 @@ Ansible Iteration 4 kubeadm bootstrap automation is implemented:
 - first control-plane init, Cilium installation via Cilium CLI, join workflows for additional control planes/workers
 - cluster-level validation checks for node readiness and critical kube-system control-plane pods
 
+Ansible Iteration 5 Flux bootstrap handoff automation is implemented:
+- Flux bootstrap playbook (`ansible/playbooks/flux-bootstrap.yml`) and role (`ansible/roles/flux_bootstrap/`)
+- installs Flux controllers (including image reflector/automation) and applies Git source + cluster Kustomizations
+- validates `GitRepository` and Kustomization readiness for `platform` and `apps`
+
 GitLab CI now includes Ansible automation stages:
 - inventory generation from OpenTofu apply artifact
-- smoke, base, runtime, and bootstrap jobs (auto-sequenced after manual `tofu:apply` on `main`)
+- smoke, base, runtime, bootstrap, and Flux bootstrap jobs (auto-sequenced after manual `tofu:apply` on `main`)
 - runbooks in `docs/gitlab-runner-and-ci-vars.md` and `docs/ansible-ci-runbook.md`
+
+GitOps structure and first Flux-managed chart are implemented:
+- cluster entrypoint and source chain: `kubernetes/flux/clusters/dev/`
+- platform root: `kubernetes/platform/dev/`
+- apps root: `kubernetes/apps/dev/`
+- smoke Helm chart: `kubernetes/apps/dev/podinfo/`
+
+Flux image automation for apps is implemented:
+- `ImageRepository`, `ImagePolicy` (stable semver `>=6.0.0 <7.0.0`), and `ImageUpdateAutomation` for podinfo
+- image updates commit directly to `main` and are then reconciled by Flux
 
 Current pipeline gates on `main`:
 - manual gate 1: `tofu:apply` provisions infrastructure and then runs the full Ansible sequence
 - manual gate 2: `tofu:destroy` tears everything down (requires `DESTROY_CONFIRM=yes`)
 
-Phase 2 (Flux + platform add-ons + app delivery) remains pending:
-- `kubernetes/` repository structure and Flux bootstrap are not implemented yet
+Phase 2 remaining work:
+- platform add-ons (ingress-nginx, cert-manager, observability) via Flux are still pending
+- sample application stack beyond podinfo smoke deployment is still pending
