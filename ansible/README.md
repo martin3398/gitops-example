@@ -27,8 +27,13 @@ Kubernetes bootstrap (kubeadm init/join) is included in `playbooks/cluster-boots
 
 Iteration 5 adds Flux bootstrap handoff automation:
 - install Flux controllers on the first control plane
-- apply Git source and root Kustomizations from `kubernetes/flux/clusters/lab`
+- apply Git source and root Kustomizations from `kubernetes/flux/clusters/dev`
 - validate Flux `GitRepository` and `Kustomization` readiness
+
+Flux image automation is configured under `kubernetes/apps/dev/podinfo/`:
+- `ImageRepository` tracks available tags from `ghcr.io/stefanprodan/podinfo`
+- `ImagePolicy` selects stable semver tags in range `>=6.0.0 <7.0.0`
+- `ImageUpdateAutomation` writes selected image updates back to Git (`main`) using setters
 
 ## Prerequisites
 
@@ -64,7 +69,7 @@ pip install -r ansible/python-requirements.txt
 
 ```bash
 cd infra
-tofu output -json ansible_inventory > ../ansible/inventories/lab/ansible_inventory.json
+tofu output -json ansible_inventory > ../ansible/inventories/dev/ansible_inventory.json
 ```
 
 2. Generate `hosts.yml`:
@@ -72,8 +77,8 @@ tofu output -json ansible_inventory > ../ansible/inventories/lab/ansible_invento
 ```bash
 cd ..
 python3 ansible/scripts/generate_inventory.py \
-  --input ansible/inventories/lab/ansible_inventory.json \
-  --output ansible/inventories/lab/hosts.yml \
+  --input ansible/inventories/dev/ansible_inventory.json \
+  --output ansible/inventories/dev/hosts.yml \
   --region eu-central-1 \
   --ssm-bucket gitops-showcase-tofu-state-<account-id>-eu-central-1
 ```
@@ -83,8 +88,8 @@ Alternative via environment variable:
 ```bash
 export ANSIBLE_SSM_BUCKET=gitops-showcase-tofu-state-<account-id>-eu-central-1
 python3 ansible/scripts/generate_inventory.py \
-  --input ansible/inventories/lab/ansible_inventory.json \
-  --output ansible/inventories/lab/hosts.yml \
+  --input ansible/inventories/dev/ansible_inventory.json \
+  --output ansible/inventories/dev/hosts.yml \
   --region eu-central-1
 ```
 
@@ -93,28 +98,28 @@ python3 ansible/scripts/generate_inventory.py \
 Inspect inventory graph:
 
 ```bash
-ansible-inventory -i ansible/inventories/lab/hosts.yml --graph
+ansible-inventory -i ansible/inventories/dev/hosts.yml --graph
 ```
 
 Run smoke checks:
 
 ```bash
 ANSIBLE_CONFIG=ansible/ansible.cfg \
-ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/smoke.yml
+ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/smoke.yml
 ```
 
 Run base preparation (iteration 2):
 
 ```bash
 cd ansible
-ansible-playbook -i inventories/lab/hosts.yml playbooks/base.yml --tags base
+ansible-playbook -i inventories/dev/hosts.yml playbooks/base.yml --tags base
 ```
 
 Idempotency check:
 
 ```bash
 cd ansible
-ansible-playbook -i inventories/lab/hosts.yml playbooks/base.yml --tags base
+ansible-playbook -i inventories/dev/hosts.yml playbooks/base.yml --tags base
 ```
 
 Second run should show minimal changes.
@@ -123,21 +128,21 @@ Run runtime preparation (iteration 3):
 
 ```bash
 cd ansible
-ansible-playbook -i inventories/lab/hosts.yml playbooks/runtime.yml --tags runtime
+ansible-playbook -i inventories/dev/hosts.yml playbooks/runtime.yml --tags runtime
 ```
 
 Runtime idempotency check:
 
 ```bash
 cd ansible
-ansible-playbook -i inventories/lab/hosts.yml playbooks/runtime.yml --tags runtime
+ansible-playbook -i inventories/dev/hosts.yml playbooks/runtime.yml --tags runtime
 ```
 
 Run full cluster bootstrap (iterations 4A-4D):
 
 ```bash
 cd ansible
-ansible-playbook -i inventories/lab/hosts.yml playbooks/cluster-bootstrap.yml --tags bootstrap
+ansible-playbook -i inventories/dev/hosts.yml playbooks/cluster-bootstrap.yml --tags bootstrap
 ```
 
 Run Flux bootstrap handoff (iteration 5):
@@ -148,7 +153,7 @@ export FLUX_GIT_SSH_PRIVATE_KEY_B64="$(base64 -w0 ../flux-gitlab)"
 export FLUX_GIT_KNOWN_HOSTS_B64="$(printf 'gitlab.com ssh-ed25519 <host-key>' | base64 -w0)"
 export FLUX_GIT_SSH_PRIVATE_KEY="$(printf '%s' "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)"
 export FLUX_GIT_KNOWN_HOSTS="$(printf '%s' "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)"
-ansible-playbook -i inventories/lab/hosts.yml playbooks/flux-bootstrap.yml --tags flux
+ansible-playbook -i inventories/dev/hosts.yml playbooks/flux-bootstrap.yml --tags flux
 ```
 
 Notes for 4B Cilium install:

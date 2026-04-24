@@ -24,8 +24,16 @@ infra/backend.hcl
 .idea/
 .vscode/
 
+# Local environment files
+.env
+.env.*
+!.env.example
+
 # Generated Ansible inventory artifacts
-ansible/inventories/lab/hosts.yml
-ansible/inventories/lab/ansible_inventory.json
+ansible/inventories/dev/hosts.yml
+ansible/inventories/dev/ansible_inventory.json
 
 .cert
+
+outputs.json
+plan.txt

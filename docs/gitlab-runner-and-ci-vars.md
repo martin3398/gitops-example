@@ -29,7 +29,6 @@ Recommended registration values:
 - `.gitlab-ci.yml`
 - `.gitlab/ci/opentofu.yml`
 - `.gitlab/ci/ansible.yml`
-- `.gitlab/ci/apps.yml`
 
 ## Required GitLab CI/CD Variables
 
@@ -38,7 +37,7 @@ Define in project settings: `Settings -> CI/CD -> Variables`
 Required:
 - `AWS_REGION` = `eu-central-1`
 - `TF_STATE_BUCKET` = `gitops-showcase-tofu-state-<account-id>-eu-central-1`
-- `TF_STATE_KEY` = `gitops-showcase/lab/infra.tfstate`
+- `TF_STATE_KEY` = `gitops-showcase/dev/infra.tfstate`
 - `TF_LOCK_TABLE` = `gitops-showcase-tofu-locks`
 
 AWS auth (choose one model):
@@ -68,12 +67,9 @@ base64 -w0 flux-gitlab
 printf 'gitlab.com ssh-ed25519 <host-key>' | base64 -w0
 ```
 
-GitOps image-update job uses:
-- `GITOPS_BOT_USER`
-- `GITOPS_BOT_EMAIL`
-- `GITOPS_PUSH_TOKEN` (write token for repository updates)
-- `APP_IMAGE_REPOSITORY`
-- `APP_IMAGE_TAG`
+Flux image automation for app updates uses:
+- write-capable Git credential for Flux (`flux-system` secret used by `GitRepository/dev-repo`)
+- no CI variables are required for app image-tag Git commits
 
 ## Job Behavior
 
@@ -88,7 +84,6 @@ Pipeline stage order:
 - `ansible_runtime`
 - `ansible_bootstrap`
 - `ansible_flux`
-- `app_delivery`
 - `tofu_destroy`
 
 - `tofu:fmt_validate`: MR + main
@@ -102,7 +97,6 @@ Pipeline stage order:
 - `ansible:runtime`: automatic on main after `ansible:base`
 - `ansible:bootstrap`: automatic on main after `ansible:runtime`
 - `ansible:flux_bootstrap`: automatic on main after `ansible:bootstrap`
-- `app:update_gitops_image`: automatic on main after `ansible:flux_bootstrap` when app image variables and push token are set
 
 Ansible jobs are intentionally serially ordered and run automatically after the provision gate.
 
@@ -123,4 +117,4 @@ Without this variable, destroy job remains unavailable.
 - If Ansible jobs fail during module transfer, confirm CI identity has S3 access to `TF_STATE_BUCKET`.
 - If inventory generation fails, ensure `tofu:apply` completed and produced `infra/outputs.json` artifact.
 - If Flux bootstrap fails with source auth errors, verify `FLUX_GIT_SSH_PRIVATE_KEY_B64` and `FLUX_GIT_KNOWN_HOSTS_B64` decode to valid values.
-- If GitOps update job fails to push, verify `GITOPS_PUSH_TOKEN` scope and branch protection settings.
+- If Flux image automation fails to push updates, verify the Git credential in `flux-system` has write access to `main`.

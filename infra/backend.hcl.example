@@ -1,5 +1,5 @@
 bucket         = "REPLACE_WITH_YOUR_STATE_BUCKET"
-key            = "gitops-showcase/lab/infra.tfstate"
+key            = "gitops-showcase/dev/infra.tfstate"
 region         = "eu-central-1"
 dynamodb_table = "gitops-showcase-tofu-locks"
 encrypt        = true

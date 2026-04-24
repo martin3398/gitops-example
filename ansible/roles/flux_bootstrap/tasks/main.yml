@@ -146,7 +146,7 @@
 
 - name: Copy Flux sync manifests to control plane
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../kubernetes/flux/clusters/lab/"
+    src: "{{ playbook_dir }}/../../kubernetes/flux/clusters/dev/"
     dest: /tmp/flux-sync/
     owner: root
     group: root
@@ -179,7 +179,7 @@
     kubectl --kubeconfig /etc/kubernetes/admin.conf wait
     --for=condition=Ready
     --timeout=15s
-    gitrepositories.source.toolkit.fluxcd.io/lab-repo
+    gitrepositories.source.toolkit.fluxcd.io/dev-repo
     -n {{ flux_bootstrap_namespace }}
   register: flux_bootstrap_gitrepository_ready
   changed_when: false

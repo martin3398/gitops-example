@@ -65,7 +65,7 @@ Successful sequence should result in:
 - smoke connectivity passing all hosts
 - base and runtime playbooks converged
 - cluster bootstrap completed with all nodes Ready
-- Flux bootstrap completed with `lab-repo`, `platform`, and `apps` ready in `flux-system`
+- Flux bootstrap completed with `dev-repo`, `platform`, and `apps` ready in `flux-system`
 
 ## Flux Bootstrap Variables
 

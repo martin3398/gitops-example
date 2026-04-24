@@ -1,0 +1,199 @@
+version: "3"
+
+dotenv:
+  - .env
+
+vars:
+  OUTPUTS: infra/outputs.json
+  INVENTORY: ansible/inventories/dev/hosts.yml
+  ANSIBLE_CONFIG_FILE: ansible/ansible.cfg
+  VENV_PYTHON: .venv/bin/python3
+  VENV_ANSIBLE_PLAYBOOK: .venv/bin/ansible-playbook
+  VENV_ANSIBLE_INVENTORY: .venv/bin/ansible-inventory
+
+tasks:
+  "venv:check":
+    internal: true
+    preconditions:
+      - sh: 'test -x "{{.VENV_PYTHON}}"'
+        msg: "Missing .venv/bin/python3. Create venv and install dependencies first."
+      - sh: 'test -x "{{.VENV_ANSIBLE_PLAYBOOK}}"'
+        msg: "Missing .venv/bin/ansible-playbook. Install ansible into .venv first."
+      - sh: 'test -x "{{.VENV_ANSIBLE_INVENTORY}}"'
+        msg: "Missing .venv/bin/ansible-inventory. Install ansible into .venv first."
+    cmds:
+      - "printf 'Virtual environment looks good.\\n'"
+
+  "env:check":
+    desc: "Check required local environment variables"
+    preconditions:
+      - sh: 'test -n "$AWS_PROFILE"'
+        msg: "AWS_PROFILE is required (for example: gitops-dev)"
+      - sh: 'test -n "$AWS_REGION"'
+        msg: "AWS_REGION is required (for example: eu-central-1)"
+      - sh: 'test -n "$ANSIBLE_SSM_BUCKET"'
+        msg: "ANSIBLE_SSM_BUCKET is required"
+    cmds:
+      - "printf 'Environment looks good.\\n'"
+
+  "tofu:fmt_validate":
+    desc: "Run tofu fmt check and validate"
+    dir: infra
+    cmds:
+      - "tofu fmt -check -recursive"
+      - "tofu validate"
+
+  "tofu:plan":
+    desc: "Run tofu plan and save plan artifact"
+    dir: infra
+    cmds:
+      - "tofu plan -out phase1-infra.tfplan"
+      - "tofu show -no-color phase1-infra.tfplan > plan.txt"
+
+  "tofu:apply":
+    desc: "Apply tofu plan and export outputs"
+    dir: infra
+    cmds:
+      - "tofu apply -auto-approve phase1-infra.tfplan"
+      - "tofu output -json > outputs.json"
+
+  "tofu:destroy":
+    desc: "Destroy infrastructure (requires DESTROY_CONFIRM=yes)"
+    dir: infra
+    preconditions:
+      - sh: 'test "$DESTROY_CONFIRM" = "yes"'
+        msg: "DESTROY_CONFIRM=yes is required to run tofu:destroy"
+    cmds:
+      - "tofu plan -destroy -out destroy.tfplan"
+      - "tofu apply -auto-approve destroy.tfplan"
+
+  "ansible:lint_inventory":
+    desc: "Syntax check all Ansible playbooks"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    cmds:
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/smoke.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/base.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/runtime.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/cluster-bootstrap.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/flux-bootstrap.yml"
+
+  "ansible:inventory":
+    desc: "Generate Ansible inventory from infra outputs"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.OUTPUTS}}"'
+        msg: "Missing infra/outputs.json. Run task tofu:apply first."
+      - sh: 'test -n "$AWS_REGION"'
+        msg: "AWS_REGION is required"
+      - sh: 'test -n "${ANSIBLE_SSM_BUCKET:-$TF_STATE_BUCKET}"'
+        msg: "ANSIBLE_SSM_BUCKET or TF_STATE_BUCKET is required"
+    cmds:
+      - '{{.VENV_PYTHON}} ansible/scripts/generate_inventory.py --input "{{.OUTPUTS}}" --output "{{.INVENTORY}}" --region "$AWS_REGION" --ssm-bucket "${ANSIBLE_SSM_BUCKET:-$TF_STATE_BUCKET}"'
+      - '{{.VENV_ANSIBLE_INVENTORY}} -i "{{.INVENTORY}}" --graph'
+
+  "ansible:smoke":
+    desc: "Run Ansible smoke checks"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - |
+        tries=12
+        delay=15
+        i=1
+        while [ "$i" -le "$tries" ]; do
+          if {{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/smoke.yml; then
+            exit 0
+          fi
+          if [ "$i" -lt "$tries" ]; then
+            printf "SM not ready yet (attempt %s/%s). Retrying in %ss...\n" "$i" "$tries" "$delay"
+            sleep "$delay"
+          fi
+          i=$((i + 1))
+        done
+        {{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/smoke.yml
+
+  "ansible:base":
+    desc: "Run Ansible base role"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/base.yml --tags base'
+
+  "ansible:runtime":
+    desc: "Run Ansible runtime role"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/runtime.yml --tags runtime'
+
+  "ansible:bootstrap":
+    desc: "Run Ansible cluster bootstrap role"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/cluster-bootstrap.yml --tags bootstrap'
+
+  "ansible:flux_bootstrap":
+    desc: "Run Ansible Flux bootstrap role"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+      - sh: 'test -n "$FLUX_GIT_SSH_PRIVATE_KEY_B64"'
+        msg: "FLUX_GIT_SSH_PRIVATE_KEY_B64 is required"
+      - sh: 'test -n "$FLUX_GIT_KNOWN_HOSTS_B64"'
+        msg: "FLUX_GIT_KNOWN_HOSTS_B64 is required"
+    cmds:
+      - 'export FLUX_GIT_SSH_PRIVATE_KEY="$(printf %s "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)" && export FLUX_GIT_KNOWN_HOSTS="$(printf %s "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)" && {{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/flux-bootstrap.yml --tags flux'
+
+  "ansible:all":
+    desc: "Run the full ordered Ansible chain"
+    cmds:
+      - task: "ansible:inventory"
+      - task: "ansible:smoke"
+      - task: "ansible:base"
+      - task: "ansible:runtime"
+      - task: "ansible:bootstrap"
+      - task: "ansible:flux_bootstrap"
+
+  "pipeline:check":
+    desc: "Run local checks equivalent to CI check stages"
+    cmds:
+      - task: "tofu:fmt_validate"
+      - task: "ansible:lint_inventory"
+
+  "pipeline:main":
+    desc: "Run local main pipeline flow excluding app push"
+    cmds:
+      - task: "tofu:plan"
+      - task: "tofu:apply"
+      - task: "ansible:all"

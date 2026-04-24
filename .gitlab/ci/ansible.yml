@@ -40,12 +40,12 @@ ansible:inventory:
       artifacts: true
   script:
     - test -f infra/outputs.json
-    - python3 ansible/scripts/generate_inventory.py --input infra/outputs.json --output ansible/inventories/lab/hosts.yml --region "$AWS_REGION" --ssm-bucket "$TF_STATE_BUCKET"
-    - ansible-inventory -i ansible/inventories/lab/hosts.yml --graph
+    - python3 ansible/scripts/generate_inventory.py --input infra/outputs.json --output ansible/inventories/dev/hosts.yml --region "$AWS_REGION" --ssm-bucket "$TF_STATE_BUCKET"
+    - ansible-inventory -i ansible/inventories/dev/hosts.yml --graph
   artifacts:
     name: "ansible-inventory-${CI_COMMIT_REF_SLUG}-${CI_PIPELINE_ID}"
     paths:
-      - ansible/inventories/lab/hosts.yml
+      - ansible/inventories/dev/hosts.yml
     expire_in: 7 days
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -60,8 +60,8 @@ ansible:smoke:
     - job: ansible:inventory
       artifacts: true
   script:
-    - test -f ansible/inventories/lab/hosts.yml
-    - ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/smoke.yml
+    - test -f ansible/inventories/dev/hosts.yml
+    - ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/smoke.yml
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success
@@ -76,8 +76,8 @@ ansible:base:
       artifacts: true
     - job: ansible:smoke
   script:
-    - test -f ansible/inventories/lab/hosts.yml
-    - ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/base.yml --tags base
+    - test -f ansible/inventories/dev/hosts.yml
+    - ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/base.yml --tags base
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success
@@ -92,8 +92,8 @@ ansible:runtime:
       artifacts: true
     - job: ansible:base
   script:
-    - test -f ansible/inventories/lab/hosts.yml
-    - ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/runtime.yml --tags runtime
+    - test -f ansible/inventories/dev/hosts.yml
+    - ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/runtime.yml --tags runtime
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success
@@ -108,8 +108,8 @@ ansible:bootstrap:
       artifacts: true
     - job: ansible:runtime
   script:
-    - test -f ansible/inventories/lab/hosts.yml
-    - ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/cluster-bootstrap.yml --tags bootstrap
+    - test -f ansible/inventories/dev/hosts.yml
+    - ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/cluster-bootstrap.yml --tags bootstrap
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success
@@ -124,12 +124,12 @@ ansible:flux_bootstrap:
       artifacts: true
     - job: ansible:bootstrap
   script:
-    - test -f ansible/inventories/lab/hosts.yml
+    - test -f ansible/inventories/dev/hosts.yml
     - test -n "$FLUX_GIT_SSH_PRIVATE_KEY_B64"
     - test -n "$FLUX_GIT_KNOWN_HOSTS_B64"
     - export FLUX_GIT_SSH_PRIVATE_KEY="$(printf '%s' "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)"
     - export FLUX_GIT_KNOWN_HOSTS="$(printf '%s' "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)"
-    - ansible-playbook -i ansible/inventories/lab/hosts.yml ansible/playbooks/flux-bootstrap.yml --tags flux
+    - ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/flux-bootstrap.yml --tags flux
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success
