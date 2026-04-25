@@ -4,7 +4,7 @@ metadata:
   name: dev-repo
   namespace: flux-system
 spec:
-  interval: 5m
+  interval: 1m
   url: ssh://git@gitlab.com/martin3398/gitops-showcase.git
   ref:
     branch: main
