@@ -61,7 +61,7 @@ Ansible-specific behavior:
 
 Successful sequence should result in:
 
-- inventory graph with 3 control planes + 2 workers
+- inventory graph with 3 control planes + 3 workers
 - smoke connectivity passing all hosts
 - base and runtime playbooks converged
 - cluster bootstrap completed with all nodes Ready

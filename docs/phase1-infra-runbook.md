@@ -16,8 +16,9 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
 - 1 NAT Gateway + Elastic IP
 - 2 security groups (control plane, workers)
 - IAM role + instance profile for EC2 nodes (SSM access)
-- 3 control-plane EC2 instances and 2 worker EC2 instances
+- 3 control-plane EC2 instances and 3 worker EC2 instances
 - Optional: internet-facing Kubernetes API NLB on `:6443` when `enable_public_k8s_api=true`
+- Optional: internet-facing ingress NLB on `:80/:443` when `enable_public_ingress=true`
 
 ## Files
 
@@ -26,7 +27,7 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
 - `infra/locals.tf`: naming, tags, node maps
 - `infra/network.tf`: VPC/subnets/routes/NAT
 - `infra/security.tf`: security groups and ingress rules
-- `infra/load_balancer.tf`: optional public Kubernetes API NLB resources
+- `infra/load_balancer.tf`: optional public Kubernetes API and ingress NLB resources
 - `infra/iam.tf`: role/profile for nodes
 - `infra/compute.tf`: EC2 fleet
 - `infra/outputs.tf`: handoff outputs (`ansible_inventory`)
@@ -43,7 +44,7 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
    - `cp infra/terraform.tfvars.example infra/terraform.tfvars`
    - `cp infra/backend.hcl.example infra/backend.hcl`
 2. Update values:
-    - `infra/terraform.tfvars`: `allowed_admin_cidrs`, optional instance sizes
+    - `infra/terraform.tfvars`: `allowed_admin_cidrs`, optional instance sizes, optional ingress exposure settings
     - `infra/backend.hcl`: real state bucket name and `key` path (default is `gitops-showcase/dev/infra.tfstate`)
 3. Run OpenTofu:
    - `cd infra`
@@ -60,6 +61,7 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
 - `tofu output -json ansible_inventory`
 - `tofu output kubernetes_api_endpoint`
 - `tofu output kubernetes_api_internal_endpoint`
+- `tofu output ingress_public_endpoint`
 - `tofu plan` should be no-op after reconciliation
 
 If public API is enabled:
@@ -67,6 +69,11 @@ If public API is enabled:
 - ensure `kubernetes_api_endpoint` resolves to NLB DNS
 - ensure your current public IP is present in `allowed_admin_cidrs`
 - verify `nc -vz <nlb-dns-name> 6443` from your workstation
+
+If public ingress is enabled:
+
+- ensure `ingress_public_endpoint` resolves to NLB DNS
+- verify `nc -vz <ingress-nlb-dns-name> 80` and `nc -vz <ingress-nlb-dns-name> 443` from your workstation
 
 ## Destroy
 
@@ -83,7 +90,7 @@ Preferred resolution is importing those existing rule IDs into state instead of 
 
 - VPC and subnets are in place.
 - NAT egress works for private node subnets.
-- 3 control-plane and 2 worker instances exist.
+- 3 control-plane and 3 worker instances exist.
 - State is remote (S3) and locking is active (DynamoDB).
 - Outputs provide clean handoff data for Ansible bootstrap.
 
