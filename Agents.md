@@ -34,7 +34,7 @@ Implement a multi-phase learning platform with:
 - GitOps: Flux
 - CI/CD: GitLab CI/CD
 - Ingress: ingress-nginx
-- TLS: cert-manager
+- TLS: optional cert-manager
 - Monitoring: kube-prometheus-stack + Loki + Grafana
 - Database: Postgres primary/replica setup in cluster
 
@@ -63,7 +63,7 @@ Exit criteria:
 1. Bootstrap Flux and connect to GitLab repository
 2. Deploy platform services via Helm (through Flux):
    - ingress-nginx
-   - cert-manager
+   - optional cert-manager (required for managed HTTPS)
    - monitoring/logging stack
 3. Deploy sample application stack:
    - simple frontend
@@ -120,7 +120,7 @@ Exit criteria:
 - `infra/` OpenTofu/Terraform infrastructure code
 - `ansible/` host and cluster bootstrap automation
 - `kubernetes/flux/` Flux bootstrap and Kustomizations
-- `kubernetes/platform/` ingress, cert-manager, monitoring, logging
+- `kubernetes/platform/` ingress, optional cert-manager, monitoring, logging
 - `kubernetes/apps/` frontend, microservices, Postgres
 - `kubernetes/labs/` Vault, MongoDB, Kafka, Ceph experiments
 - `docs/` architecture, runbooks, troubleshooting, DR tests

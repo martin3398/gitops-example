@@ -34,7 +34,7 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Cilium CNI
 - [x] Flux GitOps bootstrap automation
 - [x] ingress-nginx
-- [ ] cert-manager
+- [ ] cert-manager (optional for public HTTPS/custom domains)
 - [ ] Monitoring/logging baseline (kube-prometheus-stack + Loki + Grafana)
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
 - [ ] Application GitOps delivery (sample app + Postgres)
@@ -51,7 +51,7 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Phase 1.6: GitLab CI stages for Ansible (manual-gated)
 - [x] Phase 2.1: Flux bootstrap and repository structure under `kubernetes/`
 - [x] Phase 2.2a: ingress-nginx via Flux
-- [ ] Phase 2.2b: cert-manager via Flux
+- [ ] Phase 2.2b (optional): cert-manager via Flux
 - [ ] Phase 2.3: Observability baseline via Flux
 - [x] Phase 2.4 (partial): Flux image automation wired for app image updates
 - [ ] Phase 3: Advanced tooling labs (Vault, MongoDB, Kafka, Ceph)
@@ -64,7 +64,7 @@ Use this as the single source of truth for what is done and what is next.
 - Kubernetes: kubeadm + containerd
 - CNI: Cilium (fallback Calico)
 - Ingress: ingress-nginx
-- TLS: cert-manager
+- TLS: optional cert-manager
 - GitOps: Flux
 - CI/CD: GitLab CI/CD
 - Monitoring/Logging: kube-prometheus-stack + Loki + Grafana
@@ -100,7 +100,7 @@ Planned layout:
 - `infra/` infrastructure code
 - `ansible/` host and kubeadm automation
 - `kubernetes/flux/` Flux bootstrap and Kustomizations
-- `kubernetes/platform/` ingress, cert-manager, monitoring/logging
+- `kubernetes/platform/` ingress, optional cert-manager, monitoring/logging
 - `kubernetes/apps/` frontend, services, database
 - `kubernetes/labs/` Vault, MongoDB, Kafka, Ceph
 - `docs/` architecture and runbooks
@@ -262,5 +262,5 @@ Current pipeline gates on `main`:
 - manual gate 2: `tofu:destroy` tears everything down (requires `DESTROY_CONFIRM=yes`)
 
 Phase 2 remaining work:
-- platform add-ons (cert-manager, observability) via Flux are still pending
+- platform add-ons (optional cert-manager, observability) via Flux are still pending
 - sample application stack beyond podinfo smoke deployment is still pending
