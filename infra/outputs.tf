@@ -9,7 +9,7 @@ output "public_nat_subnet_id" {
 }
 
 output "public_lb_subnet_ids" {
-  description = "Public subnet IDs used by the Kubernetes API NLB"
+  description = "Public subnet IDs used by internet-facing NLBs"
   value = {
     for idx, subnet in aws_subnet.public_lb : idx => subnet.id
   }
@@ -83,4 +83,9 @@ output "kubernetes_api_endpoint" {
 output "kubernetes_api_internal_endpoint" {
   description = "Kubernetes API endpoint used by kubeadm control-plane bootstrap"
   value       = "${aws_instance.control_plane["cp-1"].private_ip}:6443"
+}
+
+output "ingress_public_endpoint" {
+  description = "Ingress NLB endpoint for HTTP/HTTPS traffic"
+  value       = var.enable_public_ingress ? aws_lb.ingress[0].dns_name : ""
 }

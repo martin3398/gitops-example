@@ -45,14 +45,48 @@ variable "enable_public_k8s_api" {
   default     = false
 }
 
+variable "enable_public_ingress" {
+  description = "Expose ingress traffic through an internet-facing NLB"
+  type        = bool
+  default     = false
+}
+
 variable "lb_public_subnet_cidrs" {
-  description = "Public subnet CIDRs used by the Kubernetes API NLB"
+  description = "Public subnet CIDRs used by internet-facing NLBs"
   type        = list(string)
   default     = ["10.42.101.0/24", "10.42.102.0/24"]
 
   validation {
     condition     = length(var.lb_public_subnet_cidrs) >= 2 && length(var.lb_public_subnet_cidrs) <= 3
     error_message = "Kubernetes API NLB requires 2-3 public subnet CIDRs."
+  }
+}
+
+variable "ingress_allowed_cidrs" {
+  description = "CIDRs allowed to access ingress through the ingress NLB"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "ingress_nodeport_http" {
+  description = "NodePort exposed by ingress-nginx for HTTP"
+  type        = number
+  default     = 30080
+
+  validation {
+    condition     = var.ingress_nodeport_http >= 30000 && var.ingress_nodeport_http <= 32767
+    error_message = "ingress_nodeport_http must be in Kubernetes NodePort range 30000-32767."
+  }
+}
+
+variable "ingress_nodeport_https" {
+  description = "NodePort exposed by ingress-nginx for HTTPS"
+  type        = number
+  default     = 30443
+
+  validation {
+    condition     = var.ingress_nodeport_https >= 30000 && var.ingress_nodeport_https <= 32767
+    error_message = "ingress_nodeport_https must be in Kubernetes NodePort range 30000-32767."
   }
 }
 

@@ -29,7 +29,7 @@ resource "aws_subnet" "public_nat" {
 }
 
 resource "aws_subnet" "public_lb" {
-  for_each = var.enable_public_k8s_api ? {
+  for_each = (var.enable_public_k8s_api || var.enable_public_ingress) ? {
     for idx, cidr in var.lb_public_subnet_cidrs : idx => cidr
   } : {}
 

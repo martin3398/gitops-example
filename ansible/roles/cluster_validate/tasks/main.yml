@@ -5,7 +5,7 @@
   changed_when: false
   retries: "{{ cluster_validate_retries }}"
   delay: "{{ cluster_validate_delay }}"
-  until: cluster_nodes.stdout_lines | length >= cluster_validate_expected_nodes
+  until: cluster_nodes.stdout_lines | length >= (cluster_validate_expected_nodes | int)
 
 - name: Wait until all nodes are Ready
   ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes --no-headers

@@ -22,5 +22,6 @@ locals {
   worker_nodes = {
     worker-1 = { az_index = 0 }
     worker-2 = { az_index = 1 }
+    worker-3 = { az_index = 2 }
   }
 }
