@@ -8,6 +8,7 @@ vars:
   INVENTORY: ansible/inventories/dev/hosts.yml
   ANSIBLE_CONFIG_FILE: ansible/ansible.cfg
   VENV_PYTHON: .venv/bin/python3
+  VENV_ANSIBLE: .venv/bin/ansible
   VENV_ANSIBLE_PLAYBOOK: .venv/bin/ansible-playbook
   VENV_ANSIBLE_INVENTORY: .venv/bin/ansible-inventory
 
@@ -21,6 +22,8 @@ tasks:
         msg: "Missing .venv/bin/ansible-playbook. Install ansible into .venv first."
       - sh: 'test -x "{{.VENV_ANSIBLE_INVENTORY}}"'
         msg: "Missing .venv/bin/ansible-inventory. Install ansible into .venv first."
+      - sh: 'test -x "{{.VENV_ANSIBLE}}"'
+        msg: "Missing .venv/bin/ansible. Install ansible into .venv first."
     cmds:
       - "printf 'Virtual environment looks good.\\n'"
 
@@ -174,6 +177,19 @@ tasks:
         msg: "FLUX_GIT_KNOWN_HOSTS_B64 is required"
     cmds:
       - 'export FLUX_GIT_SSH_PRIVATE_KEY="$(printf %s "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)" && export FLUX_GIT_KNOWN_HOSTS="$(printf %s "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)" && {{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/flux-bootstrap.yml --tags flux'
+
+  "ansible:get_kubeconfig":
+    desc: "Fetch admin kubeconfig from first control plane"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE}} control_plane[0] -i "{{.INVENTORY}}" -b -m ansible.builtin.fetch -a "src=/etc/kubernetes/admin.conf dest=./kubeconfig.dev flat=true"'
+      - 'chmod 600 ./kubeconfig.dev'
 
   "ansible:all":
     desc: "Run the full ordered Ansible chain"

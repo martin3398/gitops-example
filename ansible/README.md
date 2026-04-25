@@ -165,6 +165,18 @@ export FLUX_GIT_KNOWN_HOSTS="$(printf '%s' "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 
 ansible-playbook -i inventories/dev/hosts.yml playbooks/flux-bootstrap.yml --tags flux
 ```
 
+Fetch kubeconfig for local kubectl usage:
+
+```bash
+task ansible:get_kubeconfig
+```
+
+Use it locally:
+
+```bash
+KUBECONFIG=./kubeconfig.dev kubectl get nodes
+```
+
 Notes for 4B Cilium install:
 - Cilium version is pinned to `1.19.3` in `roles/cni/defaults/main.yml`.
 - Cilium CLI version is pinned separately (`v0.19.2`) and installed on the first control plane if missing or version-mismatched.

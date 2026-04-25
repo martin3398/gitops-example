@@ -163,6 +163,7 @@ task pipeline:check
 task tofu:plan
 task tofu:apply
 task ansible:all
+task ansible:get_kubeconfig
 ```
 
 Task groups:
