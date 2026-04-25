@@ -17,6 +17,7 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
 - 2 security groups (control plane, workers)
 - IAM role + instance profile for EC2 nodes (SSM access)
 - 3 control-plane EC2 instances and 2 worker EC2 instances
+- Optional: internet-facing Kubernetes API NLB on `:6443` when `enable_public_k8s_api=true`
 
 ## Files
 
@@ -56,7 +57,14 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
 
 - `tofu output`
 - `tofu output -json ansible_inventory`
+- `tofu output kubernetes_api_endpoint`
 - `tofu plan` should be no-op after reconciliation
+
+If public API is enabled:
+
+- ensure `kubernetes_api_endpoint` resolves to NLB DNS
+- ensure your current public IP is present in `allowed_admin_cidrs`
+- verify `nc -vz <nlb-dns-name> 6443` from your workstation
 
 ## Destroy
 

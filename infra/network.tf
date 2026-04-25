@@ -28,6 +28,22 @@ resource "aws_subnet" "public_nat" {
   })
 }
 
+resource "aws_subnet" "public_lb" {
+  for_each = var.enable_public_k8s_api ? {
+    for idx, cidr in var.lb_public_subnet_cidrs : idx => cidr
+  } : {}
+
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = each.value
+  availability_zone       = local.selected_azs[tonumber(each.key)]
+  map_public_ip_on_launch = false
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-public-lb-${tonumber(each.key) + 1}"
+    Tier = "public"
+  })
+}
+
 resource "aws_subnet" "private" {
   for_each = {
     for idx, cidr in var.private_subnet_cidrs : idx => cidr
@@ -78,6 +94,13 @@ resource "aws_route_table" "public" {
 
 resource "aws_route_table_association" "public_nat" {
   subnet_id      = aws_subnet.public_nat.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "public_lb" {
+  for_each = aws_subnet.public_lb
+
+  subnet_id      = each.value.id
   route_table_id = aws_route_table.public.id
 }
 

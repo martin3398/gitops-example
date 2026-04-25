@@ -117,6 +117,17 @@ Planned layout:
 - Flux cluster entrypoint is `kubernetes/flux/clusters/dev/`.
 - Platform and app overlays are under `kubernetes/platform/dev/` and `kubernetes/apps/dev/`.
 
+## Direct Kubernetes API Access (Dev Option)
+
+If you want direct `kubectl` access from your workstation (without SSM tunnel), enable the public API NLB in `infra/terraform.tfvars`:
+
+- `enable_public_k8s_api = true`
+- `lb_public_subnet_cidrs = ["10.42.101.0/24", "10.42.102.0/24"]`
+- keep `allowed_admin_cidrs` restricted to your current public IP (for example `/32`)
+
+When enabled, infrastructure output includes `kubernetes_api_endpoint` and Ansible inventory generation writes `kube_api_endpoint` automatically.
+`kubeadm init` then uses this endpoint as `--control-plane-endpoint`, so generated kubeconfigs target the public NLB endpoint.
+
 ## Local Environment Variables
 
 For local Ansible/OpenTofu workflow convenience, keep your shell env in a local `.env` file:

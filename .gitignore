@@ -37,3 +37,5 @@ ansible/inventories/dev/ansible_inventory.json
 
 outputs.json
 plan.txt
+
+__pycache__

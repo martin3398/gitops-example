@@ -39,6 +39,23 @@ variable "public_subnet_cidr" {
   default     = "10.42.100.0/24"
 }
 
+variable "enable_public_k8s_api" {
+  description = "Expose Kubernetes API through an internet-facing NLB"
+  type        = bool
+  default     = false
+}
+
+variable "lb_public_subnet_cidrs" {
+  description = "Public subnet CIDRs used by the Kubernetes API NLB"
+  type        = list(string)
+  default     = ["10.42.101.0/24", "10.42.102.0/24"]
+
+  validation {
+    condition     = length(var.lb_public_subnet_cidrs) >= 2 && length(var.lb_public_subnet_cidrs) <= 3
+    error_message = "Kubernetes API NLB requires 2-3 public subnet CIDRs."
+  }
+}
+
 variable "allowed_admin_cidrs" {
   description = "CIDRs allowed for administrative access"
   type        = list(string)

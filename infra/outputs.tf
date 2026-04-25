@@ -8,6 +8,13 @@ output "public_nat_subnet_id" {
   value       = aws_subnet.public_nat.id
 }
 
+output "public_lb_subnet_ids" {
+  description = "Public subnet IDs used by the Kubernetes API NLB"
+  value = {
+    for idx, subnet in aws_subnet.public_lb : idx => subnet.id
+  }
+}
+
 output "private_subnet_ids" {
   description = "Private subnet IDs keyed by index"
   value = {
@@ -49,6 +56,7 @@ output "instance_ids" {
 output "ansible_inventory" {
   description = "Inventory-style node details for Ansible"
   value = {
+    kube_api_endpoint = var.enable_public_k8s_api ? "${aws_lb.k8s_api[0].dns_name}:6443" : "${aws_instance.control_plane["cp-1"].private_ip}:6443"
     control_plane = {
       for node, instance in aws_instance.control_plane : node => {
         private_ip  = instance.private_ip
@@ -64,4 +72,9 @@ output "ansible_inventory" {
       }
     }
   }
+}
+
+output "kubernetes_api_endpoint" {
+  description = "Kubernetes API endpoint used by kubeconfig and kubeadm"
+  value       = var.enable_public_k8s_api ? "${aws_lb.k8s_api[0].dns_name}:6443" : "${aws_instance.control_plane["cp-1"].private_ip}:6443"
 }

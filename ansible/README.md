@@ -34,6 +34,11 @@ Active environment naming:
 - inventory path: `ansible/inventories/dev/hosts.yml`
 - Flux Git source object: `GitRepository/dev-repo`
 
+Kubernetes API endpoint behavior:
+- inventory generator writes `kube_api_endpoint` into `all.vars`
+- `kubeadm init` uses `kube_api_endpoint` when present
+- fallback is first control-plane private IP (`<cp-1-private-ip>:6443`) when no endpoint is provided
+
 Flux image automation is configured under `kubernetes/apps/dev/podinfo/`:
 - `ImageRepository` tracks available tags from `ghcr.io/stefanprodan/podinfo`
 - `ImagePolicy` selects stable semver tags in range `>=6.0.0 <7.0.0`

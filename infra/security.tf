@@ -38,6 +38,17 @@ resource "aws_vpc_security_group_ingress_rule" "control_plane_admin_api" {
   description       = "Kubernetes API from admin CIDRs"
 }
 
+resource "aws_vpc_security_group_ingress_rule" "control_plane_k8s_api_nlb_health" {
+  for_each = var.enable_public_k8s_api ? toset(var.lb_public_subnet_cidrs) : toset([])
+
+  security_group_id = aws_security_group.control_plane.id
+  cidr_ipv4         = each.value
+  from_port         = 6443
+  ip_protocol       = "tcp"
+  to_port           = 6443
+  description       = "Kubernetes API health checks from NLB subnets"
+}
+
 resource "aws_security_group" "worker" {
   name        = "${local.name_prefix}-worker-sg"
   description = "Security group for Kubernetes worker nodes"
