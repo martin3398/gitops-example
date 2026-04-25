@@ -57,7 +57,7 @@ The Ansible pipeline reuses:
 - `TF_STATE_BUCKET` as the SSM transfer bucket (passed to inventory generator `--ssm-bucket`)
 
 Flux bootstrap in Ansible uses:
-- `FLUX_GIT_SSH_PRIVATE_KEY_B64` (base64-encoded read-only deploy key private key for Flux source access)
+- `FLUX_GIT_SSH_PRIVATE_KEY_B64` (base64-encoded deploy key private key used by Flux `GitRepository/dev-repo` and image automation Git commits; requires write access to `main`)
 - `FLUX_GIT_KNOWN_HOSTS_B64` (base64-encoded GitLab SSH known_hosts line)
 
 Encoding examples:
@@ -67,9 +67,8 @@ base64 -w0 flux-gitlab
 printf 'gitlab.com ssh-ed25519 <host-key>' | base64 -w0
 ```
 
-Flux image automation for app updates uses:
-- write-capable Git credential for Flux (`flux-system` secret used by `GitRepository/dev-repo`)
-- no CI variables are required for app image-tag Git commits
+Flux image automation for app updates uses the same Flux Git credential (`flux-system` secret via `GitRepository/dev-repo`).
+No additional CI variables are required for app image-tag Git commits.
 
 Environment naming:
 - current environment is `dev`

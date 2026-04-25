@@ -1,6 +1,6 @@
 # Ansible Iterations 1-5 (SSM-first)
 
-This directory contains the first Ansible iteration for the environment:
+This directory contains Ansible automation for Iterations 1-5:
 - inventory handoff from OpenTofu outputs
 - SSM-based connectivity model
 - smoke validation playbook

@@ -76,7 +76,7 @@ Additional checks after bootstrap:
 
 Required for `ansible:flux_bootstrap`:
 
-- `FLUX_GIT_SSH_PRIVATE_KEY_B64`: base64-encoded private key matching the read-only GitLab deploy key
+- `FLUX_GIT_SSH_PRIVATE_KEY_B64`: base64-encoded private key matching the GitLab deploy key used by Flux (must allow pushes for image automation updates)
 - `FLUX_GIT_KNOWN_HOSTS_B64`: base64-encoded GitLab SSH known_hosts line (for example `gitlab.com ssh-ed25519 ...`)
 
 Encoding example:

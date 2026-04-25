@@ -26,6 +26,7 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
 - `infra/locals.tf`: naming, tags, node maps
 - `infra/network.tf`: VPC/subnets/routes/NAT
 - `infra/security.tf`: security groups and ingress rules
+- `infra/load_balancer.tf`: optional public Kubernetes API NLB resources
 - `infra/iam.tf`: role/profile for nodes
 - `infra/compute.tf`: EC2 fleet
 - `infra/outputs.tf`: handoff outputs (`ansible_inventory`)
