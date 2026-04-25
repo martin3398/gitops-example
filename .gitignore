@@ -39,3 +39,5 @@ outputs.json
 plan.txt
 
 __pycache__
+
+kubeconfig.*
