@@ -1,0 +1,41 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: promtail
+  namespace: flux-system
+spec:
+  interval: 10m
+  timeout: 15m
+  dependsOn:
+    - name: loki
+  targetNamespace: monitoring
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: promtail
+      version: "6.17.1"
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+  values:
+    config:
+      clients:
+        - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+    tolerations:
+      - operator: Exists
+    serviceMonitor:
+      enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi

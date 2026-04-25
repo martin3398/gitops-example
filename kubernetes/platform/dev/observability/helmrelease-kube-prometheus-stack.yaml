@@ -1,0 +1,115 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: flux-system
+spec:
+  interval: 10m
+  timeout: 15m
+  targetNamespace: monitoring
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: "66.7.1"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+  values:
+    defaultRules:
+      create: true
+    kubeControllerManager:
+      enabled: false
+    kubeScheduler:
+      enabled: false
+    kubeEtcd:
+      enabled: false
+    alertmanager:
+      alertmanagerSpec:
+        replicas: 3
+        retention: 120h
+        storage:
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 10Gi
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi
+    grafana:
+      defaultDashboardsEnabled: true
+      sidecar:
+        dashboards:
+          searchNamespace: ALL
+      persistence:
+        enabled: true
+        size: 10Gi
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+      grafana.ini:
+        server:
+          root_url: "%(protocol)s://%(domain)s/grafana"
+          serve_from_sub_path: true
+      additionalDataSources:
+        - name: Loki
+          type: loki
+          url: http://loki.monitoring.svc.cluster.local:3100
+          access: proxy
+          isDefault: false
+          jsonData:
+            maxLines: 5000
+    prometheus:
+      additionalServiceMonitors:
+        - name: flux-controllers
+          namespaceSelector:
+            matchNames:
+              - flux-system
+          selector:
+            matchLabels:
+              app.kubernetes.io/part-of: flux
+          endpoints:
+            - port: http-prom
+              interval: 30s
+      prometheusSpec:
+        replicas: 2
+        retention: 15d
+        retentionSize: 40GB
+        scrapeInterval: 30s
+        evaluationInterval: 30s
+        walCompression: true
+        externalLabels:
+          cluster: dev
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 50Gi
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi

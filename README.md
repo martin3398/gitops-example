@@ -35,7 +35,8 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Flux GitOps bootstrap automation
 - [x] ingress-nginx
 - [ ] cert-manager (optional for public HTTPS/custom domains)
-- [ ] Monitoring/logging baseline (kube-prometheus-stack + Loki + Grafana)
+- [x] Monitoring/logging baseline (kube-prometheus-stack + Loki + Grafana)
+- [ ] Upgrade Loki to distributed mode on Ceph object storage (after Phase 3 Ceph lab)
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
 - [ ] Application GitOps delivery (sample app + Postgres)
 - [ ] Backups (Velero + restore drill)
@@ -52,7 +53,7 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Phase 2.1: Flux bootstrap and repository structure under `kubernetes/`
 - [x] Phase 2.2a: ingress-nginx via Flux
 - [ ] Phase 2.2b (optional): cert-manager via Flux
-- [ ] Phase 2.3: Observability baseline via Flux
+- [x] Phase 2.3: Observability baseline via Flux
 - [x] Phase 2.4 (partial): Flux image automation wired for app image updates
 - [ ] Phase 3: Advanced tooling labs (Vault, MongoDB, Kafka, Ceph)
 - [ ] Phase 4: Resilience + backup + policy/security hardening
@@ -262,5 +263,5 @@ Current pipeline gates on `main`:
 - manual gate 2: `tofu:destroy` tears everything down (requires `DESTROY_CONFIRM=yes`)
 
 Phase 2 remaining work:
-- platform add-ons (optional cert-manager, observability) via Flux are still pending
+- platform add-ons (optional cert-manager) via Flux are still pending
 - sample application stack beyond podinfo smoke deployment is still pending

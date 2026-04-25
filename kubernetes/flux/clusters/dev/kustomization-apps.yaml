@@ -13,4 +13,4 @@ spec:
   path: ./kubernetes/apps/dev
   prune: true
   wait: true
-  timeout: 2m
+  timeout: 15m

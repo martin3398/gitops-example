@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-flux-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  flux-overview.json: |
+    {
+      "id": null,
+      "uid": "flux-overview",
+      "title": "Flux GitOps Overview",
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Ready reconciliations",
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(gotk_reconcile_condition{type=\"Ready\",status=\"True\"})"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Not ready reconciliations",
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(gotk_reconcile_condition{type=\"Ready\",status=\"False\"})"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Reconcile duration p95 (seconds)",
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(gotk_reconcile_duration_seconds_bucket[5m])) by (le, kind))",
+              "legendFormat": "{{kind}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Reconcile count by kind",
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+          "targets": [
+            {
+              "expr": "sum(rate(gotk_reconcile_duration_seconds_count[5m])) by (kind)",
+              "legendFormat": "{{kind}}"
+            }
+          ]
+        }
+      ],
+      "templating": {"list": []},
+      "annotations": {"list": []}
+    }

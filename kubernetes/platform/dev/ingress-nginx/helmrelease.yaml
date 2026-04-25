@@ -5,6 +5,8 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m
+  dependsOn:
+    - name: kube-prometheus-stack
   targetNamespace: ingress-nginx
   install:
     createNamespace: true
@@ -23,6 +25,11 @@ spec:
       replicaCount: 3
       metrics:
         enabled: true
+        serviceMonitor:
+          enabled: true
+          namespace: monitoring
+          additionalLabels:
+            release: kube-prometheus-stack
       service:
         type: NodePort
         externalTrafficPolicy: Cluster
