@@ -6,6 +6,8 @@ metadata:
 spec:
   interval: 10m
   timeout: 15m
+  dependsOn:
+    - name: local-path-provisioner
   targetNamespace: monitoring
   install:
     createNamespace: true
@@ -51,6 +53,7 @@ spec:
       replicas: 1
       persistence:
         enabled: true
+        storageClass: local-path
         size: 80Gi
       resources:
         requests:

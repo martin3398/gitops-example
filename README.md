@@ -37,6 +37,7 @@ Use this as the single source of truth for what is done and what is next.
 - [ ] cert-manager (optional for public HTTPS/custom domains)
 - [x] Monitoring/logging baseline (kube-prometheus-stack + Loki + Grafana)
 - [ ] Upgrade Loki to distributed mode on Ceph object storage (after Phase 3 Ceph lab)
+- [ ] Clean up temporary local-path storage and migrate stateful platform PVCs to Ceph storage classes
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
 - [ ] Application GitOps delivery (sample app + Postgres)
 - [ ] Backups (Velero + restore drill)

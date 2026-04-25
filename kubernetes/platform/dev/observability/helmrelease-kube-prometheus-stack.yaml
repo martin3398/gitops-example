@@ -6,6 +6,8 @@ metadata:
 spec:
   interval: 10m
   timeout: 15m
+  dependsOn:
+    - name: local-path-provisioner
   targetNamespace: monitoring
   install:
     createNamespace: true
@@ -38,6 +40,7 @@ spec:
         storage:
           volumeClaimTemplate:
             spec:
+              storageClassName: local-path
               accessModes:
                 - ReadWriteOnce
               resources:
@@ -57,6 +60,7 @@ spec:
           searchNamespace: ALL
       persistence:
         enabled: true
+        storageClassName: local-path
         size: 10Gi
       resources:
         requests:
@@ -101,6 +105,7 @@ spec:
         storageSpec:
           volumeClaimTemplate:
             spec:
+              storageClassName: local-path
               accessModes:
                 - ReadWriteOnce
               resources:
