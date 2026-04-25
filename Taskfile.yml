@@ -180,6 +180,7 @@ tasks:
 
   "ansible:get_kubeconfig":
     desc: "Fetch admin kubeconfig from first control plane"
+    internal: true
     deps:
       - "venv:check"
     env:
@@ -190,6 +191,26 @@ tasks:
     cmds:
       - '{{.VENV_ANSIBLE}} control_plane[0] -i "{{.INVENTORY}}" -b -m ansible.builtin.fetch -a "src=/etc/kubernetes/admin.conf dest=./kubeconfig.dev flat=true"'
       - 'chmod 600 ./kubeconfig.dev'
+
+  "ansible:kubeconfig_public_endpoint":
+    desc: "Point local kubeconfig at external API endpoint"
+    internal: true
+    preconditions:
+      - sh: 'test -f "./kubeconfig.dev"'
+        msg: "Missing ./kubeconfig.dev. Run task ansible:get_kubeconfig first."
+      - sh: 'command -v kubectl >/dev/null 2>&1'
+        msg: "kubectl is required in PATH"
+      - sh: 'test -n "$(tofu -chdir=infra output -raw kubernetes_api_endpoint)"'
+        msg: "Missing kubernetes_api_endpoint output. Run task tofu:apply first."
+    cmds:
+      - 'endpoint="$(tofu -chdir=infra output -raw kubernetes_api_endpoint)" && kubectl config set-cluster kubernetes --server="https://${endpoint}" --kubeconfig ./kubeconfig.dev'
+      - 'chmod 600 ./kubeconfig.dev'
+
+  "ansible:get_kubeconfig_public":
+    desc: "Fetch kubeconfig and point it to external API endpoint"
+    cmds:
+      - task: "ansible:get_kubeconfig"
+      - task: "ansible:kubeconfig_public_endpoint"
 
   "ansible:all":
     desc: "Run the full ordered Ansible chain"

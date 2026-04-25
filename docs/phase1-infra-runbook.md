@@ -58,6 +58,7 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
 - `tofu output`
 - `tofu output -json ansible_inventory`
 - `tofu output kubernetes_api_endpoint`
+- `tofu output kubernetes_api_internal_endpoint`
 - `tofu plan` should be no-op after reconciliation
 
 If public API is enabled:

@@ -56,7 +56,8 @@ output "instance_ids" {
 output "ansible_inventory" {
   description = "Inventory-style node details for Ansible"
   value = {
-    kube_api_endpoint = var.enable_public_k8s_api ? "${aws_lb.k8s_api[0].dns_name}:6443" : "${aws_instance.control_plane["cp-1"].private_ip}:6443"
+    kube_api_internal_endpoint = "${aws_instance.control_plane["cp-1"].private_ip}:6443"
+    kube_api_public_endpoint   = var.enable_public_k8s_api ? "${aws_lb.k8s_api[0].dns_name}:6443" : "${aws_instance.control_plane["cp-1"].private_ip}:6443"
     control_plane = {
       for node, instance in aws_instance.control_plane : node => {
         private_ip  = instance.private_ip
@@ -75,6 +76,11 @@ output "ansible_inventory" {
 }
 
 output "kubernetes_api_endpoint" {
-  description = "Kubernetes API endpoint used by kubeconfig and kubeadm"
+  description = "Kubernetes API endpoint for external kubeconfig usage"
   value       = var.enable_public_k8s_api ? "${aws_lb.k8s_api[0].dns_name}:6443" : "${aws_instance.control_plane["cp-1"].private_ip}:6443"
+}
+
+output "kubernetes_api_internal_endpoint" {
+  description = "Kubernetes API endpoint used by kubeadm control-plane bootstrap"
+  value       = "${aws_instance.control_plane["cp-1"].private_ip}:6443"
 }

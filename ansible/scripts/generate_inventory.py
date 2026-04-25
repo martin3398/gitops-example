@@ -78,17 +78,21 @@ def format_host_block(hostname: str, values: Dict[str, Any], region: str) -> str
 def build_inventory(payload: Dict[str, Any], region: str, ssm_bucket: str) -> str:
     cp_nodes = payload.get("control_plane", {})
     worker_nodes = payload.get("workers", {})
-    kube_api_endpoint = payload.get("kube_api_endpoint")
+    kube_api_internal_endpoint = payload.get("kube_api_internal_endpoint")
+    kube_api_public_endpoint = payload.get("kube_api_public_endpoint")
 
     if not isinstance(cp_nodes, dict) or not isinstance(worker_nodes, dict):
         raise ValueError("control_plane and workers must be maps")
 
-    if not kube_api_endpoint:
+    if not kube_api_internal_endpoint:
         if "cp-1" in cp_nodes and isinstance(cp_nodes["cp-1"], dict):
-            kube_api_endpoint = f"{cp_nodes['cp-1']['private_ip']}:6443"
+            kube_api_internal_endpoint = f"{cp_nodes['cp-1']['private_ip']}:6443"
         else:
             first_cp = sorted(cp_nodes.keys())[0]
-            kube_api_endpoint = f"{cp_nodes[first_cp]['private_ip']}:6443"
+            kube_api_internal_endpoint = f"{cp_nodes[first_cp]['private_ip']}:6443"
+
+    if not kube_api_public_endpoint:
+        kube_api_public_endpoint = kube_api_internal_endpoint
 
     lines = [
         "---",
@@ -97,7 +101,8 @@ def build_inventory(payload: Dict[str, Any], region: str, ssm_bucket: str) -> st
         "    ansible_connection: amazon.aws.aws_ssm",
         "    ansible_aws_ssm_region: {}".format(region),
         "    ansible_aws_ssm_bucket_name: {}".format(ssm_bucket),
-        "    kube_api_endpoint: {}".format(kube_api_endpoint),
+        "    kube_api_internal_endpoint: {}".format(kube_api_internal_endpoint),
+        "    kube_api_public_endpoint: {}".format(kube_api_public_endpoint),
         "    ansible_shell_type: sh",
         "    ansible_shell_executable: /bin/sh",
         "  children:",

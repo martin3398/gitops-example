@@ -35,8 +35,9 @@ Active environment naming:
 - Flux Git source object: `GitRepository/dev-repo`
 
 Kubernetes API endpoint behavior:
-- inventory generator writes `kube_api_endpoint` into `all.vars`
-- `kubeadm init` uses `kube_api_endpoint` when present
+- inventory generator writes `kube_api_internal_endpoint` and `kube_api_public_endpoint` into `all.vars`
+- `kubeadm init` uses `kube_api_internal_endpoint` for control-plane bootstrap
+- API cert SANs include `kube_api_public_endpoint` host when provided
 - fallback is first control-plane private IP (`<cp-1-private-ip>:6443`) when no endpoint is provided
 
 Flux image automation is configured under `kubernetes/apps/dev/podinfo/`:
@@ -168,7 +169,7 @@ ansible-playbook -i inventories/dev/hosts.yml playbooks/flux-bootstrap.yml --tag
 Fetch kubeconfig for local kubectl usage:
 
 ```bash
-task ansible:get_kubeconfig
+task ansible:get_kubeconfig_public
 ```
 
 Use it locally:

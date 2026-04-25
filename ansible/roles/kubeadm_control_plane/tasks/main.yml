@@ -17,6 +17,9 @@
     kubeadm init
     --kubernetes-version {{ kubeadm_kubernetes_version }}
     --control-plane-endpoint {{ kubeadm_control_plane_endpoint }}
+    {% for san in (kubeadm_apiserver_cert_extra_sans | default([]) | map('regex_replace', ':\\d+$', '') | map('trim') | reject('equalto', '') | unique) %}
+    --apiserver-cert-extra-sans {{ san }}
+    {% endfor %}
     --pod-network-cidr {{ kubeadm_pod_subnet }}
     --service-cidr {{ kubeadm_service_subnet }}
     --cri-socket {{ kubeadm_cri_socket }}

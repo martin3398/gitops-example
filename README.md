@@ -125,8 +125,9 @@ If you want direct `kubectl` access from your workstation (without SSM tunnel), 
 - `lb_public_subnet_cidrs = ["10.42.101.0/24", "10.42.102.0/24"]`
 - keep `allowed_admin_cidrs` restricted to your current public IP (for example `/32`)
 
-When enabled, infrastructure output includes `kubernetes_api_endpoint` and Ansible inventory generation writes `kube_api_endpoint` automatically.
-`kubeadm init` then uses this endpoint as `--control-plane-endpoint`, so generated kubeconfigs target the public NLB endpoint.
+When enabled, infrastructure output includes both `kubernetes_api_internal_endpoint` (bootstrap) and `kubernetes_api_endpoint` (external access).
+Bootstrap uses the internal endpoint (`kube_api_internal_endpoint`) for kubeadm stability.
+The public NLB endpoint is exported as `kubernetes_api_endpoint` and `kube_api_public_endpoint` for external `kubectl` access.
 
 ## Local Environment Variables
 
@@ -163,7 +164,7 @@ task pipeline:check
 task tofu:plan
 task tofu:apply
 task ansible:all
-task ansible:get_kubeconfig
+task ansible:get_kubeconfig_public
 ```
 
 Task groups:
