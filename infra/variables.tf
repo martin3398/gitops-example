@@ -80,7 +80,7 @@ variable "ingress_nodeport_http" {
 }
 
 variable "ingress_nodeport_https" {
-  description = "NodePort exposed by ingress-nginx for HTTPS"
+  description = "Reserved NodePort for HTTPS ingress (currently out of scope for this AWS lab)"
   type        = number
   default     = 30443
 

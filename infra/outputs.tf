@@ -86,6 +86,6 @@ output "kubernetes_api_internal_endpoint" {
 }
 
 output "ingress_public_endpoint" {
-  description = "Ingress NLB endpoint for HTTP/HTTPS traffic"
+  description = "Ingress NLB endpoint (validated for HTTP in current lab scope)"
   value       = var.enable_public_ingress ? aws_lb.ingress[0].dns_name : ""
 }

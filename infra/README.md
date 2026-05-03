@@ -13,8 +13,9 @@ This directory provisions AWS infrastructure for a 6-node kubeadm cluster:
 2. Update `allowed_admin_cidrs` in `terraform.tfvars`.
 3. Keep `enable_ssh_from_admin_cidrs = false` for SSM-only access (recommended).
 4. Optional: enable public endpoints:
-   - `enable_public_k8s_api = true` for Kubernetes API access on `:6443`
-   - `enable_public_ingress = true` for ingress access on `:80/:443`
+    - `enable_public_k8s_api = true` for Kubernetes API access on `:6443`
+    - `enable_public_ingress = true` for ingress access on `:80` (HTTP)
+    - HTTPS/certificates are out of scope for this AWS lab phase
 5. Configure remote state backend (recommended):
    - `cp backend.hcl.example backend.hcl`
    - Edit `backend.hcl` and set your real S3 bucket name.

@@ -34,7 +34,7 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Cilium CNI
 - [x] Flux GitOps bootstrap automation
 - [x] ingress-nginx
-- [ ] cert-manager (optional for public HTTPS/custom domains)
+- [ ] cert-manager (deferred; out of scope for this AWS lab)
 - [x] Monitoring/logging baseline (kube-prometheus-stack + Loki + Grafana)
 - [ ] Upgrade Loki to distributed mode on Ceph object storage (after Phase 3 Ceph lab)
 - [ ] Clean up temporary local-path storage and migrate stateful platform PVCs to Ceph storage classes
@@ -53,7 +53,7 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Phase 1.6: GitLab CI stages for Ansible (manual-gated)
 - [x] Phase 2.1: Flux bootstrap and repository structure under `kubernetes/`
 - [x] Phase 2.2a: ingress-nginx via Flux
-- [ ] Phase 2.2b (optional): cert-manager via Flux
+- [ ] Phase 2.2b (deferred): cert-manager via Flux
 - [x] Phase 2.3: Observability baseline via Flux
 - [x] Phase 2.4 (partial): Flux image automation wired for app image updates
 - [ ] Phase 3: Advanced tooling labs (Vault, MongoDB, Kafka, Ceph)
@@ -66,7 +66,7 @@ Use this as the single source of truth for what is done and what is next.
 - Kubernetes: kubeadm + containerd
 - CNI: Cilium (fallback Calico)
 - Ingress: ingress-nginx
-- TLS: optional cert-manager
+- TLS/certificates: out of scope for this AWS lab phase
 - GitOps: Flux
 - CI/CD: GitLab CI/CD
 - Monitoring/Logging: kube-prometheus-stack + Loki + Grafana
@@ -102,7 +102,7 @@ Planned layout:
 - `infra/` infrastructure code
 - `ansible/` host and kubeadm automation
 - `kubernetes/flux/` Flux bootstrap and Kustomizations
-- `kubernetes/platform/` ingress, optional cert-manager, monitoring/logging
+- `kubernetes/platform/` ingress, monitoring/logging
 - `kubernetes/apps/` frontend, services, database
 - `kubernetes/labs/` Vault, MongoDB, Kafka, Ceph
 - `docs/` architecture and runbooks
@@ -134,15 +134,16 @@ The public NLB endpoint is exported as `kubernetes_api_endpoint` and `kube_api_p
 
 ## Public Ingress Access (Dev Option)
 
+Note: HTTPS/certificate management is explicitly out of scope for this AWS-based lab. Public ingress is currently documented and validated for HTTP exposure only.
+
 To expose application ingress publicly through an internet-facing NLB, enable these values in `infra/terraform.tfvars`:
 
 - `enable_public_ingress = true`
 - `ingress_allowed_cidrs = ["0.0.0.0/0"]` (or restrict to your IP/CIDR)
 - `ingress_nodeport_http = 30080`
-- `ingress_nodeport_https = 30443`
 
 When enabled, OpenTofu exports `ingress_public_endpoint`.
-Ingress traffic path is NLB (`:80/:443`) -> worker NodePorts (`30080/30443`) -> `ingress-nginx` controller.
+Ingress traffic path is NLB (`:80`) -> worker NodePort (`30080`) -> `ingress-nginx` controller.
 
 ## Local Environment Variables
 
@@ -264,5 +265,5 @@ Current pipeline gates on `main`:
 - manual gate 2: `tofu:destroy` tears everything down (requires `DESTROY_CONFIRM=yes`)
 
 Phase 2 remaining work:
-- platform add-ons (optional cert-manager) via Flux are still pending
+- HTTPS/certificate automation (for example, cert-manager) is intentionally deferred and out of scope
 - sample application stack beyond podinfo smoke deployment is still pending

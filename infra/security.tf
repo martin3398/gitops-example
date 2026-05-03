@@ -169,7 +169,7 @@ resource "aws_vpc_security_group_ingress_rule" "worker_ingress_https_public" {
   from_port         = var.ingress_nodeport_https
   ip_protocol       = "tcp"
   to_port           = var.ingress_nodeport_https
-  description       = "Ingress HTTPS NodePort from ingress CIDRs"
+  description       = "Reserved HTTPS NodePort from ingress CIDRs"
 }
 
 resource "aws_vpc_security_group_ingress_rule" "worker_ingress_http_nlb_health" {
@@ -191,5 +191,5 @@ resource "aws_vpc_security_group_ingress_rule" "worker_ingress_https_nlb_health"
   from_port         = var.ingress_nodeport_https
   ip_protocol       = "tcp"
   to_port           = var.ingress_nodeport_https
-  description       = "Ingress HTTPS health checks from NLB subnets"
+  description       = "Reserved HTTPS health checks from NLB subnets"
 }

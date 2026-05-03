@@ -18,7 +18,8 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
 - IAM role + instance profile for EC2 nodes (SSM access)
 - 3 control-plane EC2 instances and 3 worker EC2 instances
 - Optional: internet-facing Kubernetes API NLB on `:6443` when `enable_public_k8s_api=true`
-- Optional: internet-facing ingress NLB on `:80/:443` when `enable_public_ingress=true`
+- Optional: internet-facing ingress NLB on `:80` when `enable_public_ingress=true`
+- HTTPS/certificate management is out of scope for this AWS lab phase
 
 ## Files
 
@@ -73,7 +74,7 @@ If public API is enabled:
 If public ingress is enabled:
 
 - ensure `ingress_public_endpoint` resolves to NLB DNS
-- verify `nc -vz <ingress-nlb-dns-name> 80` and `nc -vz <ingress-nlb-dns-name> 443` from your workstation
+- verify `nc -vz <ingress-nlb-dns-name> 80` from your workstation
 
 ## Destroy
 
