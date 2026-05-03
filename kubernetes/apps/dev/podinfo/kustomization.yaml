@@ -9,7 +9,6 @@ configMapGenerator:
 generatorOptions:
   disableNameSuffixHash: true
 resources:
-  - namespace.yaml
   - helmrepository.yaml
   - helmrelease.yaml
   - imagerepository.yaml
