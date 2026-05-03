@@ -40,6 +40,8 @@ Use this as the single source of truth for what is done and what is next.
 - [ ] Clean up temporary local-path storage and migrate stateful platform PVCs to Ceph storage classes
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
 - [ ] Application GitOps delivery (sample app + Postgres)
+- [ ] Vault lab: secret management integration for platform/app credentials
+- [ ] Ceph lab: storage classes and stateful workload migration validation
 - [ ] Backups (Velero + restore drill)
 - [ ] Policy/security controls (Kyverno/Gatekeeper, Trivy, network policies)
 
@@ -267,3 +269,4 @@ Current pipeline gates on `main`:
 Phase 2 remaining work:
 - HTTPS/certificate automation (for example, cert-manager) is intentionally deferred and out of scope
 - sample application stack beyond podinfo smoke deployment is still pending
+- database-as-a-service baseline is now added via Flux under `kubernetes/platform/dev/data-platform/postgres/` (dev-only defaults)

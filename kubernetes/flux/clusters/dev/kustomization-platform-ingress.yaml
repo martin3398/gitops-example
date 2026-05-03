@@ -1,14 +1,16 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: platform
+  name: platform-ingress
   namespace: flux-system
 spec:
   interval: 1m
+  dependsOn:
+    - name: platform-core
   sourceRef:
     kind: GitRepository
     name: dev-repo
-  path: ./kubernetes/platform/dev
+  path: ./kubernetes/platform/dev/ingress-nginx
   prune: true
   wait: true
   timeout: 15m

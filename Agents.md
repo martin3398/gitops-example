@@ -86,6 +86,10 @@ Install and operate tools one at a time:
 3. Kafka
 4. Ceph (last)
 
+Phase 3 focus TODOs:
+- Vault lab: secret management integration for platform/app credentials
+- Ceph lab: storage classes and stateful workload migration validation
+
 Exit criteria per tool:
 - Install is reproducible
 - Basic operations validated
