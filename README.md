@@ -39,7 +39,8 @@ Use this as the single source of truth for what is done and what is next.
 - [ ] Upgrade Loki to distributed mode on Ceph object storage (after Phase 3 Ceph lab)
 - [ ] Clean up temporary local-path storage and migrate stateful platform PVCs to Ceph storage classes
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
-- [ ] Application GitOps delivery (sample app + Postgres)
+- [ ] Application GitOps delivery (sample app stack beyond podinfo)
+- [x] Postgres baseline: CloudNativePG operator + dev cluster via Flux
 - [ ] Vault lab: secret management integration for platform/app credentials
 - [x] Kafka baseline: Strimzi operator + 3-broker KRaft cluster via Flux (dev defaults)
 - [ ] Ceph lab: storage classes and stateful workload migration validation
@@ -59,7 +60,7 @@ Use this as the single source of truth for what is done and what is next.
 - [ ] Phase 2.2b (deferred): cert-manager via Flux
 - [x] Phase 2.3: Observability baseline via Flux
 - [x] Phase 2.4 (partial): Flux image automation wired for app image updates
-- [~] Phase 3: Advanced tooling labs (in progress: Kafka baseline)
+- [~] Phase 3: Advanced tooling labs (in progress: Kafka + Postgres baselines)
 - [ ] Phase 4: Resilience + backup + policy/security hardening
 
 ## Stack (Planned)
@@ -88,7 +89,8 @@ Use this as the single source of truth for what is done and what is next.
 ### Phase 2 - GitOps Platform + Workloads
 - Bootstrap Flux from GitLab
 - Install platform add-ons via Helm through Flux
-- Deploy frontend + 1-2 microservices + Postgres primary/replica
+- Deploy frontend + 1-2 microservices (sample app delivery still pending)
+- Postgres baseline is implemented as a platform data service via Flux
 - Add GitLab pipelines for build/test/publish and use Flux image automation for GitOps image updates
 
 ### Phase 3 - Advanced Tooling
@@ -107,7 +109,7 @@ Planned layout:
 - `kubernetes/flux/` Flux bootstrap and Kustomizations
 - `kubernetes/platform/` ingress, monitoring/logging
 - `kubernetes/apps/` frontend, services, database
-- `kubernetes/labs/` Vault, MongoDB, Kafka, Ceph
+- `kubernetes/labs/` Vault, MongoDB, Ceph
 - `docs/` architecture and runbooks
 
 ## Conventions
@@ -276,4 +278,8 @@ Current pipeline gates on `main`:
 Phase 2 remaining work:
 - HTTPS/certificate automation (for example, cert-manager) is intentionally deferred and out of scope
 - sample application stack beyond podinfo smoke deployment is still pending
-- database-as-a-service baseline is now added via Flux under `kubernetes/platform/dev/data-platform/postgres/` (dev-only defaults)
+
+Phase 3 current status:
+- Kafka baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/kafka/`
+- Postgres baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/postgres/` (dev-only defaults)
+- Vault, MongoDB, and Ceph labs remain pending

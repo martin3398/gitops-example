@@ -5,7 +5,7 @@ Build and operate a reproducible Kubernetes platform lab that mirrors on-prem pl
 
 ## Current Objective
 Implement a multi-phase learning platform with:
-- 3 control plane nodes and 2 worker nodes
+- 3 control plane nodes and 3 worker nodes
 - Open-source tooling
 - GitOps with Flux
 - CI/CD with GitLab
@@ -36,27 +36,27 @@ Implement a multi-phase learning platform with:
 - Ingress: ingress-nginx
 - TLS/certificate management: out of scope for this AWS lab phase
 - Monitoring: kube-prometheus-stack + Loki + Grafana
-- Database: Postgres primary/replica setup in cluster
+- Data platform baselines: Postgres (CloudNativePG) and Kafka (Strimzi)
 
 ## Target Topology
 - Kubernetes nodes on EC2:
   - 3 control plane nodes
-  - 2 worker nodes
+  - 3 worker nodes
 - One VPC, private subnets for nodes, restricted administrative ingress.
 
 ## Delivery Phases
 
 ### Phase 1 - Infrastructure + Kubernetes Foundation
 1. Provision AWS base infrastructure with OpenTofu/Terraform:
-   - VPC, subnets, security groups, IAM roles, 5 EC2 instances
+   - VPC, subnets, security groups, IAM roles, 6 EC2 instances
 2. Bootstrap hosts with Ansible:
    - OS packages, hardening baseline, containerd, kubeadm prerequisites
 3. Initialize cluster with kubeadm:
-   - 3 control planes, 2 workers
+   - 3 control planes, 3 workers
    - Install CNI and validate cluster health
 
 Exit criteria:
-- All five nodes joined and Ready
+- All six nodes joined and Ready
 - Control plane remains healthy after one-node reboot test
 
 ### Phase 2 - GitOps + Platform Services + Sample Workloads
@@ -68,7 +68,7 @@ Exit criteria:
 3. Deploy sample application stack:
    - simple frontend
    - 1-2 microservices
-   - Postgres primary/replica
+   - consume platform-provided data services
 4. Add GitLab CI/CD pipelines:
    - test/build images
    - publish images
@@ -83,11 +83,12 @@ Exit criteria:
 Install and operate tools one at a time:
 1. Vault
 2. MongoDB
-3. Kafka
+3. Kafka (baseline implemented)
 4. Ceph (last)
 
 Phase 3 focus TODOs:
 - Vault lab: secret management integration for platform/app credentials
+- MongoDB lab: reproducible deployment + operations notes
 - Ceph lab: storage classes and stateful workload migration validation
 
 Exit criteria per tool:
@@ -126,7 +127,7 @@ Exit criteria:
 - `kubernetes/flux/` Flux bootstrap and Kustomizations
 - `kubernetes/platform/` ingress, monitoring, logging
 - `kubernetes/apps/` frontend, microservices, Postgres
-- `kubernetes/labs/` Vault, MongoDB, Kafka, Ceph experiments
+- `kubernetes/labs/` Vault, MongoDB, Ceph experiments
 - `docs/` architecture, runbooks, troubleshooting, DR tests
 
 ## Definition of Done (Global)
