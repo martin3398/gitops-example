@@ -1,4 +1,4 @@
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
 metadata:
   name: brokers
@@ -26,7 +26,7 @@ spec:
       cpu: "2"
       memory: 2Gi
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: kafka
@@ -54,13 +54,6 @@ spec:
       default.replication.factor: 3
       min.insync.replicas: 2
       inter.broker.protocol.version: "3.9"
-    resources:
-      requests:
-        cpu: 500m
-        memory: 1Gi
-      limits:
-        cpu: "2"
-        memory: 2Gi
   entityOperator:
     topicOperator: {}
     userOperator: {}

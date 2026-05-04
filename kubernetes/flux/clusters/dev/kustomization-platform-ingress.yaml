@@ -7,6 +7,7 @@ spec:
   interval: 1m
   dependsOn:
     - name: platform-core
+    - name: platform-observability
   sourceRef:
     kind: GitRepository
     name: dev-repo
