@@ -70,6 +70,16 @@ tasks:
       - "tofu plan -destroy -out destroy.tfplan"
       - "tofu apply -auto-approve destroy.tfplan"
 
+  "tofu:get_public_host":
+    desc: "Print public ingress host from tofu outputs"
+    preconditions:
+      - sh: 'command -v tofu >/dev/null 2>&1'
+        msg: "tofu is required in PATH"
+      - sh: 'test -n "$(tofu -chdir=infra output -raw ingress_public_endpoint 2>/dev/null)"'
+        msg: "Missing ingress_public_endpoint output. Run task tofu:apply first and enable public ingress."
+    cmds:
+      - 'tofu -chdir=infra output -raw ingress_public_endpoint'
+
   "ansible:lint_inventory":
     desc: "Syntax check all Ansible playbooks"
     deps:
