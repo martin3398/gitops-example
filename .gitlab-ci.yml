@@ -1,4 +1,6 @@
 stages:
+  - app_check
+  - app_build
   - tofu_check
   - ansible_check
   - tofu_plan
@@ -12,5 +14,6 @@ stages:
   - tofu_destroy
 
 include:
+  - local: ".gitlab/ci/apps.yml"
   - local: ".gitlab/ci/opentofu.yml"
   - local: ".gitlab/ci/ansible.yml"

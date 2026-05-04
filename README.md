@@ -39,13 +39,20 @@ Use this as the single source of truth for what is done and what is next.
 - [ ] Upgrade Loki to distributed mode on Ceph object storage (after Phase 3 Ceph lab)
 - [ ] Clean up temporary local-path storage and migrate stateful platform PVCs to Ceph storage classes
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
-- [ ] Application GitOps delivery (sample app stack beyond podinfo)
+- [~] Application GitOps delivery (visit-web + visit-gateway + visit-processor)
+- [~] Application GitOps delivery (visit-demo in progress: Helm charts + GitLab image pipeline added)
 - [x] Postgres baseline: CloudNativePG operator + dev cluster via Flux
 - [ ] Vault lab: secret management integration for platform/app credentials
+- [ ] Credential management hardening: replace demo/static secrets with managed credentials (GHCR pull secrets, Flux Git write credentials, app DB secrets rotation)
 - [x] Kafka baseline: Strimzi operator + 3-broker KRaft cluster via Flux (dev defaults)
 - [ ] Ceph lab: storage classes and stateful workload migration validation
 - [ ] Backups (Velero + restore drill)
 - [ ] Policy/security controls (Kyverno/Gatekeeper, Trivy, network policies)
+
+Visit demo ownership model:
+- each service has its own Helm chart under `charts/visit-ui`, `charts/visit-gateway`, and `charts/visit-processor`
+- Flux deploys each service with its own `HelmRelease` under `kubernetes/apps/dev/visit-demo/`
+- GitLab CI builds and pushes each service image independently via `.gitlab/ci/apps.yml`
 
 ### Delivery Steps
 
@@ -209,6 +216,7 @@ Task groups:
 - Local runner setup: `docker-compose.runner.yml`
 - Phase 1 infrastructure runbook: `docs/phase1-infra-runbook.md`
 - Kafka baseline runbook: `docs/kafka-runbook.md`
+- GHCR setup runbook: `docs/ghcr-setup.md`
 - GitLab runner and CI variables guide: `docs/gitlab-runner-and-ci-vars.md`
 - Ansible CI execution runbook: `docs/ansible-ci-runbook.md`
 
@@ -255,10 +263,10 @@ GitOps structure and Flux-managed charts are implemented:
 - platform root: `kubernetes/platform/dev/`
 - apps root: `kubernetes/apps/dev/`
 - platform ingress chart: `kubernetes/platform/dev/ingress-nginx/`
-- smoke Helm chart: `kubernetes/apps/dev/podinfo/`
+- app stacks: `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`
 
 Flux image automation for apps is implemented:
-- `ImageRepository`, `ImagePolicy` (stable semver `>=6.0.0 <7.0.0`), and `ImageUpdateAutomation` for podinfo
+- `ImageRepository`, `ImagePolicy`, and `ImageUpdateAutomation` for `visit-web`, `visit-gateway`, and `visit-processor`
 - image updates commit directly to `main` and are then reconciled by Flux
 
 Kafka baseline is now implemented via Flux:
@@ -277,7 +285,7 @@ Current pipeline gates on `main`:
 
 Phase 2 remaining work:
 - HTTPS/certificate automation (for example, cert-manager) is intentionally deferred and out of scope
-- sample application stack beyond podinfo smoke deployment is still pending
+- sample application stack implementation is in progress under `visit-web` and `visit-processing`
 
 Phase 3 current status:
 - Kafka baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/kafka/`

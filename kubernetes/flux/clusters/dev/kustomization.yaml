@@ -7,4 +7,5 @@ resources:
   - kustomization-platform-ingress.yaml
   - kustomization-platform-observability.yaml
   - kustomization-platform-data.yaml
-  - kustomization-app-podinfo.yaml
+  - kustomization-app-visit-web.yaml
+  - kustomization-app-visit-processing.yaml

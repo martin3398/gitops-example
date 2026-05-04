@@ -1,7 +1,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: app-podinfo
+  name: app-visit-web
   namespace: flux-system
 spec:
   interval: 1m
@@ -12,7 +12,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: dev-repo
-  path: ./kubernetes/apps/dev
+  path: ./kubernetes/apps/dev/visit-web
   prune: true
   wait: true
   timeout: 15m

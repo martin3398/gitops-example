@@ -1,0 +1,11 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: visit-gateway
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: visit-gateway
+  policy:
+    semver:
+      range: ">=0.1.0 <1.0.0"

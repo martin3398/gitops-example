@@ -1,0 +1,24 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+metadata:
+  name: visit-processing
+  namespace: flux-system
+spec:
+  interval: 1m
+  sourceRef:
+    kind: GitRepository
+    name: dev-repo
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        name: fluxcdbot
+        email: fluxcdbot@users.noreply.gitlab.com
+      messageTemplate: "flux(image): update visit-processing images"
+    push:
+      branch: main
+  update:
+    path: ./kubernetes/apps/dev/visit-processing
+    strategy: Setters

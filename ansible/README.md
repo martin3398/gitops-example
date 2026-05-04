@@ -40,9 +40,9 @@ Kubernetes API endpoint behavior:
 - API cert SANs include `kube_api_public_endpoint` host when provided
 - fallback is first control-plane private IP (`<cp-1-private-ip>:6443`) when no endpoint is provided
 
-Flux image automation is configured under `kubernetes/apps/dev/podinfo/`:
-- `ImageRepository` tracks available tags from `ghcr.io/stefanprodan/podinfo`
-- `ImagePolicy` selects stable semver tags in range `>=6.0.0 <7.0.0`
+Flux image automation is configured under `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`:
+- `ImageRepository` tracks available tags for `visit-web`, `visit-gateway`, and `visit-processor`
+- `ImagePolicy` selects stable semver tags in range `>=0.1.0 <1.0.0`
 - `ImageUpdateAutomation` writes selected image updates back to Git (`main`) using setters
 
 ## Prerequisites
@@ -163,8 +163,16 @@ export FLUX_GIT_SSH_PRIVATE_KEY_B64="$(base64 -w0 ../flux-gitlab)"
 export FLUX_GIT_KNOWN_HOSTS_B64="$(printf 'gitlab.com ssh-ed25519 <host-key>' | base64 -w0)"
 export FLUX_GIT_SSH_PRIVATE_KEY="$(printf '%s' "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)"
 export FLUX_GIT_KNOWN_HOSTS="$(printf '%s' "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)"
+# Optional GHCR secret automation:
+# export GHCR_USERNAME="<github-username>"
+# export GHCR_TOKEN="<github-token-with-package-read-write>"
 ansible-playbook -i inventories/dev/hosts.yml playbooks/flux-bootstrap.yml --tags flux
 ```
+
+If `GHCR_USERNAME` and `GHCR_TOKEN` are set, the Flux bootstrap role also applies:
+
+- `ghcr-pull` in `visit-edge` and `visit-processing`
+- `ghcr-registry` in `flux-system`
 
 Fetch kubeconfig for local kubectl usage:
 

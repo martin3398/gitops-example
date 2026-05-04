@@ -2,7 +2,7 @@ variables:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
 
-default:
+.tofu_defaults:
   image:
     name: ghcr.io/opentofu/opentofu:1.8.8
     entrypoint: [""]
@@ -28,6 +28,7 @@ cache:
       -backend-config="encrypt=true"
 
 tofu:fmt_validate:
+  extends: .tofu_defaults
   stage: tofu_check
   script:
     - tofu fmt -check -recursive
@@ -38,6 +39,7 @@ tofu:fmt_validate:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
 tofu:plan:
+  extends: .tofu_defaults
   stage: tofu_plan
   resource_group: infra
   script:
@@ -56,6 +58,7 @@ tofu:plan:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
 tofu:apply:
+  extends: .tofu_defaults
   stage: tofu_apply
   resource_group: infra
   needs:
@@ -77,6 +80,7 @@ tofu:apply:
     - when: never
 
 tofu:destroy:
+  extends: .tofu_defaults
   stage: tofu_destroy
   resource_group: infra
   script:

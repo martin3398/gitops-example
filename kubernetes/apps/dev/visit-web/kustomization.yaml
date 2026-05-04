@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace-edge.yaml
+  - secret-edge.yaml
+  - ingress.yaml
+  - helmrelease-visit-web.yaml
+  - helmrelease-visit-gateway.yaml
+  - imagerepository-visit-web.yaml
+  - imagepolicy-visit-web.yaml
+  - imagerepository-visit-gateway.yaml
+  - imagepolicy-visit-gateway.yaml
+  - imageupdateautomation.yaml

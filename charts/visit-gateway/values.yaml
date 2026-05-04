@@ -1,0 +1,30 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/example/visit-gateway
+  tag: v0.1.0
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+service:
+  port: 80
+  targetPort: 8080
+
+env:
+  KAFKA_BROKERS: kafka-kafka-bootstrap.data-kafka.svc:9092
+  KAFKA_TOPIC: visits.requested
+  DB_HOST: postgres-rw.data-postgres.svc
+  DB_PORT: "5432"
+  DB_NAME: app
+  DB_USER: app
+
+secretName: visit-demo-db
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

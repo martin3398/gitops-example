@@ -39,6 +39,18 @@ Required:
 - `TF_STATE_BUCKET` = `gitops-showcase-tofu-state-<account-id>-eu-central-1`
 - `TF_STATE_KEY` = `gitops-showcase/dev/infra.tfstate`
 - `TF_LOCK_TABLE` = `gitops-showcase-tofu-locks`
+- `GHCR_USERNAME` = `<github-username>`
+- `GHCR_TOKEN` = `<github-token-with-package-write>`
+
+Notes:
+- `GHCR_OWNER` is optional; if not set, CI defaults it to `GHCR_USERNAME`.
+- Set `GHCR_OWNER` only when publishing under a different org/user namespace.
+
+For private GHCR images, also create Kubernetes secrets:
+- workload pull secret `ghcr-pull` in `visit-edge` and `visit-processing`
+- Flux image-reflector secret `ghcr-registry` in `flux-system`
+
+See `docs/ghcr-setup.md` for exact commands.
 
 AWS auth (choose one model):
 
@@ -101,6 +113,8 @@ Pipeline stage order:
 - `ansible:runtime`: automatic on main after `ansible:base`
 - `ansible:bootstrap`: automatic on main after `ansible:runtime`
 - `ansible:flux_bootstrap`: automatic on main after `ansible:bootstrap`
+- `apps:visit-ui:test`, `apps:visit-gateway:test`, `apps:visit-processor:test`: MR + main when visit-demo or chart files change
+- `apps:visit-ui:build`, `apps:visit-gateway:build`, `apps:visit-processor:build`: automatic on main when visit-demo or chart files change
 
 Ansible jobs are intentionally serially ordered and run automatically after the provision gate.
 

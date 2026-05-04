@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - kafka.yaml
+  - topic-visits-requested.yaml
