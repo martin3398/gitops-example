@@ -53,6 +53,7 @@ Visit demo ownership model:
 - each service has its own Helm chart under `charts/visit-ui`, `charts/visit-gateway`, and `charts/visit-processor`
 - Flux deploys each service with its own `HelmRelease` under `kubernetes/apps/dev/visit-demo/`
 - GitLab CI builds and pushes each service image independently via `.gitlab/ci/apps.yml`
+- prod-safe image flow: CI publishes immutable `sha-*`/`main-*` tags on branch builds, while Flux promotion tracks semver release tags (`vX.Y.Z`) only
 
 ### Delivery Steps
 

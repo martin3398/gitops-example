@@ -31,8 +31,8 @@ cd visit-ui && npm ci && npm run check
 
 Kubernetes manifests currently reference:
 
-- `ghcr.io/example/visit-ui:v0.1.0`
-- `ghcr.io/example/visit-gateway:v0.1.0`
-- `ghcr.io/example/visit-processor:v0.1.0`
+- `ghcr.io/martin3398/visit-ui:v0.1.0`
+- `ghcr.io/martin3398/visit-gateway:v0.1.0`
+- `ghcr.io/martin3398/visit-processor:v0.1.0`
 
 Replace these with your real registry/image names before deployment.

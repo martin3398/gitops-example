@@ -102,3 +102,19 @@ kubectl -n visit-processing get pods
 ```
 
 If pods show `ImagePullBackOff`, verify `ghcr-pull` in both namespaces.
+
+## 7) Prod-safe image promotion flow
+
+CI image publishing behavior:
+
+- On `main` branch commits: publish immutable `main-<sha>` and `sha-<sha>` tags
+- On release tags matching `vX.Y.Z`: publish release semver tag and `sha-<sha>`
+
+Flux `ImagePolicy` for visit services is semver-based, so automatic deployment updates happen only for release tags (`vX.Y.Z`), not every commit to `main`.
+
+Release example:
+
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```

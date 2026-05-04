@@ -12,7 +12,7 @@ spec:
       retries: 3
   chart:
     spec:
-      chart: ./charts/visit-web
+      chart: ./charts/visit-gateway
       sourceRef:
         kind: GitRepository
         name: dev-repo

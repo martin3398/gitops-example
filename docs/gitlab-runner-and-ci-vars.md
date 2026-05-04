@@ -116,6 +116,10 @@ Pipeline stage order:
 - `apps:visit-ui:test`, `apps:visit-gateway:test`, `apps:visit-processor:test`: MR + main when visit-demo or chart files change
 - `apps:visit-ui:build`, `apps:visit-gateway:build`, `apps:visit-processor:build`: automatic on main when visit-demo or chart files change
 
+App image tagging policy:
+- main branch builds publish immutable `main-<sha>` and `sha-<sha>` tags
+- release tags (`vX.Y.Z`) publish semver release images for Flux semver promotion
+
 Ansible jobs are intentionally serially ordered and run automatically after the provision gate.
 
 ## Destroy Safety Gate
