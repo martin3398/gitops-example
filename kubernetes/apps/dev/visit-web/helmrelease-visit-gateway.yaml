@@ -5,14 +5,14 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m
-  targetNamespace: visit-edge
+  targetNamespace: visit-web
   install:
     createNamespace: true
     remediation:
       retries: 3
   chart:
     spec:
-      chart: ./charts/visit-gateway
+      chart: ./charts/visit-web
       sourceRef:
         kind: GitRepository
         name: dev-repo
@@ -20,5 +20,5 @@ spec:
     imagePullSecrets:
       - name: ghcr-pull
     image:
-      repository: ghcr.io/example/visit-gateway # {"$imagepolicy": "flux-system:visit-gateway:name"}
+      repository: ghcr.io/martin3398/visit-gateway # {"$imagepolicy": "flux-system:visit-gateway:name"}
       tag: v0.1.0 # {"$imagepolicy": "flux-system:visit-gateway:tag"}

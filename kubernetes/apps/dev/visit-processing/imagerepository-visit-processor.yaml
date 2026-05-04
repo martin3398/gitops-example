@@ -5,6 +5,6 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m
-  image: ghcr.io/example/visit-processor
+  image: ghcr.io/martin3398/visit-processor
   secretRef:
     name: ghcr-registry

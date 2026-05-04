@@ -47,7 +47,7 @@ Notes:
 - Set `GHCR_OWNER` only when publishing under a different org/user namespace.
 
 For private GHCR images, also create Kubernetes secrets:
-- workload pull secret `ghcr-pull` in `visit-edge` and `visit-processing`
+- workload pull secret `ghcr-pull` in `visit-web` and `visit-processing`
 - Flux image-reflector secret `ghcr-registry` in `flux-system`
 
 See `docs/ghcr-setup.md` for exact commands.

@@ -20,5 +20,5 @@ spec:
     imagePullSecrets:
       - name: ghcr-pull
     image:
-      repository: ghcr.io/example/visit-processor # {"$imagepolicy": "flux-system:visit-processor:name"}
+      repository: ghcr.io/martin3398/visit-processor # {"$imagepolicy": "flux-system:visit-processor:name"}
       tag: v0.1.0 # {"$imagepolicy": "flux-system:visit-processor:tag"}

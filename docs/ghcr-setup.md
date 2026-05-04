@@ -44,7 +44,7 @@ Replace `ghcr.io/example/...` with your real owner in:
 Create `ghcr-pull` secret in both workload namespaces:
 
 ```bash
-kubectl -n visit-edge create secret docker-registry ghcr-pull \
+kubectl -n visit-web create secret docker-registry ghcr-pull \
   --docker-server=ghcr.io \
   --docker-username="$GHCR_USERNAME" \
   --docker-password="$GHCR_TOKEN"
@@ -80,7 +80,7 @@ ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/flux-boo
 
 the role will create/update:
 
-- `ghcr-pull` in `visit-edge` and `visit-processing`
+- `ghcr-pull` in `visit-web` and `visit-processing`
 - `ghcr-registry` in `flux-system`
 
 ## 6) Run first pipeline and verify
@@ -97,7 +97,7 @@ kubectl -n flux-system get imagerepositories,imagepolicies,imageupdateautomation
 - Workload status:
 
 ```bash
-kubectl -n visit-edge get pods
+kubectl -n visit-web get pods
 kubectl -n visit-processing get pods
 ```
 

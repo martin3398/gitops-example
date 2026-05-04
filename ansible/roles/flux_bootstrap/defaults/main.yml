@@ -29,5 +29,5 @@ ghcr_username: "{{ lookup('env', 'GHCR_USERNAME') | default('', true) }}"
 ghcr_token: "{{ lookup('env', 'GHCR_TOKEN') | default('', true) }}"
 ghcr_server: ghcr.io
 ghcr_workload_namespaces:
-  - visit-edge
+  - visit-web
   - visit-processing

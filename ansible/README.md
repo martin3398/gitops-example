@@ -171,7 +171,7 @@ ansible-playbook -i inventories/dev/hosts.yml playbooks/flux-bootstrap.yml --tag
 
 If `GHCR_USERNAME` and `GHCR_TOKEN` are set, the Flux bootstrap role also applies:
 
-- `ghcr-pull` in `visit-edge` and `visit-processing`
+- `ghcr-pull` in `visit-web` and `visit-processing`
 - `ghcr-registry` in `flux-system`
 
 Fetch kubeconfig for local kubectl usage:

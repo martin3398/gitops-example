@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m
-  targetNamespace: visit-edge
+  targetNamespace: visit-web
   install:
     createNamespace: true
     remediation:
@@ -20,5 +20,5 @@ spec:
     imagePullSecrets:
       - name: ghcr-pull
     image:
-      repository: ghcr.io/example/visit-ui # {"$imagepolicy": "flux-system:visit-web:name"}
+      repository: ghcr.io/martin3398/visit-ui # {"$imagepolicy": "flux-system:visit-web:name"}
       tag: v0.1.0 # {"$imagepolicy": "flux-system:visit-web:tag"}
