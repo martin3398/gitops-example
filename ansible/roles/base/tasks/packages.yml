@@ -1,13 +1,34 @@
 ---
+- name: Wait for cloud-init to finish
+  ansible.builtin.command: cloud-init status --wait
+  register: cloud_init_wait
+  changed_when: false
+  failed_when: false
+
 - name: Update apt cache
+  vars:
+    ansible_timeout: 300
+  timeout: 300
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 3600
+    lock_timeout: 300
+    update_cache_retries: 10
+    update_cache_retry_max_delay: 30
+  register: apt_cache_update
+  retries: 5
+  delay: 15
+  until: apt_cache_update is succeeded
 
 - name: Install base packages
   ansible.builtin.apt:
     name: "{{ base_packages }}"
     state: present
+    lock_timeout: 300
+  register: apt_base_packages
+  retries: 5
+  delay: 15
+  until: apt_base_packages is succeeded
 
 - name: Ensure chrony service is enabled and started
   ansible.builtin.service:
