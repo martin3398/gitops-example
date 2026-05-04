@@ -41,6 +41,7 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
 - [ ] Application GitOps delivery (sample app + Postgres)
 - [ ] Vault lab: secret management integration for platform/app credentials
+- [x] Kafka baseline: Strimzi operator + 3-broker KRaft cluster via Flux (dev defaults)
 - [ ] Ceph lab: storage classes and stateful workload migration validation
 - [ ] Backups (Velero + restore drill)
 - [ ] Policy/security controls (Kyverno/Gatekeeper, Trivy, network policies)
@@ -58,7 +59,7 @@ Use this as the single source of truth for what is done and what is next.
 - [ ] Phase 2.2b (deferred): cert-manager via Flux
 - [x] Phase 2.3: Observability baseline via Flux
 - [x] Phase 2.4 (partial): Flux image automation wired for app image updates
-- [ ] Phase 3: Advanced tooling labs (Vault, MongoDB, Kafka, Ceph)
+- [~] Phase 3: Advanced tooling labs (in progress: Kafka baseline)
 - [ ] Phase 4: Resilience + backup + policy/security hardening
 
 ## Stack (Planned)
@@ -205,6 +206,7 @@ Task groups:
   - Ansible pipeline: `.gitlab/ci/ansible.yml`
 - Local runner setup: `docker-compose.runner.yml`
 - Phase 1 infrastructure runbook: `docs/phase1-infra-runbook.md`
+- Kafka baseline runbook: `docs/kafka-runbook.md`
 - GitLab runner and CI variables guide: `docs/gitlab-runner-and-ci-vars.md`
 - Ansible CI execution runbook: `docs/ansible-ci-runbook.md`
 
@@ -256,6 +258,11 @@ GitOps structure and Flux-managed charts are implemented:
 Flux image automation for apps is implemented:
 - `ImageRepository`, `ImagePolicy` (stable semver `>=6.0.0 <7.0.0`), and `ImageUpdateAutomation` for podinfo
 - image updates commit directly to `main` and are then reconciled by Flux
+
+Kafka baseline is now implemented via Flux:
+- Strimzi operator under `kubernetes/platform/dev/core-services/operators/strimzi/`
+- 3-broker KRaft Kafka cluster under `kubernetes/platform/dev/data-platform/kafka/`
+- topic and user operators enabled for later tenant self-service templates
 
 Established deployment model:
 - Git is the desired-state source of truth for cluster resources under `kubernetes/`.

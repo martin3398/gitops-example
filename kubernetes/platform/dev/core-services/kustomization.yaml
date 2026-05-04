@@ -3,4 +3,5 @@ kind: Kustomization
 resources:
   - metrics-server
   - operators/cloudnative-pg
+  - operators/strimzi
   - storage/local-path-provisioner
