@@ -1,0 +1,57 @@
+name: ansible-check
+
+on:
+  pull_request:
+    paths:
+      - ansible/**
+      - .github/workflows/ansible-check.yml
+  push:
+    branches: [main]
+    paths:
+      - ansible/**
+      - .github/workflows/ansible-check.yml
+
+jobs:
+  lint-inventory:
+    runs-on: ubuntu-latest
+    env:
+      ANSIBLE_COLLECTIONS_PATH: ~/.ansible/collections
+      ANSIBLE_CONFIG: ansible/ansible.cfg
+      ANSIBLE_ROLES_PATH: ansible/roles
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-ansible-${{ hashFiles('ansible/requirements.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-ansible-
+
+      - name: Cache Ansible collections
+        uses: actions/cache@v4
+        with:
+          path: ~/.ansible/collections
+          key: ${{ runner.os }}-ansible-collections-${{ hashFiles('ansible/requirements.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-ansible-collections-
+
+      - name: Install ansible dependencies
+        run: |
+          pip install --no-cache-dir ansible boto3 botocore awscli
+          ansible-galaxy collection install -r ansible/requirements.yml
+
+      - name: Syntax check playbooks
+        run: |
+          ansible-playbook -i "localhost," --syntax-check ansible/playbooks/smoke.yml
+          ansible-playbook -i "localhost," --syntax-check ansible/playbooks/base.yml
+          ansible-playbook -i "localhost," --syntax-check ansible/playbooks/runtime.yml
+          ansible-playbook -i "localhost," --syntax-check ansible/playbooks/cluster-bootstrap.yml
+          ansible-playbook -i "localhost," --syntax-check ansible/playbooks/flux-bootstrap.yml

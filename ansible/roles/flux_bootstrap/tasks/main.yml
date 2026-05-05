@@ -59,10 +59,10 @@
     mode: "0600"
   no_log: true
 
-- name: Ensure GitLab SSH host key is present
+- name: Ensure Git host SSH key is present
   ansible.builtin.known_hosts:
     path: "{{ flux_bootstrap_known_hosts_path }}"
-    name: gitlab.com
+    name: github.com
     key: "{{ flux_git_known_hosts }}"
 
 - name: Resolve Flux CLI architecture

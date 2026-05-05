@@ -159,8 +159,8 @@ Run Flux bootstrap handoff (iteration 5):
 
 ```bash
 cd ansible
-export FLUX_GIT_SSH_PRIVATE_KEY_B64="$(base64 -w0 ../flux-gitlab)"
-export FLUX_GIT_KNOWN_HOSTS_B64="$(printf 'gitlab.com ssh-ed25519 <host-key>' | base64 -w0)"
+export FLUX_GIT_SSH_PRIVATE_KEY_B64="$(base64 -w0 ../flux-github)"
+export FLUX_GIT_KNOWN_HOSTS_B64="$(printf 'github.com ssh-ed25519 <host-key>' | base64 -w0)"
 export FLUX_GIT_SSH_PRIVATE_KEY="$(printf '%s' "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)"
 export FLUX_GIT_KNOWN_HOSTS="$(printf '%s' "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)"
 # Optional GHCR secret automation:

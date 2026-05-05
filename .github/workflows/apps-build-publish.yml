@@ -1,0 +1,114 @@
+name: apps-build-publish
+
+on:
+  pull_request:
+    paths:
+      - apps/visit-demo/**
+      - charts/visit-ui/**
+      - charts/visit-gateway/**
+      - charts/visit-processor/**
+      - .github/workflows/apps-build-publish.yml
+  push:
+    branches: [main]
+    paths:
+      - apps/visit-demo/**
+      - charts/visit-ui/**
+      - charts/visit-gateway/**
+      - charts/visit-processor/**
+      - .github/workflows/apps-build-publish.yml
+
+jobs:
+  test-go-services:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - visit-gateway
+          - visit-processor
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Run go test
+        run: go test ./...
+        working-directory: apps/visit-demo/${{ matrix.service }}
+
+  test-visit-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/visit-demo/visit-ui/package-lock.json
+
+      - name: Run TypeScript check
+        run: |
+          npm ci
+          npm run check
+        working-directory: apps/visit-demo/visit-ui
+
+  build-and-push:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs:
+      - test-go-services
+      - test-visit-ui
+    strategy:
+      matrix:
+        include:
+          - image: visit-gateway
+            context: apps/visit-demo/visit-gateway
+            dockerfile: apps/visit-demo/visit-gateway/Dockerfile
+          - image: visit-processor
+            context: apps/visit-demo/visit-processor
+            dockerfile: apps/visit-demo/visit-processor/Dockerfile
+          - image: visit-ui
+            context: apps/visit-demo/visit-ui
+            dockerfile: apps/visit-demo/visit-ui/Dockerfile
+    permissions:
+      contents: read
+      packages: write
+    env:
+      GHCR_OWNER: ${{ secrets.GHCR_OWNER != '' && secrets.GHCR_OWNER || github.repository_owner }}
+      GHCR_USERNAME: ${{ secrets.GHCR_USERNAME != '' && secrets.GHCR_USERNAME || github.actor }}
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN != '' && secrets.GHCR_TOKEN || github.token }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ env.GHCR_TOKEN }}
+
+      - name: Compute image tag
+        id: vars
+        run: |
+          echo "image_tag=$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/${{ env.GHCR_OWNER }}/${{ matrix.image }}:${{ steps.vars.outputs.image_tag }}
+            ghcr.io/${{ env.GHCR_OWNER }}/${{ matrix.image }}:sha-${{ steps.vars.outputs.short_sha }}

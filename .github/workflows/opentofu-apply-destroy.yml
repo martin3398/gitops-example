@@ -1,0 +1,129 @@
+name: opentofu-apply-destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Choose infra operation"
+        required: true
+        default: apply
+        type: choice
+        options:
+          - apply
+          - destroy
+      destroy_confirm:
+        description: "Type yes to allow destroy"
+        required: false
+        default: "no"
+      admin_cidr:
+        description: "Admin CIDR for API access (e.g. 1.1.1.1/32). If empty, auto-detect runner egress IP /32"
+        required: false
+        default: ""
+      enable_public_k8s_api:
+        description: "Enable public Kubernetes API NLB"
+        required: true
+        default: true
+        type: boolean
+      enable_public_ingress:
+        description: "Enable public ingress NLB"
+        required: true
+        default: true
+        type: boolean
+      ingress_allowed_cidrs:
+        description: "Ingress allowed CIDRs as comma-separated list"
+        required: false
+        default: "0.0.0.0/0"
+
+concurrency:
+  group: infra
+  cancel-in-progress: false
+
+jobs:
+  infra:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || secrets.TF_STATE_BUCKET }}
+      TF_STATE_KEY: ${{ vars.TF_STATE_KEY || secrets.TF_STATE_KEY }}
+      TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE || secrets.TF_LOCK_TABLE }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.8.8
+
+      - name: Validate backend env values
+        run: |
+          test -n "$AWS_REGION" || (echo "AWS_REGION is empty" && exit 1)
+          test -n "$TF_STATE_BUCKET" || (echo "TF_STATE_BUCKET is empty" && exit 1)
+          test -n "$TF_STATE_KEY" || (echo "TF_STATE_KEY is empty" && exit 1)
+          test -n "$TF_LOCK_TABLE" || (echo "TF_LOCK_TABLE is empty" && exit 1)
+
+      - name: Build dynamic tfvars override
+        id: tfvars
+        run: |
+          if [ -n "${{ inputs.admin_cidr }}" ]; then
+            ADMIN_CIDR="${{ inputs.admin_cidr }}"
+          else
+            ADMIN_CIDR="$(curl -fsSL https://checkip.amazonaws.com | tr -d '\n')/32"
+          fi
+
+          INGRESS_JSON="$(printf '%s' "${{ inputs.ingress_allowed_cidrs }}" | awk -F',' '{for(i=1;i<=NF;i++){gsub(/^ +| +$/,"",$i); printf "%s\"%s\"", (i==1?"":" ,"), $i}}')"
+
+          cat > ci.auto.tfvars <<EOF
+          enable_public_k8s_api = ${{ inputs.enable_public_k8s_api }}
+          enable_public_ingress = ${{ inputs.enable_public_ingress }}
+          allowed_admin_cidrs = ["${ADMIN_CIDR}"]
+          ingress_allowed_cidrs = [${INGRESS_JSON}]
+          EOF
+
+          echo "admin_cidr=${ADMIN_CIDR}" >> "$GITHUB_OUTPUT"
+
+      - name: Tofu init backend
+        run: |
+          tofu init \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="key=${TF_STATE_KEY}" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${TF_LOCK_TABLE}" \
+            -backend-config="encrypt=true"
+
+      - name: Apply infrastructure
+        if: inputs.action == 'apply'
+        run: |
+          tofu plan -var-file=ci.auto.tfvars -out phase1-infra.tfplan
+          tofu apply -auto-approve phase1-infra.tfplan
+          tofu output -json > outputs.json
+
+      - name: Destroy precondition
+        if: inputs.action == 'destroy'
+        run: |
+          test "${{ inputs.destroy_confirm }}" = "yes"
+
+      - name: Destroy infrastructure
+        if: inputs.action == 'destroy'
+        run: |
+          tofu plan -var-file=ci.auto.tfvars -destroy -out destroy.tfplan
+          tofu apply -auto-approve destroy.tfplan
+
+      - name: Show selected admin CIDR
+        run: echo "Using allowed_admin_cidrs=[\"${{ steps.tfvars.outputs.admin_cidr }}\"]"
+
+      - name: Upload infra outputs
+        if: inputs.action == 'apply'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tofu-outputs-${{ github.run_id }}
+          path: infra/outputs.json

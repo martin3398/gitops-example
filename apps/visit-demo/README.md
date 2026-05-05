@@ -9,8 +9,8 @@ Event-driven visit counter demo:
 Deployment ownership model:
 
 - service charts: `charts/visit-ui`, `charts/visit-gateway`, `charts/visit-processor`
-- Flux `HelmRelease` resources: `kubernetes/apps/dev/visit-demo/`
-- GitLab build pipeline: `.gitlab/ci/apps.yml`
+- Flux `HelmRelease` resources: `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`
+- GitHub Actions build pipeline: `.github/workflows/apps-build-publish.yml`
 
 ## Project layout
 

@@ -18,7 +18,7 @@ It uses AWS EC2 for convenience, but follows a self-managed approach designed to
 - Infrastructure provisioning with `OpenTofu/Terraform`
 - Host bootstrap and kubeadm automation with `Ansible`
 - GitOps delivery with `Flux`
-- CI/CD with `GitLab CI/CD`
+- CI/CD with `GitHub Actions`
 - Open-source platform tooling deployed with Helm via Flux
 
 ## Progress Checklist
@@ -40,7 +40,7 @@ Use this as the single source of truth for what is done and what is next.
 - [ ] Clean up temporary local-path storage and migrate stateful platform PVCs to Ceph storage classes
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
 - [~] Application GitOps delivery (visit-web + visit-gateway + visit-processor)
-- [~] Application GitOps delivery (visit-demo in progress: Helm charts + GitLab image pipeline added)
+- [~] Application GitOps delivery (visit-demo in progress: Helm charts + GitHub Actions image pipeline added)
 - [x] Postgres baseline: CloudNativePG operator + dev cluster via Flux
 - [ ] Vault lab: secret management integration for platform/app credentials
 - [ ] Credential management hardening: replace demo/static secrets with managed credentials (GHCR pull secrets, Flux Git write credentials, app DB secrets rotation)
@@ -51,9 +51,9 @@ Use this as the single source of truth for what is done and what is next.
 
 Visit demo ownership model:
 - each service has its own Helm chart under `charts/visit-ui`, `charts/visit-gateway`, and `charts/visit-processor`
-- Flux deploys each service with its own `HelmRelease` under `kubernetes/apps/dev/visit-demo/`
-- GitLab CI builds and pushes each service image independently via `.gitlab/ci/apps.yml`
-- prod-safe image flow: CI publishes immutable `sha-*`/`main-*` tags on branch builds, while Flux promotion tracks semver release tags (`vX.Y.Z`) only
+- Flux deploys each service with its own `HelmRelease` under `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`
+- GitHub Actions builds and pushes each service image via `.github/workflows/apps-build-publish.yml`
+- image flow: CI publishes immutable timestamped tags (`YYYYMMDDHHmmSS-<8sha>`) and Flux tracks newest matching tags for automatic updates
 
 ### Delivery Steps
 
@@ -62,7 +62,7 @@ Visit demo ownership model:
 - [x] Phase 1.3: Base node preparation (kernel/sysctl/swap/packages)
 - [x] Phase 1.4: Runtime install (containerd + kubelet/kubeadm/kubectl)
 - [x] Phase 1.5: Cluster bootstrap (kubeadm init/join + Cilium + validation)
-- [x] Phase 1.6: GitLab CI stages for Ansible (manual-gated)
+- [x] Phase 1.6: CI stages for Ansible (manual-gated)
 - [x] Phase 2.1: Flux bootstrap and repository structure under `kubernetes/`
 - [x] Phase 2.2a: ingress-nginx via Flux
 - [ ] Phase 2.2b (deferred): cert-manager via Flux
@@ -80,7 +80,7 @@ Visit demo ownership model:
 - Ingress: ingress-nginx
 - TLS/certificates: out of scope for this AWS lab phase
 - GitOps: Flux
-- CI/CD: GitLab CI/CD
+- CI/CD: GitHub Actions
 - Monitoring/Logging: kube-prometheus-stack + Loki + Grafana
 - Application data: Postgres primary/replica
 - Advanced labs: Vault, MongoDB, Kafka, Ceph
@@ -95,11 +95,11 @@ Visit demo ownership model:
 - Validate node health and basic failover behavior
 
 ### Phase 2 - GitOps Platform + Workloads
-- Bootstrap Flux from GitLab
+- Bootstrap Flux from repository Git source
 - Install platform add-ons via Helm through Flux
 - Deploy frontend + 1-2 microservices (sample app delivery still pending)
 - Postgres baseline is implemented as a platform data service via Flux
-- Add GitLab pipelines for build/test/publish and use Flux image automation for GitOps image updates
+- Add GitHub Actions workflows for build/test/publish and use Flux image automation for GitOps image updates
 
 ### Phase 3 - Advanced Tooling
 - Add Vault, MongoDB, Kafka, and Ceph one by one
@@ -210,15 +210,16 @@ Task groups:
 ## Key Documents
 
 - Agent prompt and project execution guidance: `Agents.md`
-- CI pipeline configuration:
-  - Root include file: `.gitlab-ci.yml`
-  - OpenTofu pipeline: `.gitlab/ci/opentofu.yml`
-  - Ansible pipeline: `.gitlab/ci/ansible.yml`
-- Local runner setup: `docker-compose.runner.yml`
+- CI/CD workflow configuration:
+  - OpenTofu check/plan: `.github/workflows/opentofu-check-plan.yml`
+  - OpenTofu manual apply/destroy: `.github/workflows/opentofu-apply-destroy.yml`
+  - Ansible check: `.github/workflows/ansible-check.yml`
+  - Ansible manual run: `.github/workflows/ansible-run.yml`
+  - Apps build/publish: `.github/workflows/apps-build-publish.yml`
 - Phase 1 infrastructure runbook: `docs/phase1-infra-runbook.md`
 - Kafka baseline runbook: `docs/kafka-runbook.md`
 - GHCR setup runbook: `docs/ghcr-setup.md`
-- GitLab runner and CI variables guide: `docs/gitlab-runner-and-ci-vars.md`
+- GitHub Actions runbook: `docs/github-actions-runbook.md`
 - Ansible CI execution runbook: `docs/ansible-ci-runbook.md`
 
 ## Status
@@ -226,8 +227,7 @@ Task groups:
 Phase 1 infrastructure baseline is implemented:
 - OpenTofu AWS networking + IAM + 6-node EC2 topology
 - S3 + DynamoDB remote state workflow
-- GitLab CI pipeline for OpenTofu (check/plan/manual apply/manual destroy)
-- Local Docker Compose GitLab runner path for early testing
+- GitHub Actions workflows for OpenTofu (check/plan plus manual apply/destroy)
 
 Ansible Iteration 1 scaffold is now in place:
 - SSM-first Ansible configuration
@@ -254,10 +254,11 @@ Ansible Iteration 5 Flux bootstrap handoff automation is implemented:
 - installs Flux controllers (including image reflector/automation) and applies Git source + cluster Kustomizations
 - validates `GitRepository` and Kustomization readiness for `platform` and `apps`
 
-GitLab CI now includes Ansible automation stages:
-- inventory generation from OpenTofu apply artifact
-- smoke, base, runtime, bootstrap, and Flux bootstrap jobs (auto-sequenced after manual `tofu:apply` on `main`)
-- runbooks in `docs/gitlab-runner-and-ci-vars.md` and `docs/ansible-ci-runbook.md`
+GitHub Actions now includes Ansible automation workflows:
+- OpenTofu check/plan workflow and manual apply/destroy workflow
+- Ansible syntax-check workflow and manual full-run workflow
+- App test/build/publish workflow for GHCR
+- runbooks in `docs/github-actions-runbook.md` and `docs/ansible-ci-runbook.md`
 
 GitOps structure and Flux-managed charts are implemented:
 - cluster entrypoint and source chain: `kubernetes/flux/clusters/dev/`

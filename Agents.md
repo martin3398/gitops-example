@@ -8,12 +8,12 @@ Implement a multi-phase learning platform with:
 - 3 control plane nodes and 3 worker nodes
 - Open-source tooling
 - GitOps with Flux
-- CI/CD with GitLab
+- CI/CD with GitHub Actions
 
 ## Assessment
 - The selected stack is strong and realistic for a Kubernetes platform engineer path.
 - Using EC2 with self-managed Kubernetes is a good compromise between cost and on-prem relevance.
-- Flux + GitLab CI/CD is an excellent open-source and GitLab-native combination.
+- Flux + GitHub Actions is an excellent open-source combination.
 - A phased rollout is the right approach, especially with multiple stateful systems planned.
 
 ## Rethink / Scope Control
@@ -32,7 +32,7 @@ Implement a multi-phase learning platform with:
 - Runtime: containerd
 - CNI: Cilium (fallback Calico if needed)
 - GitOps: Flux
-- CI/CD: GitLab CI/CD
+- CI/CD: GitHub Actions
 - Ingress: ingress-nginx
 - TLS/certificate management: out of scope for this AWS lab phase
 - Monitoring: kube-prometheus-stack + Loki + Grafana
@@ -60,7 +60,7 @@ Exit criteria:
 - Control plane remains healthy after one-node reboot test
 
 ### Phase 2 - GitOps + Platform Services + Sample Workloads
-1. Bootstrap Flux and connect to GitLab repository
+1. Bootstrap Flux and connect to repository Git source
 2. Deploy platform services via Helm (through Flux):
    - ingress-nginx
    - cert-manager is deferred (HTTPS/certificates out of scope)
@@ -69,7 +69,7 @@ Exit criteria:
    - simple frontend
    - 1-2 microservices
    - consume platform-provided data services
-4. Add GitLab CI/CD pipelines:
+4. Add CI/CD pipelines:
    - test/build images
    - publish images
    - use Flux image automation to update GitOps manifests/values

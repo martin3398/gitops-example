@@ -1,0 +1,120 @@
+name: ansible-run
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: infra
+  cancel-in-progress: false
+
+jobs:
+  run-ansible-chain:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || secrets.TF_STATE_BUCKET }}
+      TF_STATE_KEY: ${{ vars.TF_STATE_KEY || secrets.TF_STATE_KEY }}
+      TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE || secrets.TF_LOCK_TABLE }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      FLUX_GIT_SSH_PRIVATE_KEY_B64: ${{ secrets.FLUX_GIT_SSH_PRIVATE_KEY_B64 }}
+      FLUX_GIT_KNOWN_HOSTS_B64: ${{ secrets.FLUX_GIT_KNOWN_HOSTS_B64 }}
+      GHCR_USERNAME: ${{ vars.GHCR_USERNAME || secrets.GHCR_USERNAME }}
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+      ANSIBLE_CONFIG: ansible/ansible.cfg
+      ANSIBLE_COLLECTIONS_PATH: ~/.ansible/collections
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-ansible-${{ hashFiles('ansible/requirements.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-ansible-
+
+      - name: Cache Ansible collections
+        uses: actions/cache@v4
+        with:
+          path: ~/.ansible/collections
+          key: ${{ runner.os }}-ansible-collections-${{ hashFiles('ansible/requirements.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-ansible-collections-
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.8.8
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends curl unzip ca-certificates bash groff jq
+
+      - name: Install Session Manager plugin
+        run: |
+          curl -sSLo /tmp/session-manager-plugin.deb \
+            "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb"
+          sudo dpkg -i /tmp/session-manager-plugin.deb
+          rm -f /tmp/session-manager-plugin.deb
+          session-manager-plugin --version
+
+      - name: Install ansible dependencies
+        run: |
+          pip install --no-cache-dir ansible boto3 botocore awscli
+          ansible-galaxy collection install -r ansible/requirements.yml
+          ansible --version
+
+      - name: Read infra outputs from state
+        run: |
+          tofu -chdir=infra init \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="key=${TF_STATE_KEY}" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${TF_LOCK_TABLE}" \
+            -backend-config="encrypt=true"
+          tofu -chdir=infra output -json > infra/outputs.json
+
+      - name: Generate inventory
+        run: |
+          python3 ansible/scripts/generate_inventory.py \
+            --input infra/outputs.json \
+            --output ansible/inventories/dev/hosts.yml \
+            --region "$AWS_REGION" \
+            --ssm-bucket "$TF_STATE_BUCKET"
+          ansible-inventory -i ansible/inventories/dev/hosts.yml --graph
+
+      - name: Run smoke
+        run: ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/smoke.yml
+
+      - name: Run base role
+        run: ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/base.yml --tags base
+
+      - name: Run runtime role
+        run: ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/runtime.yml --tags runtime
+
+      - name: Run cluster bootstrap
+        run: ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/cluster-bootstrap.yml --tags bootstrap
+
+      - name: Run Flux bootstrap
+        run: |
+          test -n "$FLUX_GIT_SSH_PRIVATE_KEY_B64"
+          test -n "$FLUX_GIT_KNOWN_HOSTS_B64"
+          if [ -n "$GHCR_USERNAME" ] && [ -z "$GHCR_TOKEN" ]; then
+            echo "GHCR_USERNAME is set but GHCR_TOKEN is empty"
+            exit 1
+          fi
+          export FLUX_GIT_SSH_PRIVATE_KEY="$(printf '%s' "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)"
+          export FLUX_GIT_KNOWN_HOSTS="$(printf '%s' "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)"
+          ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/flux-bootstrap.yml --tags flux

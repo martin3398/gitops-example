@@ -1,34 +1,34 @@
 # Ansible CI Runbook
 
-This runbook describes how Ansible automation stages execute in GitLab CI after infrastructure apply.
+This runbook describes how Ansible automation stages execute in GitHub Actions after infrastructure apply.
 
-## Pipeline Ordering
+## Workflow Ordering
 
-The Ansible jobs are split into ordered stages:
+The Ansible workflow runs these ordered steps:
 
-1. `ansible:inventory`
-2. `ansible:smoke`
-3. `ansible:base`
-4. `ansible:runtime`
-5. `ansible:bootstrap`
-6. `ansible:flux_bootstrap`
+1. inventory generation
+2. smoke
+3. base
+4. runtime
+5. cluster bootstrap
+6. flux bootstrap
 
-`ansible:inventory` depends on `tofu:apply` and consumes its `infra/outputs.json` artifact.
+Inventory is generated from `infra/outputs.json` exported from OpenTofu state.
 
 ## Trigger Flow
 
 On `main` branch:
 
-1. Run `tofu:plan`
-2. Manually trigger `tofu:apply` (provision gate)
-3. Ansible jobs run automatically in order
+1. Run OpenTofu check/plan workflow
+2. Manually trigger OpenTofu apply workflow (provision gate)
+3. Manually trigger `ansible-run` workflow
 
-All Ansible jobs use `resource_group: infra` to prevent concurrent infrastructure/cluster mutation.
+The manual workflows use `concurrency: infra` to prevent concurrent infrastructure/cluster mutation.
 
 ## Pipeline Gates
 
-- Gate 1 (provision): `tofu:apply` is manual on `main` and triggers infra + ordered Ansible automation.
-- Gate 2 (destroy): `tofu:destroy` is manual on `main` and requires `DESTROY_CONFIRM=yes`.
+- Gate 1 (provision): OpenTofu apply is manual.
+- Gate 2 (destroy): OpenTofu destroy is manual and requires explicit `destroy_confirm=yes` input.
 
 ## Variables and Reuse
 
@@ -74,14 +74,14 @@ Additional checks after bootstrap:
 
 ## Flux Bootstrap Variables
 
-Required for `ansible:flux_bootstrap`:
+Required for flux bootstrap step:
 
-- `FLUX_GIT_SSH_PRIVATE_KEY_B64`: base64-encoded private key matching the GitLab deploy key used by Flux (must allow pushes for image automation updates)
-- `FLUX_GIT_KNOWN_HOSTS_B64`: base64-encoded GitLab SSH known_hosts line (for example `gitlab.com ssh-ed25519 ...`)
+- `FLUX_GIT_SSH_PRIVATE_KEY_B64`: base64-encoded private key matching the deploy key used by Flux (must allow pushes for image automation updates)
+- `FLUX_GIT_KNOWN_HOSTS_B64`: base64-encoded Git host SSH known_hosts line (for example `github.com ssh-ed25519 ...`)
 
 Encoding example:
 
 ```bash
-base64 -w0 flux-gitlab
-printf 'gitlab.com ssh-ed25519 <host-key>' | base64 -w0
+base64 -w0 flux-github
+printf 'github.com ssh-ed25519 <host-key>' | base64 -w0
 ```

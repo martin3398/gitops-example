@@ -1,4 +1,4 @@
-# GHCR Setup (GitLab CI + Flux)
+# GHCR Setup (GitHub Actions + Flux)
 
 This runbook sets up private image build/push and deployment pulls for:
 
@@ -14,9 +14,9 @@ Create a GitHub Personal Access Token (classic) with:
 - `read:packages`
 - `repo` (if repository/package visibility requires it)
 
-## 2) Configure GitLab CI variables
+## 2) Configure GitHub Actions secrets/variables
 
-In GitLab `Settings -> CI/CD -> Variables`, set:
+In GitHub `Settings -> Secrets and variables -> Actions`, set:
 
 - `GHCR_USERNAME` (GitHub username)
 - `GHCR_TOKEN` (token from step 1)
@@ -24,9 +24,9 @@ In GitLab `Settings -> CI/CD -> Variables`, set:
 Optional:
 - `GHCR_OWNER` (only if image namespace differs from `GHCR_USERNAME`)
 
-If `GHCR_OWNER` is not set, CI defaults it to `GHCR_USERNAME`.
+If `GHCR_OWNER` is not set, workflow defaults it to repository owner.
 
-These are used by `.gitlab/ci/apps.yml` build jobs.
+These are used by `.github/workflows/apps-build-publish.yml`.
 
 ## 3) Update image repositories in GitOps files
 
@@ -87,7 +87,7 @@ the role will create/update:
 
 Push changes to `main` and verify:
 
-- GitLab jobs: `apps:visit-ui:build`, `apps:visit-gateway:build`, `apps:visit-processor:build`
+- GitHub Actions workflow: `apps-build-publish`
 - Flux image objects:
 
 ```bash
@@ -103,18 +103,11 @@ kubectl -n visit-processing get pods
 
 If pods show `ImagePullBackOff`, verify `ghcr-pull` in both namespaces.
 
-## 7) Prod-safe image promotion flow
+## 7) Auto-deploy tag format
 
-CI image publishing behavior:
+CI image publishing behavior on each `main` commit:
 
-- On `main` branch commits: publish immutable `main-<sha>` and `sha-<sha>` tags
-- On release tags matching `vX.Y.Z`: publish release semver tag and `sha-<sha>`
+- publish primary tag: `YYYYMMDDHHmmSS-<8-char-git-sha>`
+- publish trace tag: `sha-<8-char-git-sha>`
 
-Flux `ImagePolicy` for visit services is semver-based, so automatic deployment updates happen only for release tags (`vX.Y.Z`), not every commit to `main`.
-
-Release example:
-
-```bash
-git tag v0.1.1
-git push origin v0.1.1
-```
+Flux `ImagePolicy` tracks the timestamped tag pattern and selects the newest value automatically.
