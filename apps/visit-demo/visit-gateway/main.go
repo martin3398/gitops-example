@@ -51,6 +51,8 @@ func main() {
 		Topic:        cfg.kafkaTopic,
 		RequiredAcks: kafka.RequireAll,
 		Balancer:     &kafka.LeastBytes{},
+		BatchSize:    1,
+		BatchTimeout: 50 * time.Millisecond,
 	}
 	defer writer.Close()
 
