@@ -59,11 +59,14 @@
     mode: "0600"
   no_log: true
 
-- name: Ensure Git host SSH key is present
-  ansible.builtin.known_hosts:
-    path: "{{ flux_bootstrap_known_hosts_path }}"
-    name: github.com
-    key: "{{ flux_git_known_hosts }}"
+- name: Write Git host SSH known_hosts entry for Flux
+  ansible.builtin.copy:
+    content: "{{ flux_git_known_hosts }}\n"
+    dest: "{{ flux_bootstrap_known_hosts_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  no_log: true
 
 - name: Resolve Flux CLI architecture
   ansible.builtin.set_fact:

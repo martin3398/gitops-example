@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m
-  url: ssh://git@github.com/martin3398/gitops-showcase.git
+  url: ssh://git@github.com/martin3398/gitops-example.git
   ref:
     branch: main
   secretRef:
