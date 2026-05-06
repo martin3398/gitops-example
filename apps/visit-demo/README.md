@@ -2,7 +2,7 @@
 
 Event-driven visit counter demo:
 
-- `visit-ui`: frontend with a button and live counter
+- `visit-web` (code folder `visit-ui`): frontend with a button and live counter
 - `visit-gateway`: HTTP API that publishes visit events to Kafka and serves visit count
 - `visit-processor`: Kafka consumer that writes to Postgres with per-pod rate limit (`RATE_LIMIT_PER_SEC`)
 
@@ -29,10 +29,12 @@ cd visit-ui && npm ci && npm run check
 
 ## Container image expectations
 
-Kubernetes manifests currently reference:
+Kubernetes manifests reference GHCR repositories:
 
-- `ghcr.io/martin3398/visit-ui:v0.1.0`
-- `ghcr.io/martin3398/visit-gateway:v0.1.0`
-- `ghcr.io/martin3398/visit-processor:v0.1.0`
+- `ghcr.io/martin3398/visit-ui`
+- `ghcr.io/martin3398/visit-gateway`
+- `ghcr.io/martin3398/visit-processor`
+
+Deployment tags are managed automatically by Flux image automation using timestamp tags (`YYYYMMDDHHmmSS-<8-char-git-sha>`).
 
 Replace these with your real registry/image names before deployment.

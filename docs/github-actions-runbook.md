@@ -24,27 +24,32 @@ This repository uses GitHub Actions for CI/CD workflows.
 - `.github/workflows/apps-build-publish.yml`
   - Tests services on PR/push
   - On `main` push, builds and publishes images to GHCR
-  - Tag format: `YYYYMMDDHHmmSS-<8-char-git-sha>` and `sha-<full-git-sha>`
+  - Tag format: `YYYYMMDDHHmmSS-<8-char-git-sha>` and `sha-<8-char-git-sha>`
 
-## Required GitHub Secrets
+## Required GitHub Variables and Secrets
 
-Infrastructure/Ansible:
+Set as GitHub variables (non-sensitive):
 
 - `AWS_REGION`
 - `TF_STATE_BUCKET`
 - `TF_STATE_KEY`
 - `TF_LOCK_TABLE`
+- optional `GHCR_USERNAME`
+- optional `GHCR_OWNER`
+
+Set as GitHub secrets (sensitive):
+
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 - optional `AWS_SESSION_TOKEN`
 - `FLUX_GIT_SSH_PRIVATE_KEY_B64` (for `ansible-run` flux step)
-- `FLUX_GIT_KNOWN_HOSTS_B64` (for `ansible-run` flux step)
-
-Container publishing:
-
-- optional `GHCR_OWNER` (defaults to repository owner)
-- optional `GHCR_USERNAME` (defaults to GitHub actor)
+- optional `FLUX_GIT_KNOWN_HOSTS_B64` (if unset, workflow generates GitHub host key entry)
 - optional `GHCR_TOKEN` (defaults to GitHub token)
+
+## Manual workflow runs
+
+- `opentofu-apply-destroy`: run via Actions UI, choose `action=apply|destroy`
+- `ansible-run`: run via Actions UI after successful OpenTofu apply
 
 ## Notes
 

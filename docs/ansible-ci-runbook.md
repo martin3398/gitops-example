@@ -77,7 +77,7 @@ Additional checks after bootstrap:
 Required for flux bootstrap step:
 
 - `FLUX_GIT_SSH_PRIVATE_KEY_B64`: base64-encoded private key matching the deploy key used by Flux (must allow pushes for image automation updates)
-- `FLUX_GIT_KNOWN_HOSTS_B64`: base64-encoded Git host SSH known_hosts line (for example `github.com ssh-ed25519 ...`)
+- optional `FLUX_GIT_KNOWN_HOSTS_B64`: base64-encoded Git host SSH known_hosts line (for example `github.com ssh-ed25519 ...`); if unset, workflow can generate it
 
 Encoding example:
 

@@ -1,10 +1,10 @@
-# gitops-showcase
+# GitOps Example
 
-Hands-on Kubernetes platform engineering lab focused on GitOps, reproducible infrastructure, and on-prem transferable operations.
+Kubernetes GitOps example focused on reproducible infrastructure and operations.
 
 ## Goal
 
-This project is a practical training environment for a platform engineer role.
+This project is a practical, end-to-end GitOps example environment.
 
 It uses AWS EC2 for convenience, but follows a self-managed approach designed to mirror on-prem responsibilities:
 - infrastructure as code
@@ -40,7 +40,6 @@ Use this as the single source of truth for what is done and what is next.
 - [ ] Clean up temporary local-path storage and migrate stateful platform PVCs to Ceph storage classes
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
 - [~] Application GitOps delivery (visit-web + visit-gateway + visit-processor)
-- [~] Application GitOps delivery (visit-demo in progress: Helm charts + GitHub Actions image pipeline added)
 - [x] Postgres baseline: CloudNativePG operator + dev cluster via Flux
 - [ ] Vault lab: secret management integration for platform/app credentials
 - [ ] Credential management hardening: replace demo/static secrets with managed credentials (GHCR pull secrets, Flux Git write credentials, app DB secrets rotation)

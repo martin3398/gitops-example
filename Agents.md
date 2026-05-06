@@ -1,7 +1,7 @@
 # Agents.md
 
 ## Mission
-Build and operate a reproducible Kubernetes platform lab that mirrors on-prem platform engineering practices while running on low-cost AWS EC2.
+Build and operate a reproducible Kubernetes GitOps example on low-cost AWS EC2.
 
 ## Current Objective
 Implement a multi-phase learning platform with:
@@ -11,7 +11,7 @@ Implement a multi-phase learning platform with:
 - CI/CD with GitHub Actions
 
 ## Assessment
-- The selected stack is strong and realistic for a Kubernetes platform engineer path.
+- The selected stack is strong and realistic for a self-managed Kubernetes GitOps example.
 - Using EC2 with self-managed Kubernetes is a good compromise between cost and on-prem relevance.
 - Flux + GitHub Actions is an excellent open-source combination.
 - A phased rollout is the right approach, especially with multiple stateful systems planned.

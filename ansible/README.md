@@ -42,7 +42,7 @@ Kubernetes API endpoint behavior:
 
 Flux image automation is configured under `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`:
 - `ImageRepository` tracks available tags for `visit-web`, `visit-gateway`, and `visit-processor`
-- `ImagePolicy` selects stable semver tags in range `>=0.1.0 <1.0.0`
+- `ImagePolicy` selects newest timestamp tags matching `YYYYMMDDHHmmSS-<8-char-git-sha>`
 - `ImageUpdateAutomation` writes selected image updates back to Git (`main`) using setters
 
 ## Prerequisites
