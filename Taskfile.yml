@@ -110,6 +110,25 @@ tasks:
       - '{{.VENV_PYTHON}} ansible/scripts/generate_inventory.py --input "{{.OUTPUTS}}" --output "{{.INVENTORY}}" --region "$AWS_REGION" --ssm-bucket "${ANSIBLE_SSM_BUCKET:-$TF_STATE_BUCKET}"'
       - '{{.VENV_ANSIBLE_INVENTORY}} -i "{{.INVENTORY}}" --graph'
 
+  "ansible:inventory_from_state":
+    desc: "Generate Ansible inventory from tofu state"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'command -v tofu >/dev/null 2>&1'
+        msg: "tofu is required in PATH"
+      - sh: 'tofu -chdir=infra output -json ansible_inventory >/dev/null 2>&1'
+        msg: "Missing ansible_inventory output in tofu state. Run task tofu:apply first."
+      - sh: 'test -n "$AWS_REGION"'
+        msg: "AWS_REGION is required"
+      - sh: 'test -n "${ANSIBLE_SSM_BUCKET:-$TF_STATE_BUCKET}"'
+        msg: "ANSIBLE_SSM_BUCKET or TF_STATE_BUCKET is required"
+    cmds:
+      - 'tmp_json="$(mktemp)" && tofu -chdir=infra output -json ansible_inventory > "$tmp_json" && {{.VENV_PYTHON}} ansible/scripts/generate_inventory.py --input "$tmp_json" --output "{{.INVENTORY}}" --region "$AWS_REGION" --ssm-bucket "${ANSIBLE_SSM_BUCKET:-$TF_STATE_BUCKET}" && rm -f "$tmp_json"'
+      - '{{.VENV_ANSIBLE_INVENTORY}} -i "{{.INVENTORY}}" --graph'
+
   "ansible:smoke":
     desc: "Run Ansible smoke checks"
     deps:
