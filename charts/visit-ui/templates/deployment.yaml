@@ -22,6 +22,9 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: VISIT_GATEWAY_URL
+              value: {{ .Values.env.visitGatewayUrl | quote }}
           ports:
             - name: http
               containerPort: {{ .Values.service.targetPort }}

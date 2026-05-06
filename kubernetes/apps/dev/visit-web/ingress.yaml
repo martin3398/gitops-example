@@ -12,13 +12,13 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: visit-gateway
+                name: visit-web-visit-gateway
                 port:
                   number: 80
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: visit-web
+                name: visit-web-visit-web
                 port:
                   number: 80
