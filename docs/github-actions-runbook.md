@@ -43,8 +43,14 @@ Set as GitHub secrets (sensitive):
 - `AWS_SECRET_ACCESS_KEY`
 - optional `AWS_SESSION_TOKEN`
 - `FLUX_GIT_SSH_PRIVATE_KEY_B64` (for `ansible-run` flux step)
-- optional `FLUX_GIT_KNOWN_HOSTS_B64` (if unset, workflow generates GitHub host key entry)
-- optional `GHCR_TOKEN` (defaults to GitHub token)
+- `FLUX_GIT_KNOWN_HOSTS_B64` (required by current `ansible-run` workflow)
+- optional `GHCR_TOKEN` (if unset in secrets, workflow defaults to GitHub token)
+
+GHCR auth behavior in `apps-build-publish`:
+
+- `GHCR_OWNER` defaults to `github.repository_owner` when not set.
+- `GHCR_USERNAME` defaults to `github.actor` when not set.
+- `GHCR_TOKEN` defaults to `${{ github.token }}` when not set.
 
 ## Manual workflow runs
 

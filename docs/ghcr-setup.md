@@ -2,7 +2,7 @@
 
 This runbook sets up private image build/push and deployment pulls for:
 
-- `visit-web`
+- `visit-ui` (container image used by the `visit-web` HelmRelease)
 - `visit-gateway`
 - `visit-processor`
 
@@ -25,6 +25,8 @@ Optional:
 - `GHCR_OWNER` (only if image namespace differs from `GHCR_USERNAME`)
 
 If `GHCR_OWNER` is not set, workflow defaults it to repository owner.
+If `GHCR_USERNAME` is not set, workflow defaults it to `github.actor`.
+If `GHCR_TOKEN` is not set, workflow defaults it to `${{ github.token }}`.
 
 These are used by `.github/workflows/apps-build-publish.yml`.
 
