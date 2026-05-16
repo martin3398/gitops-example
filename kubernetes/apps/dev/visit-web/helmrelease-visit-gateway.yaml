@@ -21,4 +21,4 @@ spec:
       - name: ghcr-pull
     image:
       repository: ghcr.io/martin3398/visit-gateway # {"$imagepolicy": "flux-system:visit-gateway:name"}
-      tag: v0.1.0 # {"$imagepolicy": "flux-system:visit-gateway:tag"}
+      tag: 20260516213746-0914a471 # {"$imagepolicy": "flux-system:visit-gateway:tag"}
