@@ -17,5 +17,6 @@ COPY --from=build /app/dist ./dist
 
 USER node
 EXPOSE 3000
+ENV NODE_ENV=production
 ENV LISTEN_ADDR=3000
 CMD ["npm", "run", "start"]
