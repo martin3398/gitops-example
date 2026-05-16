@@ -1,4 +1,6 @@
 import React from "react";
+import { VisitCounterClient } from "./components/VisitCounterClient.js";
+import { useStatusMessage } from "./hooks/useStatusMessage.js";
 
 type Props = {
   count: number;
@@ -7,6 +9,8 @@ type Props = {
 };
 
 export function App({ count, notice, error }: Props) {
+  const { message, toneClassName } = useStatusMessage({ notice, error });
+
   return (
     <html lang="en">
       <head>
@@ -15,7 +19,7 @@ export function App({ count, notice, error }: Props) {
         <title>Visit Counter</title>
         <style>{`
           :root { --bg: #f2efe8; --panel: #fffaf2; --text: #1f2937; --accent: #0f766e; }
-          body { margin: 0; font-family: "IBM Plex Sans", "Segoe UI", sans-serif; color: var(--text); background: radial-gradient(circle at top right, #dbeafe, var(--bg)); min-height: 100vh; display: grid; place-items: center; }
+          body { margin: 0; font-family: "Source Sans 3", "Trebuchet MS", "Gill Sans", sans-serif; color: var(--text); background: radial-gradient(circle at top right, #dbeafe, var(--bg)); min-height: 100vh; display: grid; place-items: center; }
           .card { background: var(--panel); border: 1px solid #d1d5db; border-radius: 14px; width: min(92vw, 560px); padding: 28px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08); }
           h1 { margin: 0 0 8px; }
           p { margin: 0 0 18px; }
@@ -28,19 +32,15 @@ export function App({ count, notice, error }: Props) {
         `}</style>
       </head>
       <body>
-        <main className="card">
-          <h1>Visit Counter</h1>
-          <p>Server-rendered count. Click queues a visit and re-renders with fresh data.</p>
-          <div className="row">
-            <form method="post" action="/visit">
-              <button type="submit">Register Visit</button>
-            </form>
-            <span>
-              Total visits: <strong className="count">{count}</strong>
-            </span>
-          </div>
-          <p className={`msg ${error ? "err" : "ok"}`}>{error ?? notice ?? ""}</p>
-        </main>
+        <div
+          id="app-root"
+          data-initial-count={String(count)}
+          data-initial-message={message}
+          data-initial-tone={toneClassName}
+        >
+          <VisitCounterClient initialCount={count} initialMessage={message} initialTone={toneClassName} />
+        </div>
+        <script type="module" src="/client.js"></script>
       </body>
     </html>
   );

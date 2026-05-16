@@ -42,4 +42,7 @@ __pycache__
 
 kubeconfig.*
 
+# Frontend build artifacts
+apps/visit-demo/visit-ui/dist/
+
 ai

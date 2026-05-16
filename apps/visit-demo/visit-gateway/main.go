@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +32,24 @@ type config struct {
 type visitEvent struct {
 	EventID   string    `json:"event_id"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type apiError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+type createVisitEventResponse struct {
+	Data struct {
+		Status string `json:"status"`
+		Queued int    `json:"queued"`
+	} `json:"data"`
+}
+
+type visitCountResponse struct {
+	Data struct {
+		Count int64 `json:"count"`
+	} `json:"data"`
 }
 
 func main() {
@@ -61,36 +80,36 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	mux.HandleFunc("/api/visits", func(w http.ResponseWriter, r *http.Request) {
+
+	handleCreateVisitEvent := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			writeAPIError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 			return
 		}
 
-		e := visitEvent{EventID: fmt.Sprintf("visit-%d", time.Now().UnixNano()), CreatedAt: time.Now().UTC()}
-		payload, err := json.Marshal(e)
+		count, err := parseCount(r.URL.Query().Get("count"))
 		if err != nil {
-			http.Error(w, "encode failed", http.StatusInternalServerError)
+			writeAPIError(w, http.StatusBadRequest, "invalid_count", "count must be an integer between 1 and 100")
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), cfg.requestTimeoutS*time.Second)
-		defer cancel()
-
-		if err := writer.WriteMessages(ctx, kafka.Message{Key: []byte(e.EventID), Value: payload}); err != nil {
-			log.Printf("kafka publish failed: %v", err)
-			http.Error(w, "queue publish failed", http.StatusServiceUnavailable)
-			return
+		for i := 0; i < count; i++ {
+			if err := enqueueVisitEvent(r.Context(), cfg.requestTimeoutS, writer); err != nil {
+				log.Printf("kafka publish failed: %v", err)
+				writeAPIError(w, http.StatusServiceUnavailable, "queue_publish_failed", "queue publish failed")
+				return
+			}
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusAccepted)
-		_ = json.NewEncoder(w).Encode(map[string]any{"status": "queued", "event_id": e.EventID})
-	})
+		response := createVisitEventResponse{}
+		response.Data.Status = "queued"
+		response.Data.Queued = count
+		writeJSON(w, http.StatusAccepted, response)
+	}
 
-	mux.HandleFunc("/api/visits/count", func(w http.ResponseWriter, r *http.Request) {
+	handleVisitCount := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			writeAPIError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 			return
 		}
 
@@ -100,13 +119,21 @@ func main() {
 		var count int64
 		if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM visits").Scan(&count); err != nil {
 			log.Printf("count query failed: %v", err)
-			http.Error(w, "db query failed", http.StatusServiceUnavailable)
+			writeAPIError(w, http.StatusServiceUnavailable, "db_query_failed", "db query failed")
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"count": count})
-	})
+		response := visitCountResponse{}
+		response.Data.Count = count
+		writeJSON(w, http.StatusOK, response)
+	}
+
+	mux.HandleFunc("/api/v1/visit-events", handleCreateVisitEvent)
+	mux.HandleFunc("/api/v1/visits/count", handleVisitCount)
+
+	// Backward-compatible routes for existing callers.
+	mux.HandleFunc("/api/visits", handleCreateVisitEvent)
+	mux.HandleFunc("/api/visits/count", handleVisitCount)
 
 	server := &http.Server{Addr: cfg.listenAddr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	log.Printf("visit-gateway listening on %s", cfg.listenAddr)
@@ -179,4 +206,38 @@ func splitCSV(v string) []string {
 		}
 	}
 	return out
+}
+
+func parseCount(raw string) (int, error) {
+	if raw == "" {
+		return 1, nil
+	}
+	count, err := strconv.Atoi(raw)
+	if err != nil || count < 1 || count > 100 {
+		return 0, fmt.Errorf("invalid count")
+	}
+	return count, nil
+}
+
+func enqueueVisitEvent(parent context.Context, timeoutS time.Duration, writer *kafka.Writer) error {
+	e := visitEvent{EventID: fmt.Sprintf("visit-%d", time.Now().UnixNano()), CreatedAt: time.Now().UTC()}
+	payload, err := json.Marshal(e)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(parent, timeoutS*time.Second)
+	defer cancel()
+	return writer.WriteMessages(ctx, kafka.Message{Key: []byte(e.EventID), Value: payload})
+}
+
+func writeAPIError(w http.ResponseWriter, status int, code, message string) {
+	writeJSON(w, status, map[string]apiError{"error": {Code: code, Message: message}})
+}
+
+func writeJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		log.Printf("json encode failed: %v", err)
+	}
 }
