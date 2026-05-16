@@ -232,7 +232,7 @@
   ansible.builtin.command: >-
     kubectl --kubeconfig /etc/kubernetes/admin.conf wait
     --for=condition=Ready
-    --timeout=15s
+    --timeout={{ flux_bootstrap_ready_wait_timeout }}
     gitrepositories.source.toolkit.fluxcd.io/dev-repo
     -n {{ flux_bootstrap_namespace }}
   register: flux_bootstrap_gitrepository_ready
@@ -242,30 +242,17 @@
   delay: "{{ flux_bootstrap_ready_delay }}"
   until: flux_bootstrap_gitrepository_ready.rc == 0
 
-- name: Wait for Flux platform Kustomization Ready condition with retry
+- name: Wait for Flux Kustomizations Ready condition with retry
   ansible.builtin.command: >-
     kubectl --kubeconfig /etc/kubernetes/admin.conf wait
     --for=condition=Ready
-    --timeout=15s
-    kustomizations.kustomize.toolkit.fluxcd.io/platform
+    --timeout={{ flux_bootstrap_ready_wait_timeout }}
+    kustomizations.kustomize.toolkit.fluxcd.io/{{ item }}
     -n {{ flux_bootstrap_namespace }}
-  register: flux_bootstrap_platform_ready
+  register: flux_bootstrap_kustomizations_ready_result
   changed_when: false
   failed_when: false
   retries: "{{ flux_bootstrap_ready_retries }}"
   delay: "{{ flux_bootstrap_ready_delay }}"
-  until: flux_bootstrap_platform_ready.rc == 0
-
-- name: Wait for Flux apps Kustomization Ready condition with retry
-  ansible.builtin.command: >-
-    kubectl --kubeconfig /etc/kubernetes/admin.conf wait
-    --for=condition=Ready
-    --timeout=15s
-    kustomizations.kustomize.toolkit.fluxcd.io/apps
-    -n {{ flux_bootstrap_namespace }}
-  register: flux_bootstrap_apps_ready
-  changed_when: false
-  failed_when: false
-  retries: "{{ flux_bootstrap_ready_retries }}"
-  delay: "{{ flux_bootstrap_ready_delay }}"
-  until: flux_bootstrap_apps_ready.rc == 0
+  until: flux_bootstrap_kustomizations_ready_result.rc == 0
+  loop: "{{ flux_bootstrap_kustomizations_ready }}"

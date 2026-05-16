@@ -13,8 +13,17 @@ flux_bootstrap_components:
   - image-automation-controller
 flux_bootstrap_interval: 5m
 flux_bootstrap_timeout: 5m
-flux_bootstrap_ready_retries: 30
-flux_bootstrap_ready_delay: 10
+flux_bootstrap_ready_retries: 60
+flux_bootstrap_ready_delay: 15
+flux_bootstrap_ready_wait_timeout: 30s
+flux_bootstrap_kustomizations_ready:
+  - platform-core
+  - platform-ingress
+  - platform-observability
+  - platform-data
+  - platform-apps
+  - app-visit-web
+  - app-visit-processing
 flux_bootstrap_arch_map:
   x86_64: amd64
   amd64: amd64
