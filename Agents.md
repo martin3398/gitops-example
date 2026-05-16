@@ -90,6 +90,8 @@ Phase 3 focus TODOs:
 - Vault lab: secret management integration for platform/app credentials
 - MongoDB lab: reproducible deployment + operations notes
 - Ceph lab: storage classes and stateful workload migration validation
+- Load generator lab: reproducible traffic scenarios to observe queue/throughput behavior
+- HPA lab: `visit-processor` autoscaling policy and tuning under load
 
 Exit criteria per tool:
 - Install is reproducible
@@ -101,10 +103,13 @@ Exit criteria per tool:
    - Velero for cluster resource backup/restore
    - Database-specific backup and restore tests
 2. Policy/Security:
+   - cluster-level authentication hardening and RBAC review
    - Kyverno (or OPA Gatekeeper)
    - Trivy image scanning in CI
    - baseline network policies
    - Pod security standards/admission configuration
+3. Update hygiene:
+   - Renovate automation for dependency and workflow updates
 
 Exit criteria:
 - Restore drill passes

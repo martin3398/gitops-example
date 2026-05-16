@@ -34,14 +34,18 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Cilium CNI
 - [x] Flux GitOps bootstrap automation
 - [x] ingress-nginx
-- [ ] cert-manager (deferred; out of scope for this AWS lab)
+- [x] cert-manager/HTTPS intentionally excluded from this AWS lab scope
 - [x] Monitoring/logging baseline (kube-prometheus-stack + Loki + Grafana)
 - [ ] Upgrade Loki to distributed mode on Ceph object storage (after Phase 3 Ceph lab)
 - [ ] Clean up temporary local-path storage and migrate stateful platform PVCs to Ceph storage classes
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
-- [~] Application GitOps delivery (visit-web + visit-gateway + visit-processor)
+- [x] Application GitOps delivery (visit-web + visit-gateway + visit-processor)
 - [x] Postgres baseline: CloudNativePG operator + dev cluster via Flux
 - [ ] Vault lab: secret management integration for platform/app credentials
+- [ ] Load generator lab: reproducible traffic scenarios for scaling validation
+- [ ] Autoscaling lab: HPA for `visit-processor` with measured scaling behavior
+- [ ] Cluster authentication hardening (cluster-level authn/authz only; no app-level auth scope)
+- [ ] Dependency/update automation baseline (Renovate for app/runtime/workflow updates)
 - [ ] Credential management hardening: replace demo/static secrets with managed credentials (GHCR pull secrets, Flux Git write credentials, app DB secrets rotation)
 - [x] Kafka baseline: Strimzi operator + 3-broker KRaft cluster via Flux (dev defaults)
 - [ ] Ceph lab: storage classes and stateful workload migration validation
@@ -53,6 +57,8 @@ Visit demo ownership model:
 - Flux deploys each service with its own `HelmRelease` under `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`
 - GitHub Actions builds and pushes each service image via `.github/workflows/apps-build-publish.yml`
 - image flow: CI publishes immutable timestamped tags (`YYYYMMDDHHmmSS-<8sha>`) and Flux tracks newest matching tags for automatic updates
+- `visit-ui` runtime architecture uses React Router SSR (Node server entry + browser hydration entry); initial count comes from a route loader and queueing uses direct browser calls to `/api/v1/visit-events`
+- ingress routing keeps API calls same-origin: `/api` is routed to `visit-gateway` and `/` is routed to `visit-ui`
 
 ### Delivery Steps
 
@@ -64,9 +70,9 @@ Visit demo ownership model:
 - [x] Phase 1.6: CI stages for Ansible (manual-gated)
 - [x] Phase 2.1: Flux bootstrap and repository structure under `kubernetes/`
 - [x] Phase 2.2a: ingress-nginx via Flux
-- [ ] Phase 2.2b (deferred): cert-manager via Flux
+- [x] Phase 2.2b: cert-manager/HTTPS intentionally excluded from this AWS lab scope
 - [x] Phase 2.3: Observability baseline via Flux
-- [x] Phase 2.4 (partial): Flux image automation wired for app image updates
+- [x] Phase 2.4: Flux image automation wired for app image updates
 - [~] Phase 3: Advanced tooling labs (in progress: Kafka + Postgres baselines)
 - [ ] Phase 4: Resilience + backup + policy/security hardening
 
@@ -96,17 +102,21 @@ Visit demo ownership model:
 ### Phase 2 - GitOps Platform + Workloads
 - Bootstrap Flux from repository Git source
 - Install platform add-ons via Helm through Flux
-- Deploy frontend + 1-2 microservices (sample app delivery still pending)
+- Deploy frontend + microservices via Flux with E2E queue/count verification
 - Postgres baseline is implemented as a platform data service via Flux
 - Add GitHub Actions workflows for build/test/publish and use Flux image automation for GitOps image updates
 
 ### Phase 3 - Advanced Tooling
 - Add Vault, MongoDB, Kafka, and Ceph one by one
 - Capture setup and operations notes for each
+- Add reproducible load-generation scenarios and document scaling observations
+- Implement and tune HPA for `visit-processor` under controlled load
 
 ### Phase 4 - Resilience, Backup, Policy & Security
 - Add Velero and validate restore drills
 - Add policy/security controls (Kyverno/Gatekeeper, Trivy, network policies)
+- Add cluster-level authentication hardening and RBAC review
+- Add Renovate automation for dependency and workflow update hygiene
 
 ## Repository Roadmap
 
@@ -218,7 +228,8 @@ Task groups:
 - Phase 1 infrastructure runbook: `docs/phase1-infra-runbook.md`
 - Kafka baseline runbook: `docs/kafka-runbook.md`
 - GHCR setup runbook: `docs/ghcr-setup.md`
-- GitHub Actions runbook: `docs/github-actions-runbook.md`
+  - GitHub Actions runbook: `docs/github-actions-runbook.md`
+  - Visit demo app runbook: `docs/visit-demo-runbook.md`
 - Ansible CI execution runbook: `docs/ansible-ci-runbook.md`
 
 ## Status
@@ -279,14 +290,15 @@ Established deployment model:
 - Git is the desired-state source of truth for cluster resources under `kubernetes/`.
 - Container registry is the artifact source (images/charts), not the desired-state source.
 - CI builds and publishes images; Flux selects allowed image tags and updates manifests via image automation.
+- Phase 2 application E2E verification (queue/count path through ingress) is completed.
 
 Current pipeline gates on `main`:
-- manual gate 1: `tofu:apply` provisions infrastructure and then runs the full Ansible sequence
-- manual gate 2: `tofu:destroy` tears everything down (requires `DESTROY_CONFIRM=yes`)
+- manual gate 1: `.github/workflows/opentofu-apply-destroy.yml` with `action=apply` provisions/updates infrastructure
+- manual gate 2: `.github/workflows/ansible-run.yml` runs the ordered Ansible bootstrap chain after apply
+- manual gate 3: `.github/workflows/opentofu-apply-destroy.yml` with `action=destroy` tears everything down (requires `destroy_confirm=yes`)
 
-Phase 2 remaining work:
-- HTTPS/certificate automation (for example, cert-manager) is intentionally deferred and out of scope
-- sample application stack implementation is in progress under `visit-web` and `visit-processing`
+Phase 2 status:
+- complete for defined AWS lab scope (HTTP ingress only; cert-manager/HTTPS intentionally excluded)
 
 Phase 3 current status:
 - Kafka baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/kafka/`

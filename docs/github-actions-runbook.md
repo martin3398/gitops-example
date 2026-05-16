@@ -25,6 +25,7 @@ This repository uses GitHub Actions for CI/CD workflows.
   - Tests services on PR/push
   - On `main` push, builds and publishes images to GHCR
   - Tag format: `YYYYMMDDHHmmSS-<8-char-git-sha>` and `sha-<8-char-git-sha>`
+  - `visit-ui` image build includes Node SSR runtime plus bundled browser client artifact
 
 ## Required GitHub Variables and Secrets
 
