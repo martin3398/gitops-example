@@ -82,7 +82,7 @@ resource "aws_instance" "worker" {
 }
 
 resource "aws_ebs_volume" "worker_ceph_osd" {
-  for_each = local.worker_nodes
+  for_each = local.ceph_worker_nodes
 
   availability_zone = local.selected_azs[each.value.az_index]
   size              = var.ceph_osd_volume_size_gb
@@ -97,7 +97,7 @@ resource "aws_ebs_volume" "worker_ceph_osd" {
 }
 
 resource "aws_volume_attachment" "worker_ceph_osd" {
-  for_each = local.worker_nodes
+  for_each = local.ceph_worker_nodes
 
   device_name = "/dev/sdf"
   volume_id   = aws_ebs_volume.worker_ceph_osd[each.key].id
