@@ -133,11 +133,29 @@
     --watch-all-namespaces=true
     --toleration-keys=node-role.kubernetes.io/control-plane
     --export |
+    kubectl --kubeconfig /etc/kubernetes/admin.conf diff -f -
+  args:
+    executable: /bin/bash
+  register: flux_bootstrap_install_diff
+  changed_when: flux_bootstrap_install_diff.rc == 1
+  failed_when: flux_bootstrap_install_diff.rc > 1
+
+- name: Apply Flux controllers
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    {{ flux_bootstrap_cli_path }} install
+    --namespace {{ flux_bootstrap_namespace }}
+    --components {{ flux_bootstrap_components | join(',') }}
+    --network-policy=false
+    --watch-all-namespaces=true
+    --toleration-keys=node-role.kubernetes.io/control-plane
+    --export |
     kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
   args:
     executable: /bin/bash
   register: flux_bootstrap_install_apply
-  changed_when: "'configured' in (flux_bootstrap_install_apply.stdout | default('')) or 'created' in (flux_bootstrap_install_apply.stdout | default(''))"
+  changed_when: true
+  when: flux_bootstrap_install_diff.rc == 1
 
 - name: Create temporary Flux sync directory
   ansible.builtin.file:
@@ -163,19 +181,45 @@
     --from-file=identity={{ flux_bootstrap_private_key_path }}
     --from-literal=known_hosts='{{ flux_git_known_hosts | replace("'", "'\"'\"'") }}'
     --dry-run=client -o yaml |
+    kubectl --kubeconfig /etc/kubernetes/admin.conf diff -f -
+  args:
+    executable: /bin/bash
+  register: flux_bootstrap_secret_diff
+  changed_when: flux_bootstrap_secret_diff.rc == 1
+  failed_when: flux_bootstrap_secret_diff.rc > 1
+  no_log: true
+
+- name: Apply Flux Git deploy key secret
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    kubectl --kubeconfig /etc/kubernetes/admin.conf create secret generic flux-system
+    --namespace {{ flux_bootstrap_namespace }}
+    --from-file=identity={{ flux_bootstrap_private_key_path }}
+    --from-literal=known_hosts='{{ flux_git_known_hosts | replace("'", "'\"'\"'") }}'
+    --dry-run=client -o yaml |
     kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
   args:
     executable: /bin/bash
   register: flux_bootstrap_secret_apply
-  changed_when: "'configured' in (flux_bootstrap_secret_apply.stdout | default('')) or 'created' in (flux_bootstrap_secret_apply.stdout | default(''))"
+  changed_when: true
   no_log: true
+  when: flux_bootstrap_secret_diff.rc == 1
+
+- name: Apply Flux source and kustomization manifests
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf diff
+    --kustomize /tmp/flux-sync
+  register: flux_bootstrap_sync_diff
+  changed_when: flux_bootstrap_sync_diff.rc == 1
+  failed_when: flux_bootstrap_sync_diff.rc > 1
 
 - name: Apply Flux source and kustomization manifests
   ansible.builtin.command: >-
     kubectl --kubeconfig /etc/kubernetes/admin.conf apply
     --kustomize /tmp/flux-sync
   register: flux_bootstrap_sync_apply
-  changed_when: "'configured' in (flux_bootstrap_sync_apply.stdout | default('')) or 'created' in (flux_bootstrap_sync_apply.stdout | default(''))"
+  changed_when: true
+  when: flux_bootstrap_sync_diff.rc == 1
 
 - name: Validate GHCR credentials pairing
   ansible.builtin.assert:

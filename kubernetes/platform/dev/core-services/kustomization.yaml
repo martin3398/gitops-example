@@ -5,3 +5,4 @@ resources:
   - operators/cloudnative-pg
   - operators/strimzi
   - storage/local-path-provisioner
+  - storage/rook-ceph-operator

@@ -5,7 +5,7 @@ This repository deploys a platform-owned Kafka baseline with Flux using Strimzi 
 ## Components
 
 - Strimzi operator: `kubernetes/platform/dev/core-services/operators/strimzi/`
-- Kafka cluster manifests: `kubernetes/platform/dev/data-platform/kafka/`
+- Kafka cluster manifests: `kubernetes/platform/dev/data-platform/services/kafka/`
 - Namespace: `data-kafka`
 
 ## Current Baseline

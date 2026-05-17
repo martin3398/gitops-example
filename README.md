@@ -283,7 +283,7 @@ Flux image automation for apps is implemented:
 
 Kafka baseline is now implemented via Flux:
 - Strimzi operator under `kubernetes/platform/dev/core-services/operators/strimzi/`
-- 3-broker KRaft Kafka cluster under `kubernetes/platform/dev/data-platform/kafka/`
+- 3-broker KRaft Kafka cluster under `kubernetes/platform/dev/data-platform/services/kafka/`
 - topic and user operators enabled for later tenant self-service templates
 
 Established deployment model:
@@ -301,6 +301,6 @@ Phase 2 status:
 - complete for defined AWS lab scope (HTTP ingress only; cert-manager/HTTPS intentionally excluded)
 
 Phase 3 current status:
-- Kafka baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/kafka/`
-- Postgres baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/postgres/` (dev-only defaults)
+- Kafka baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/services/kafka/`
+- Postgres baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/services/postgres/` (dev-only defaults)
 - Vault, MongoDB, and Ceph labs remain pending
