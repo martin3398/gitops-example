@@ -50,7 +50,7 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Kafka baseline: Strimzi operator + 3-broker KRaft cluster via Flux (dev defaults)
 - [ ] Ceph lab: storage classes and stateful workload migration validation
 - [ ] Backups (Velero + restore drill)
-- [ ] Policy/security controls (Kyverno/Gatekeeper, Trivy, network policies)
+- [~] Policy/security controls (Kyverno baseline implemented; Trivy and additional network policies pending)
 
 Visit demo ownership model:
 - each service has its own Helm chart under `charts/visit-ui`, `charts/visit-gateway`, and `charts/visit-processor`
@@ -89,7 +89,7 @@ Visit demo ownership model:
 - Monitoring/Logging: kube-prometheus-stack + Loki + Grafana
 - Application data: Postgres primary/replica
 - Advanced labs: Vault, MongoDB, Kafka, Ceph
-- Later-stage reliability/security: Velero, Kyverno/Gatekeeper, Trivy, baseline network policies
+- Later-stage reliability/security: Velero, Kyverno, Trivy, baseline network policies
 
 ## Delivery Plan
 
@@ -114,7 +114,7 @@ Visit demo ownership model:
 
 ### Phase 4 - Resilience, Backup, Policy & Security
 - Add Velero and validate restore drills
-- Add policy/security controls (Kyverno/Gatekeeper, Trivy, network policies)
+- Expand policy/security controls (build on Kyverno baseline; add Trivy and additional network policies)
 - Add cluster-level authentication hardening and RBAC review
 - Add Renovate automation for dependency and workflow update hygiene
 
@@ -227,6 +227,7 @@ Task groups:
   - Apps build/publish: `.github/workflows/apps-build-publish.yml`
 - Phase 1 infrastructure runbook: `docs/phase1-infra-runbook.md`
 - Kafka baseline runbook: `docs/kafka-runbook.md`
+- Kyverno baseline runbook: `docs/kyverno-runbook.md`
 - GHCR setup runbook: `docs/ghcr-setup.md`
   - GitHub Actions runbook: `docs/github-actions-runbook.md`
   - Visit demo app runbook: `docs/visit-demo-runbook.md`
@@ -290,6 +291,11 @@ Kafka baseline is now implemented via Flux:
 - Strimzi operator under `kubernetes/platform/dev/core-services/operators/strimzi/`
 - 3-broker KRaft Kafka cluster under `kubernetes/platform/dev/data-platform/services/kafka/`
 - topic and user operators enabled for later tenant self-service templates
+
+Kyverno baseline is now implemented via Flux:
+- Kyverno operator under `kubernetes/platform/dev/core-services/operators/kyverno/`
+- Active cluster policy set under `kubernetes/platform/dev/apps/policies/`
+- Current policy: soft non-Ceph node placement preference for general workloads
 
 Established deployment model:
 - Git is the desired-state source of truth for cluster resources under `kubernetes/`.
