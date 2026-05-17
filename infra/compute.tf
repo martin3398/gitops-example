@@ -80,3 +80,26 @@ resource "aws_instance" "worker" {
     Node = each.key
   })
 }
+
+resource "aws_ebs_volume" "worker_ceph_osd" {
+  for_each = local.worker_nodes
+
+  availability_zone = local.selected_azs[each.value.az_index]
+  size              = var.ceph_osd_volume_size_gb
+  type              = "gp3"
+  encrypted         = true
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-${each.key}-ceph-osd-1"
+    Role = "worker-ceph-osd"
+    Node = each.key
+  })
+}
+
+resource "aws_volume_attachment" "worker_ceph_osd" {
+  for_each = local.worker_nodes
+
+  device_name = "/dev/sdf"
+  volume_id   = aws_ebs_volume.worker_ceph_osd[each.key].id
+  instance_id = aws_instance.worker[each.key].id
+}

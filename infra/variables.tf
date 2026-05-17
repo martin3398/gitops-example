@@ -120,6 +120,12 @@ variable "root_volume_size_gb" {
   default     = 40
 }
 
+variable "ceph_osd_volume_size_gb" {
+  description = "Ceph OSD EBS volume size in GiB for each worker node"
+  type        = number
+  default     = 20
+}
+
 variable "ssh_key_name" {
   description = "Optional EC2 key pair name for SSH access"
   type        = string

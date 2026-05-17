@@ -41,6 +41,13 @@ output "worker_private_ips" {
   }
 }
 
+output "worker_ceph_osd_volume_ids" {
+  description = "Ceph OSD EBS volume IDs attached to worker nodes"
+  value = {
+    for node, volume in aws_ebs_volume.worker_ceph_osd : node => volume.id
+  }
+}
+
 output "instance_ids" {
   description = "All node instance IDs by role"
   value = {
