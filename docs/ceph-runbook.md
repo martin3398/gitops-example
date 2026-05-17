@@ -17,6 +17,20 @@ This runbook covers the Ceph baseline deployed by Flux with Rook.
 - `kubernetes/platform/dev/data-platform/ceph/storageclass-ceph-block.yaml`
 - `kubernetes/platform/dev/data-platform/ceph/toolbox.yaml`
 
+## Reconciliation Order
+
+Ceph is split across Flux Kustomizations to avoid CRD dry-run races:
+
+- `platform-core` installs operators, including `rook-ceph`.
+- `platform-data-ceph` applies Ceph CRs (`CephCluster`, `CephBlockPool`, `StorageClass`).
+- `platform-data-services` applies service workloads (Kafka, Postgres) after Ceph.
+
+The order is enforced by Flux `dependsOn` in:
+
+- `kubernetes/flux/clusters/dev/kustomization-platform-core.yaml`
+- `kubernetes/flux/clusters/dev/kustomization-platform-data-ceph.yaml`
+- `kubernetes/flux/clusters/dev/kustomization-platform-data-services.yaml`
+
 ## Device Selection Model
 
 Ceph is configured with an explicit device-path filter:
@@ -24,6 +38,12 @@ Ceph is configured with an explicit device-path filter:
 - `devicePathFilter: ^/dev/nvme1n1$`
 
 This targets the first non-root NVMe disk on each worker that OpenTofu attaches for Ceph OSD use.
+
+Current worker model:
+
+- 6 workers total for workload capacity.
+- Ceph OSD data disks are attached only to `worker-1`, `worker-2`, and `worker-3`.
+- Ceph therefore uses only nodes that expose `/dev/nvme1n1`.
 
 ## Validation
 

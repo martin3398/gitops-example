@@ -277,6 +277,11 @@ GitOps structure and Flux-managed charts are implemented:
 - platform ingress chart: `kubernetes/platform/dev/ingress-nginx/`
 - app stacks: `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`
 
+Flux dependency split for data platform:
+- `platform-core` installs operators/CRDs (`cloudnative-pg`, `strimzi`, `rook-ceph`)
+- `platform-data-ceph` applies Ceph cluster resources under `kubernetes/platform/dev/data-platform/ceph/`
+- `platform-data-services` applies Kafka/Postgres under `kubernetes/platform/dev/data-platform/services/`
+
 Flux image automation for apps is implemented:
 - `ImageRepository`, `ImagePolicy`, and `ImageUpdateAutomation` for `visit-web`, `visit-gateway`, and `visit-processor`
 - image updates commit directly to `main` and are then reconciled by Flux
@@ -303,4 +308,5 @@ Phase 2 status:
 Phase 3 current status:
 - Kafka baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/services/kafka/`
 - Postgres baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/services/postgres/` (dev-only defaults)
-- Vault, MongoDB, and Ceph labs remain pending
+- Ceph baseline is in progress via Rook (`core` operator + `data-platform/ceph` resources; migration pending)
+- Vault and MongoDB labs remain pending
