@@ -36,6 +36,16 @@ spec:
     alertmanager:
       alertmanagerSpec:
         replicas: 1
+        affinity:
+          nodeAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                preference:
+                  matchExpressions:
+                    - key: storage
+                      operator: NotIn
+                      values:
+                        - ceph
         retention: 120h
         storage:
           volumeClaimTemplate:
@@ -55,6 +65,16 @@ spec:
             memory: 512Mi
     grafana:
       defaultDashboardsEnabled: true
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: storage
+                    operator: NotIn
+                    values:
+                      - ceph
       sidecar:
         dashboards:
           searchNamespace: ALL
@@ -95,6 +115,16 @@ spec:
               interval: 30s
       prometheusSpec:
         replicas: 1
+        affinity:
+          nodeAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                preference:
+                  matchExpressions:
+                    - key: storage
+                      operator: NotIn
+                      values:
+                        - ceph
         retention: 15d
         retentionSize: 40GB
         scrapeInterval: 30s

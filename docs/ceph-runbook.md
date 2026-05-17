@@ -45,6 +45,27 @@ Current worker model:
 - Ceph OSD data disks are attached only to `worker-1`, `worker-2`, and `worker-3`.
 - Ceph therefore uses only nodes that expose `/dev/nvme1n1`.
 
+## Placement Policy for Non-Ceph Workloads
+
+Kyverno applies a soft scheduling preference for general workloads to avoid Ceph nodes:
+
+- Policy: `kubernetes/platform/dev/apps/policies/clusterpolicy-prefer-non-ceph-nodes.yaml`
+- Behavior: injects `preferredDuringSchedulingIgnoredDuringExecution` for `storage NotIn [ceph]`
+- Scope: Deployments/StatefulSets/DaemonSets/Jobs/CronJobs in application namespaces
+- Excludes: system and platform namespaces (`kube-system`, `flux-system`, `kyverno`, `rook-ceph`, `local-path-storage`, `monitoring`, `data-kafka`, `data-postgres`)
+
+Opt out for a specific workload by setting label:
+
+- `placement.gitops-showcase.io/allow-ceph-nodes: "true"`
+
+Label storage workers:
+
+```bash
+kubectl label node worker-1 storage=ceph
+kubectl label node worker-2 storage=ceph
+kubectl label node worker-3 storage=ceph
+```
+
 ## Validation
 
 1. Check Flux reconciliation:

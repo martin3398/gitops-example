@@ -1,0 +1,49 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: prefer-non-ceph-nodes
+spec:
+  background: false
+  validationFailureAction: Audit
+  rules:
+    - name: add-soft-non-ceph-affinity
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+                - Job
+                - CronJob
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - flux-system
+                - kyverno
+                - rook-ceph
+                - local-path-storage
+                - monitoring
+                - data-kafka
+                - data-postgres
+          - resources:
+              selector:
+                matchLabels:
+                  placement.gitops-showcase.io/allow-ceph-nodes: "true"
+      mutate:
+        patchStrategicMerge:
+          spec:
+            template:
+              spec:
+                affinity:
+                  nodeAffinity:
+                    preferredDuringSchedulingIgnoredDuringExecution:
+                      - weight: 100
+                        preference:
+                          matchExpressions:
+                            - key: storage
+                              operator: NotIn
+                              values:
+                                - ceph

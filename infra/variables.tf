@@ -111,7 +111,7 @@ variable "control_plane_instance_type" {
 variable "worker_instance_type" {
   description = "EC2 instance type for worker nodes"
   type        = string
-  default     = "t3.large"
+  default     = "m6i.xlarge"
 }
 
 variable "root_volume_size_gb" {

@@ -5,6 +5,16 @@ metadata:
   namespace: data-postgres
 spec:
   instances: 3
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: storage
+                operator: NotIn
+                values:
+                  - ceph
   imageName: ghcr.io/cloudnative-pg/postgresql:16
   storage:
     size: 1Gi

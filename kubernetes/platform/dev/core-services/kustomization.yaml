@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - metrics-server
   - operators/cloudnative-pg
+  - operators/kyverno
   - operators/strimzi
   - storage/local-path-provisioner
   - storage/rook-ceph-operator

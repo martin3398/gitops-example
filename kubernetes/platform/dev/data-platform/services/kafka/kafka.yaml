@@ -10,6 +10,18 @@ spec:
   roles:
     - controller
     - broker
+  template:
+    pod:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: storage
+                    operator: NotIn
+                    values:
+                      - ceph
   storage:
     type: jbod
     volumes:

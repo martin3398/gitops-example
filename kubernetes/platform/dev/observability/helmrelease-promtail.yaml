@@ -25,6 +25,16 @@ spec:
         name: grafana
         namespace: flux-system
   values:
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: storage
+                  operator: NotIn
+                  values:
+                    - ceph
     config:
       clients:
         - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push

@@ -51,6 +51,16 @@ spec:
         retention_period: 336h
     singleBinary:
       replicas: 1
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: storage
+                    operator: NotIn
+                    values:
+                      - ceph
       persistence:
         enabled: true
         storageClass: local-path
