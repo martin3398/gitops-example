@@ -35,7 +35,7 @@ spec:
       enabled: false
     alertmanager:
       alertmanagerSpec:
-        replicas: 3
+        replicas: 1
         retention: 120h
         storage:
           volumeClaimTemplate:
@@ -48,11 +48,11 @@ spec:
                   storage: 10Gi
         resources:
           requests:
-            cpu: 200m
-            memory: 256Mi
+            cpu: 100m
+            memory: 128Mi
           limits:
-            cpu: "1"
-            memory: 1Gi
+            cpu: 500m
+            memory: 512Mi
     grafana:
       defaultDashboardsEnabled: true
       sidecar:
@@ -64,11 +64,11 @@ spec:
         size: 10Gi
       resources:
         requests:
-          cpu: 250m
-          memory: 512Mi
+          cpu: 100m
+          memory: 256Mi
         limits:
-          cpu: "1"
-          memory: 1Gi
+          cpu: 500m
+          memory: 512Mi
       grafana.ini:
         server:
           root_url: "%(protocol)s://%(domain)s/grafana"
@@ -94,7 +94,7 @@ spec:
             - port: http-prom
               interval: 30s
       prometheusSpec:
-        replicas: 2
+        replicas: 1
         retention: 15d
         retentionSize: 40GB
         scrapeInterval: 30s
@@ -113,8 +113,8 @@ spec:
                   storage: 50Gi
         resources:
           requests:
-            cpu: 500m
-            memory: 2Gi
+            cpu: 250m
+            memory: 1Gi
           limits:
-            cpu: "2"
-            memory: 4Gi
+            cpu: "1"
+            memory: 2Gi
