@@ -75,7 +75,7 @@ kubectl -n flux-system get kustomizations,helmreleases
 
 ## Next Scope (Roadmap Sync)
 
-- Vault lab and Ceph lab remain pending and tracked as next major platform labs.
+- Vault lab remains pending and tracked as next major platform lab.
 - Add load generator scenarios to validate throughput and queue behavior under controlled traffic.
 - Implement and tune HPA for `visit-processor` based on measured load behavior.
 - Apply cluster-level authentication hardening (authn/authz and RBAC), excluding app-level auth features.

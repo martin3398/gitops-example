@@ -7,7 +7,8 @@ This runbook covers the Ceph baseline deployed by Flux with Rook.
 - Rook operator and Ceph cluster run in `rook-ceph` namespace.
 - Worker data disks from OpenTofu are consumed as OSD devices.
 - Storage class `ceph-block` is created for dynamic PVC provisioning.
-- `local-path` remains available and default during this phase.
+- `ceph-block` is the default StorageClass for platform workloads.
+- Local-path provisioner is not part of the platform baseline.
 
 ## Manifests
 
@@ -52,7 +53,7 @@ Kyverno applies a soft scheduling preference for general workloads to avoid Ceph
 - Policy: `kubernetes/platform/dev/apps/policies/clusterpolicy-prefer-non-ceph-nodes.yaml`
 - Behavior: injects `preferredDuringSchedulingIgnoredDuringExecution` for `storage NotIn [ceph]`
 - Scope: Deployments/StatefulSets/DaemonSets/Jobs/CronJobs in application namespaces
-- Excludes: system and platform namespaces (`kube-system`, `flux-system`, `kyverno`, `rook-ceph`, `local-path-storage`, `monitoring`, `data-kafka`, `data-postgres`)
+- Excludes: system and platform namespaces (`kube-system`, `flux-system`, `kyverno`, `rook-ceph`, `monitoring`, `data-kafka`, `data-postgres`)
 
 Opt out for a specific workload by setting label:
 
@@ -135,6 +136,14 @@ kubectl get pvc ceph-block-smoke
 kubectl logs ceph-block-smoke
 kubectl delete pod ceph-block-smoke
 kubectl delete pvc ceph-block-smoke
+```
+
+5. Confirm platform PVCs are on Ceph:
+
+```bash
+kubectl -n monitoring get pvc -o wide
+kubectl -n data-kafka get pvc -o wide
+kubectl -n data-postgres get pvc -o wide
 ```
 
 ## Troubleshooting

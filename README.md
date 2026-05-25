@@ -37,7 +37,6 @@ Use this as the single source of truth for what is done and what is next.
 - [x] cert-manager/HTTPS intentionally excluded from this AWS lab scope
 - [x] Monitoring/logging baseline (kube-prometheus-stack + Loki + Grafana)
 - [ ] Upgrade Loki to distributed mode on Ceph object storage (after Phase 3 Ceph lab)
-- [ ] Clean up temporary local-path storage and migrate stateful platform PVCs to Ceph storage classes
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
 - [x] Application GitOps delivery (visit-web + visit-gateway + visit-processor)
 - [x] Postgres baseline: CloudNativePG operator + dev cluster via Flux
@@ -48,9 +47,8 @@ Use this as the single source of truth for what is done and what is next.
 - [ ] Dependency/update automation baseline (Renovate for app/runtime/workflow updates)
 - [ ] Credential management hardening: replace demo/static secrets with managed credentials (GHCR pull secrets, Flux Git write credentials, app DB secrets rotation)
 - [x] Kafka baseline: Strimzi operator + 3-broker KRaft cluster via Flux (dev defaults)
-- [ ] Ceph lab: storage classes and stateful workload migration validation
+- [x] Ceph lab: storage classes and stateful workload migration validation
 - [ ] Backups (Velero + restore drill)
-- [~] Policy/security controls (Kyverno baseline implemented; Trivy and additional network policies pending)
 
 Visit demo ownership model:
 - each service has its own Helm chart under `charts/visit-ui`, `charts/visit-gateway`, and `charts/visit-processor`
@@ -73,7 +71,6 @@ Visit demo ownership model:
 - [x] Phase 2.2b: cert-manager/HTTPS intentionally excluded from this AWS lab scope
 - [x] Phase 2.3: Observability baseline via Flux
 - [x] Phase 2.4: Flux image automation wired for app image updates
-- [~] Phase 3: Advanced tooling labs (in progress: Kafka + Postgres baselines)
 - [ ] Phase 4: Resilience + backup + policy/security hardening
 
 ## Stack (Planned)
@@ -135,6 +132,7 @@ Planned layout:
 - Ansible manages host setup and cluster bootstrap only.
 - Flux manages all long-lived Kubernetes resources.
 - Avoid manual drift: persistent changes should be committed to Git.
+- Storage default is `ceph-block`; local-path provisioner is not part of the platform baseline.
 
 ## Environment Naming
 
@@ -314,5 +312,5 @@ Phase 2 status:
 Phase 3 current status:
 - Kafka baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/services/kafka/`
 - Postgres baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/services/postgres/` (dev-only defaults)
-- Ceph baseline is in progress via Rook (`core` operator + `data-platform/ceph` resources; migration pending)
+- Ceph baseline is implemented via Rook, with `ceph-block` as the default StorageClass
 - Vault and MongoDB labs remain pending

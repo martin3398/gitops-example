@@ -19,8 +19,7 @@ This repository deploys a platform-owned Kafka baseline with Flux using Strimzi 
 
 ## Storage
 
-- Persistent volume claims use `local-path` in this dev baseline.
-- Plan migration to Ceph-backed storage classes in the Ceph phase.
+- Persistent volume claims use `ceph-block` in this dev baseline.
 
 ## Validation
 
@@ -30,6 +29,7 @@ Use a workstation with cluster access:
 kubectl -n data-kafka get pods
 kubectl -n data-kafka get kafka
 kubectl -n data-kafka get kafkanodepools
+kubectl -n data-kafka get pvc -o wide
 ```
 
 Check Kafka readiness details:
