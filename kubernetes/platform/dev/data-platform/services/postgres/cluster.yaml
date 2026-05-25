@@ -18,6 +18,7 @@ spec:
   imageName: ghcr.io/cloudnative-pg/postgresql:16
   storage:
     size: 1Gi
+    storageClass: ceph-block
   resources:
     requests:
       cpu: 50m

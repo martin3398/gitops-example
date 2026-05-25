@@ -6,8 +6,6 @@ metadata:
 spec:
   interval: 10m
   timeout: 15m
-  dependsOn:
-    - name: local-path-provisioner
   targetNamespace: monitoring
   install:
     createNamespace: true
@@ -63,7 +61,7 @@ spec:
                       - ceph
       persistence:
         enabled: true
-        storageClass: local-path
+        storageClass: ceph-block
         size: 80Gi
       resources:
         requests:
