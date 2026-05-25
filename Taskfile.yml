@@ -9,10 +9,20 @@ vars:
   ANSIBLE_CONFIG_FILE: ansible/ansible.cfg
   VENV_PYTHON: .venv/bin/python3
   VENV_ANSIBLE: .venv/bin/ansible
+  VENV_ANSIBLE_GALAXY: .venv/bin/ansible-galaxy
   VENV_ANSIBLE_PLAYBOOK: .venv/bin/ansible-playbook
   VENV_ANSIBLE_INVENTORY: .venv/bin/ansible-inventory
 
 tasks:
+  "venv:install":
+    desc: "Create .venv and install Python + Ansible dependencies"
+    cmds:
+      - 'python3 -m venv .venv'
+      - '{{.VENV_PYTHON}} -m pip install --upgrade pip'
+      - '{{.VENV_PYTHON}} -m pip install -r ansible/python-requirements.txt'
+      - '{{.VENV_ANSIBLE}} --version'
+      - '{{.VENV_ANSIBLE_GALAXY}} collection install -r ansible/requirements.yml'
+
   "venv:check":
     internal: true
     preconditions:
