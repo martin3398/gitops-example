@@ -6,6 +6,7 @@ resources:
   - kustomization-platform-apps.yaml
   - kustomization-platform-ingress.yaml
   - kustomization-platform-observability.yaml
+  - kustomization-platform-security.yaml
   - kustomization-platform-data-ceph.yaml
   - kustomization-platform-data-services.yaml
   - kustomization-app-visit-web.yaml
