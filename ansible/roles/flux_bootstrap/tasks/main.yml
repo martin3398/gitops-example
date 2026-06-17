@@ -285,36 +285,3 @@
   retries: "{{ flux_bootstrap_ready_retries }}"
   delay: "{{ flux_bootstrap_ready_delay }}"
   until: flux_bootstrap_gitrepository_ready.rc == 0
-
-- name: Read Flux cluster entrypoint kustomization
-  ansible.builtin.slurp:
-    src: /tmp/flux-sync/kustomization.yaml
-  register: flux_bootstrap_cluster_kustomization_slurp
-
-- name: Build Flux kustomization wait list from cluster entrypoint
-  ansible.builtin.set_fact:
-    flux_bootstrap_kustomizations_ready: >-
-      {{
-        (
-          (flux_bootstrap_cluster_kustomization_slurp.content | b64decode | from_yaml).resources
-          | default([])
-          | select('match', '^kustomization-.*\\.yaml$')
-          | map('regex_replace', '^kustomization-(.*)\\.yaml$', '\\1')
-          | list
-        )
-      }}
-
-- name: Wait for Flux Kustomizations Ready condition with retry
-  ansible.builtin.command: >-
-    kubectl --kubeconfig /etc/kubernetes/admin.conf wait
-    --for=condition=Ready
-    --timeout={{ flux_bootstrap_ready_wait_timeout }}
-    kustomizations.kustomize.toolkit.fluxcd.io/{{ item }}
-    -n {{ flux_bootstrap_namespace }}
-  register: flux_bootstrap_kustomizations_ready_result
-  changed_when: false
-  failed_when: false
-  retries: "{{ flux_bootstrap_ready_retries }}"
-  delay: "{{ flux_bootstrap_ready_delay }}"
-  until: flux_bootstrap_kustomizations_ready_result.rc == 0
-  loop: "{{ flux_bootstrap_kustomizations_ready }}"
