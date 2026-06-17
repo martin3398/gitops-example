@@ -12,6 +12,7 @@ vars:
   VENV_ANSIBLE_GALAXY: .venv/bin/ansible-galaxy
   VENV_ANSIBLE_PLAYBOOK: .venv/bin/ansible-playbook
   VENV_ANSIBLE_INVENTORY: .venv/bin/ansible-inventory
+  KUBECONFIG_FILE: ./kubeconfig.dev
 
 tasks:
   "venv:install":
@@ -273,3 +274,95 @@ tasks:
       - task: "tofu:plan"
       - task: "tofu:apply"
       - task: "ansible:all"
+
+  "openbao:hosts_entries":
+    desc: "Print /etc/hosts entries for bao.gitops.local"
+    preconditions:
+      - sh: 'command -v tofu >/dev/null 2>&1'
+        msg: "tofu is required in PATH"
+      - sh: 'test -n "$(tofu -chdir=infra output -raw ingress_public_endpoint 2>/dev/null)"'
+        msg: "Missing ingress_public_endpoint output. Run task tofu:apply first and enable public ingress."
+    cmds:
+      - |
+        host="$(tofu -chdir=infra output -raw ingress_public_endpoint)"
+        getent ahostsv4 "$host" | awk '{print $1}' | sort -u | while read -r ip; do
+          printf '%s bao.gitops.local\n' "$ip"
+        done
+
+  "openbao:status":
+    desc: "Show OpenBao status from first pod"
+    preconditions:
+      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
+        msg: "Missing ./kubeconfig.dev. Run task openbao:kubeconfig first."
+    cmds:
+      - |
+        set +e
+        KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao exec openbao-openbao-0 -- bao status
+        status=$?
+        set -e
+        if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+          exit "$status"
+        fi
+
+  "openbao:init":
+    desc: "Initialize OpenBao (interactive, one-time per fresh cluster)"
+    preconditions:
+      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
+        msg: "Missing ./kubeconfig.dev. Run task openbao:kubeconfig first."
+    cmds:
+      - |
+        set +e
+        output="$(KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao exec -i openbao-openbao-0 -- bao operator init -key-shares=5 -key-threshold=3 2>&1)"
+        status=$?
+        set -e
+        printf "%s\n" "$output"
+        if [ "$status" -ne 0 ]; then
+          case "$output" in
+            *"already initialized"*)
+              printf "OpenBao is already initialized; continuing.\n"
+              ;;
+            *)
+              exit "$status"
+              ;;
+          esac
+        fi
+
+  "openbao:unseal":
+    desc: "Unseal OpenBao pods (interactive key prompt)"
+    preconditions:
+      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
+        msg: "Missing ./kubeconfig.dev. Run task openbao:kubeconfig first."
+    cmds:
+      - 'KUBECONFIG="{{.KUBECONFIG_FILE}}" bash scripts/openbao/unseal.sh'
+
+  "openbao:bootstrap_auth":
+    desc: "Configure OpenBao Kubernetes auth and ESO role"
+    preconditions:
+      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
+        msg: "Missing ./kubeconfig.dev. Run task openbao:kubeconfig first."
+    cmds:
+      - 'KUBECONFIG="{{.KUBECONFIG_FILE}}" bash scripts/openbao/bootstrap-auth.sh'
+
+  "openbao:seed_dev":
+    desc: "Seed deterministic dev secrets into OpenBao"
+    preconditions:
+      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
+        msg: "Missing ./kubeconfig.dev. Run task openbao:kubeconfig first."
+    cmds:
+      - |
+        if [ -z "${OPENBAO_TOKEN:-}" ]; then
+          read -rsp "OpenBao token: " OPENBAO_TOKEN
+          echo
+          export OPENBAO_TOKEN
+        fi
+        KUBECONFIG="{{.KUBECONFIG_FILE}}" bash scripts/openbao/seed-dev-secrets.sh
+
+  "openbao:bootstrap_all":
+    desc: "Run interactive OpenBao bootstrap sequence"
+    cmds:
+      - task: "anible:get_kubeconfig"
+      - task: "openbao:status"
+      - task: "openbao:init"
+      - task: "openbao:unseal"
+      - task: "openbao:bootstrap_auth"
+      - task: "openbao:seed_dev"
