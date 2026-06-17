@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - namespace-web.yaml
-  - secret-web.yaml
+  - externalsecret-web.yaml
   - ingress.yaml
   - helmrelease-visit-web.yaml
   - helmrelease-visit-gateway.yaml

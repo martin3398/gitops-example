@@ -12,7 +12,7 @@ vars:
   VENV_ANSIBLE_GALAXY: .venv/bin/ansible-galaxy
   VENV_ANSIBLE_PLAYBOOK: .venv/bin/ansible-playbook
   VENV_ANSIBLE_INVENTORY: .venv/bin/ansible-inventory
-  KUBECONFIG_FILE: ./kubeconfig.dev
+  KUBECONFIG_FILE: "{{.TASKFILE_DIR}}/kubeconfig.dev"
 
 tasks:
   "venv:install":
@@ -103,6 +103,7 @@ tasks:
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/runtime.yml"
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/cluster-bootstrap.yml"
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/flux-bootstrap.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/openbao-bootstrap.yml"
 
   "ansible:inventory":
     desc: "Generate Ansible inventory from infra outputs"
@@ -229,22 +230,22 @@ tasks:
       - sh: 'test -f "{{.INVENTORY}}"'
         msg: "Missing ansible inventory file. Run task ansible:inventory first."
     cmds:
-      - '{{.VENV_ANSIBLE}} control_plane[0] -i "{{.INVENTORY}}" -b -m ansible.builtin.fetch -a "src=/etc/kubernetes/admin.conf dest=./kubeconfig.dev flat=true"'
-      - 'chmod 600 ./kubeconfig.dev'
+      - '{{.VENV_ANSIBLE}} control_plane[0] -i "{{.INVENTORY}}" -b -m ansible.builtin.fetch -a "src=/etc/kubernetes/admin.conf dest={{.KUBECONFIG_FILE}} flat=true"'
+      - 'chmod 600 "{{.KUBECONFIG_FILE}}"'
 
   "ansible:kubeconfig_public_endpoint":
     desc: "Point local kubeconfig at external API endpoint"
     internal: true
     preconditions:
-      - sh: 'test -f "./kubeconfig.dev"'
-        msg: "Missing ./kubeconfig.dev. Run task ansible:get_kubeconfig first."
+      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
+        msg: "Missing {{.KUBECONFIG_FILE}}. Run task ansible:get_kubeconfig first."
       - sh: 'command -v kubectl >/dev/null 2>&1'
         msg: "kubectl is required in PATH"
       - sh: 'test -n "$(tofu -chdir=infra output -raw kubernetes_api_endpoint)"'
         msg: "Missing kubernetes_api_endpoint output. Run task tofu:apply first."
     cmds:
-      - 'endpoint="$(tofu -chdir=infra output -raw kubernetes_api_endpoint)" && kubectl config set-cluster kubernetes --server="https://${endpoint}" --kubeconfig ./kubeconfig.dev'
-      - 'chmod 600 ./kubeconfig.dev'
+      - 'endpoint="$(tofu -chdir=infra output -raw kubernetes_api_endpoint)" && kubectl config set-cluster kubernetes --server="https://${endpoint}" --kubeconfig "{{.KUBECONFIG_FILE}}"'
+      - 'chmod 600 "{{.KUBECONFIG_FILE}}"'
 
   "ansible:get_kubeconfig_public":
     desc: "Fetch kubeconfig and point it to external API endpoint"
@@ -260,7 +261,6 @@ tasks:
       - task: "ansible:base"
       - task: "ansible:runtime"
       - task: "ansible:bootstrap"
-      - task: "ansible:flux_bootstrap"
 
   "pipeline:check":
     desc: "Run local checks equivalent to CI check stages"
@@ -293,76 +293,26 @@ tasks:
     desc: "Show OpenBao status from first pod"
     preconditions:
       - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
-        msg: "Missing ./kubeconfig.dev. Run task openbao:kubeconfig first."
+        msg: "Missing {{.KUBECONFIG_FILE}}. Run task ansible:get_kubeconfig_public first."
     cmds:
       - |
         set +e
-        KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao exec openbao-openbao-0 -- bao status
+        KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao exec openbao-0 -- bao status
         status=$?
         set -e
         if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
           exit "$status"
         fi
 
-  "openbao:init":
-    desc: "Initialize OpenBao (interactive, one-time per fresh cluster)"
-    preconditions:
-      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
-        msg: "Missing ./kubeconfig.dev. Run task openbao:kubeconfig first."
-    cmds:
-      - |
-        set +e
-        output="$(KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao exec -i openbao-openbao-0 -- bao operator init -key-shares=5 -key-threshold=3 2>&1)"
-        status=$?
-        set -e
-        printf "%s\n" "$output"
-        if [ "$status" -ne 0 ]; then
-          case "$output" in
-            *"already initialized"*)
-              printf "OpenBao is already initialized; continuing.\n"
-              ;;
-            *)
-              exit "$status"
-              ;;
-          esac
-        fi
-
-  "openbao:unseal":
-    desc: "Unseal OpenBao pods (interactive key prompt)"
-    preconditions:
-      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
-        msg: "Missing ./kubeconfig.dev. Run task openbao:kubeconfig first."
-    cmds:
-      - 'KUBECONFIG="{{.KUBECONFIG_FILE}}" bash scripts/openbao/unseal.sh'
-
-  "openbao:bootstrap_auth":
-    desc: "Configure OpenBao Kubernetes auth and ESO role"
-    preconditions:
-      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
-        msg: "Missing ./kubeconfig.dev. Run task openbao:kubeconfig first."
-    cmds:
-      - 'KUBECONFIG="{{.KUBECONFIG_FILE}}" bash scripts/openbao/bootstrap-auth.sh'
-
-  "openbao:seed_dev":
-    desc: "Seed deterministic dev secrets into OpenBao"
-    preconditions:
-      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
-        msg: "Missing ./kubeconfig.dev. Run task openbao:kubeconfig first."
-    cmds:
-      - |
-        if [ -z "${OPENBAO_TOKEN:-}" ]; then
-          read -rsp "OpenBao token: " OPENBAO_TOKEN
-          echo
-          export OPENBAO_TOKEN
-        fi
-        KUBECONFIG="{{.KUBECONFIG_FILE}}" bash scripts/openbao/seed-dev-secrets.sh
-
   "openbao:bootstrap_all":
-    desc: "Run interactive OpenBao bootstrap sequence"
+    desc: "Run Ansible OpenBao init, join, unseal, auth, and seed sequence"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+      KUBECONFIG: "{{.KUBECONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
+        msg: "Missing {{.KUBECONFIG_FILE}}. Run task ansible:get_kubeconfig_public first."
     cmds:
-      - task: "anible:get_kubeconfig"
-      - task: "openbao:status"
-      - task: "openbao:init"
-      - task: "openbao:unseal"
-      - task: "openbao:bootstrap_auth"
-      - task: "openbao:seed_dev"
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "localhost," ansible/playbooks/openbao-bootstrap.yml -e openbao_kubeconfig="{{.KUBECONFIG_FILE}}" -e openbao_init_file="{{.TASKFILE_DIR}}/.secrets/openbao-init.dev.json"'

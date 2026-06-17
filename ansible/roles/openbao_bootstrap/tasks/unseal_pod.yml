@@ -1,0 +1,26 @@
+---
+- name: Read OpenBao status for {{ openbao_target_pod }}
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_target_pod }} -- bao status -format=json
+  register: openbao_target_status_command
+  changed_when: false
+  failed_when: openbao_target_status_command.rc not in [0, 2]
+
+- name: Parse OpenBao status for {{ openbao_target_pod }}
+  ansible.builtin.set_fact:
+    openbao_target_status: "{{ openbao_target_status_command.stdout | from_json }}"
+
+- name: Fail if {{ openbao_target_pod }} is not initialized
+  ansible.builtin.fail:
+    msg: "{{ openbao_target_pod }} is not initialized. Join it to Raft before unsealing."
+  when: not (openbao_target_status.initialized | bool)
+
+- name: Unseal {{ openbao_target_pod }}
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_target_pod }} -- bao operator unseal {{ item }}
+  loop: "{{ openbao_unseal_keys[:openbao_key_threshold] }}"
+  changed_when: true
+  no_log: true
+  when: openbao_target_status.sealed | bool

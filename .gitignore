@@ -34,6 +34,7 @@ ansible/inventories/dev/hosts.yml
 ansible/inventories/dev/ansible_inventory.json
 
 .cert
+.secrets/
 
 outputs.json
 plan.txt

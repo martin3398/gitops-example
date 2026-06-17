@@ -6,8 +6,7 @@ This runbook describes the production-style OpenBao baseline for this repository
 
 - 3 OpenBao server pods
 - integrated Raft storage
-- worker-node-only scheduling
-- ingress path-based exposure via `http://<ingress_public_endpoint>/bao` over HTTP
+- ingress host-based exposure via `http://bao.gitops.local` over HTTP
 
 ## Kubernetes/Flux Layout
 
@@ -18,64 +17,115 @@ This runbook describes the production-style OpenBao baseline for this repository
   - `kubernetes/apps/dev/visit-processing/externalsecret-processing.yaml`
   - `kubernetes/platform/dev/data-platform/services/postgres/externalsecret-app-user.yaml`
 
-## Ingress Endpoint
+## Local Host Entry
 
-1. Ensure infra output `ingress_public_endpoint` is available.
-2. OpenBao is exposed at `http://<ingress_public_endpoint>/bao`.
-3. Ingress rewrites `/bao/...` to `/...` at the OpenBao service.
+OpenBao uses host-based ingress with the local-only hostname `bao.gitops.local`.
+
+1. Resolve the current AWS ingress NLB endpoint:
+
+```bash
+nslookup "$(tofu -chdir=infra output -raw ingress_public_endpoint)"
+```
+
+2. Add each returned address to `/etc/hosts`:
+
+```text
+<nlb-ip-1> bao.gitops.local
+<nlb-ip-2> bao.gitops.local
+```
+
+You can print the current entries with:
+
+```bash
+task openbao:hosts_entries
+```
+
+3. Open OpenBao at `http://bao.gitops.local`.
+
+Refresh these entries after a full infrastructure destroy/recreate because NLB IPs can change.
 
 ## Bootstrap (fresh cluster)
 
-1. Reconcile Flux and wait until `openbao` pods are ready.
-2. Initialize OpenBao once:
+For this rebuild-heavy lab, OpenBao init material is stored locally in a gitignored file and then parsed to automate Raft join, unseal, auth bootstrap, and initial dev seeding.
 
-```bash
-kubectl -n openbao exec -it openbao-0 -- bao operator init -key-shares=5 -key-threshold=3
+Automation lives in:
+
+- `ansible/playbooks/openbao-bootstrap.yml`
+- `ansible/roles/openbao_bootstrap/`
+
+The init file path is in the repository root:
+
+```text
+.secrets/openbao-init.dev.json
 ```
 
-3. Store unseal keys and root token in your secure operator vault (never in Git).
-4. Unseal all OpenBao pods:
+This file contains unseal keys and the root token. Keep it local only.
+
+Run the full dev bootstrap:
 
 ```bash
-kubectl -n openbao exec -it openbao-0 -- bao operator unseal
-kubectl -n openbao exec -it openbao-1 -- bao operator unseal
-kubectl -n openbao exec -it openbao-2 -- bao operator unseal
+task openbao:bootstrap_all
 ```
 
-5. Enable Kubernetes auth and ESO role:
+The task fetches kubeconfig and runs the Ansible playbook. You can run the playbook directly with:
 
 ```bash
-kubectl -n openbao exec -it openbao-0 -- sh
-export OPENBAO_ADDR=http://127.0.0.1:8200
-export OPENBAO_TOKEN=<root-token>
-bao auth enable kubernetes || true
-bao write auth/kubernetes/config kubernetes_host="https://kubernetes.default.svc"
-bao policy write eso-sync - <<'EOF'
-path "secret/data/dev/*" {
-  capabilities = ["read"]
-}
-EOF
-bao write auth/kubernetes/role/eso-sync \
-  bound_service_account_names="external-secrets" \
-  bound_service_account_namespaces="external-secrets" \
-  policies="eso-sync" \
-  ttl="1h"
-exit
+KUBECONFIG=./kubeconfig.dev ANSIBLE_CONFIG=ansible/ansible.cfg \
+  .venv/bin/ansible-playbook -i 'localhost,' ansible/playbooks/openbao-bootstrap.yml
 ```
+
+The automated sequence does:
+
+1. waits for `openbao-0`
+2. initializes `openbao-0` with `bao operator init -format=json`
+3. saves init output to `.secrets/openbao-init.dev.json`
+4. unseals `openbao-0`
+5. joins `openbao-1` and `openbao-2` to `openbao-0`
+6. unseals `openbao-1` and `openbao-2`
+7. configures Kubernetes auth for External Secrets Operator
+8. seeds current dev DB secrets
+
+Manual Raft join command, for reference:
+
+```bash
+kubectl -n openbao exec -ti openbao-1 -- bao operator raft join http://openbao-0.openbao-internal:8200
+```
+
+Expected final state:
+
+```text
+openbao-0      1/1 Running
+openbao-1      1/1 Running
+openbao-2      1/1 Running
+Initialized    true
+Sealed         false
+```
+
+## Reset Broken Raft State
+
+If a follower is stuck or has stale Raft data, reset OpenBao state destructively and retry from a clean cluster:
+
+```bash
+flux suspend helmrelease openbao -n flux-system
+helm -n openbao uninstall openbao
+kubectl -n openbao delete pvc -l app.kubernetes.io/instance=openbao
+rm -f .secrets/openbao-init.dev.json
+flux resume helmrelease openbao -n flux-system
+flux reconcile helmrelease openbao -n flux-system
+```
+
+Then run `task openbao:bootstrap_all` again.
 
 ## Deterministic Dev Secret Seeding
 
-Use the seed helper after bootstrap for tear-down/recreate consistency:
+Dev seeding is handled by the OpenBao Ansible bootstrap role.
 
-```bash
-chmod +x scripts/openbao/seed-dev-secrets.sh
-OPENBAO_TOKEN=<operator-token> OPENBAO_DEV_SEED=<stable-seed> ./scripts/openbao/seed-dev-secrets.sh
-```
+Override the deterministic seed with `OPENBAO_DEV_SEED` when running the task or playbook.
 
-This writes deterministic secrets for Postgres/Kafka/Grafana and app DB consumers.
+This writes deterministic secrets for the current Postgres app user and visit demo DB consumers.
 
 ## Notes
 
 - No TLS is configured in this phase; this is intentional for current lab scope.
-- Rotate credentials by changing `OPENBAO_DEV_SEED` and re-running seed script.
-- Grafana credentials are pre-seeded for later integration milestone.
+- Rotate dev credentials by changing `OPENBAO_DEV_SEED` and re-running the OpenBao Ansible bootstrap.
+- Kafka and Grafana are intentionally not seeded until manifests consume those secrets.

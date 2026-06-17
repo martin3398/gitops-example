@@ -1,0 +1,50 @@
+---
+- name: Wait for {{ openbao_target_pod }} to exist
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    get pod {{ openbao_target_pod }}
+  register: openbao_follower_pod_exists
+  changed_when: false
+  failed_when: false
+  retries: 60
+  delay: 5
+  until: openbao_follower_pod_exists.rc == 0
+
+- name: Wait for {{ openbao_target_pod }} to be running
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    wait --for=jsonpath='{.status.phase}'=Running --timeout=5m pod/{{ openbao_target_pod }}
+  changed_when: false
+
+- name: Read OpenBao status before join for {{ openbao_target_pod }}
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_target_pod }} -- bao status -format=json
+  register: openbao_follower_status_before_join
+  changed_when: false
+  failed_when: openbao_follower_status_before_join.rc not in [0, 2]
+
+- name: Parse follower initialization state for {{ openbao_target_pod }}
+  ansible.builtin.set_fact:
+    openbao_follower_initialized: "{{ (openbao_follower_status_before_join.stdout | from_json).initialized | bool }}"
+
+- name: Join {{ openbao_target_pod }} to OpenBao Raft leader
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_target_pod }} -- bao operator raft join {{ openbao_join_addr }}
+  changed_when: true
+  when: not openbao_follower_initialized
+
+- name: Wait for {{ openbao_target_pod }} to report initialized after join
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_target_pod }} -- bao status -format=json
+  register: openbao_follower_status_after_join
+  changed_when: false
+  failed_when: openbao_follower_status_after_join.rc not in [0, 2]
+  retries: 30
+  delay: 5
+  until: (openbao_follower_status_after_join.stdout | from_json).initialized | bool
+
+- name: Unseal {{ openbao_target_pod }}
+  ansible.builtin.include_tasks: unseal_pod.yml

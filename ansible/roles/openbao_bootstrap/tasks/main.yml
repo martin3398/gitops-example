@@ -1,0 +1,167 @@
+---
+- name: Ensure local OpenBao secret directory exists
+  ansible.builtin.file:
+    path: "{{ openbao_init_file | dirname }}"
+    state: directory
+    mode: "0700"
+
+- name: Wait for OpenBao leader pod to be running
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    wait --for=jsonpath='{.status.phase}'=Running --timeout=5m pod/{{ openbao_leader_pod }}
+  changed_when: false
+
+- name: Read OpenBao leader status before init
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- bao status -format=json
+  register: openbao_leader_status_before_init
+  changed_when: false
+  failed_when: openbao_leader_status_before_init.rc not in [0, 2]
+
+- name: Parse OpenBao leader initialized state
+  ansible.builtin.set_fact:
+    openbao_leader_initialized: "{{ (openbao_leader_status_before_init.stdout | from_json).initialized | bool }}"
+
+- name: Check local OpenBao init file
+  ansible.builtin.stat:
+    path: "{{ openbao_init_file }}"
+  register: openbao_init_file_stat
+
+- name: Fail if OpenBao is initialized but local init file is missing
+  ansible.builtin.fail:
+    msg: "OpenBao is already initialized, but {{ openbao_init_file }} is missing. Restore it or reset OpenBao state."
+  when:
+    - openbao_leader_initialized
+    - not openbao_init_file_stat.stat.exists
+
+- name: Back up stale local OpenBao init file before fresh init
+  ansible.builtin.command: >-
+    mv {{ openbao_init_file | quote }} {{ (openbao_init_file ~ '.' ~ lookup('pipe', 'date +%Y%m%d%H%M%S') ~ '.bak') | quote }}
+  changed_when: true
+  when:
+    - not openbao_leader_initialized
+    - openbao_init_file_stat.stat.exists
+
+- name: Initialize OpenBao leader and capture init JSON
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- bao operator init -format=json
+    -key-shares={{ openbao_key_shares }} -key-threshold={{ openbao_key_threshold }}
+  register: openbao_init_command
+  changed_when: true
+  no_log: true
+  when: not openbao_leader_initialized
+
+- name: Save OpenBao init JSON locally
+  ansible.builtin.copy:
+    content: "{{ openbao_init_command.stdout | from_json | to_nice_json }}\n"
+    dest: "{{ openbao_init_file }}"
+    mode: "0600"
+  no_log: true
+  when: not openbao_leader_initialized
+
+- name: Read OpenBao init JSON
+  ansible.builtin.slurp:
+    src: "{{ openbao_init_file }}"
+  register: openbao_init_file_slurp
+  no_log: true
+
+- name: Parse OpenBao init JSON
+  ansible.builtin.set_fact:
+    openbao_init_data: "{{ openbao_init_file_slurp.content | b64decode | from_json }}"
+    openbao_root_token: "{{ (openbao_init_file_slurp.content | b64decode | from_json).root_token }}"
+    openbao_unseal_keys: "{{ ((openbao_init_file_slurp.content | b64decode | from_json).unseal_keys_b64 | default((openbao_init_file_slurp.content | b64decode | from_json).unseal_keys_hex)) }}"
+    openbao_db_password: "dev-{{ ((openbao_dev_seed ~ ':db') | hash('sha256'))[:24] }}"
+  no_log: true
+
+- name: Unseal OpenBao leader
+  ansible.builtin.include_tasks: unseal_pod.yml
+  vars:
+    openbao_target_pod: "{{ openbao_leader_pod }}"
+
+- name: Join and unseal OpenBao followers
+  ansible.builtin.include_tasks: follower.yml
+  loop: "{{ openbao_follower_pods }}"
+  loop_control:
+    loop_var: openbao_target_pod
+
+- name: Enable OpenBao Kubernetes auth
+  ansible.builtin.shell: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+    bao auth enable kubernetes >/dev/null 2>&1 || true
+  args:
+    executable: /bin/bash
+  changed_when: false
+  no_log: true
+
+- name: Configure OpenBao Kubernetes auth endpoint
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+    bao write auth/kubernetes/config kubernetes_host=https://kubernetes.default.svc
+  changed_when: true
+  no_log: true
+
+- name: Write OpenBao ESO sync policy
+  ansible.builtin.shell: |
+    set -o pipefail
+    cat <<'EOF' | kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }} exec -i {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }} bao policy write eso-sync -
+    path "secret/data/dev/*" {
+      capabilities = ["read"]
+    }
+    EOF
+  args:
+    executable: /bin/bash
+  changed_when: true
+  no_log: true
+
+- name: Configure OpenBao ESO Kubernetes role
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+    bao write auth/kubernetes/role/eso-sync
+    bound_service_account_names=external-secrets-external-secrets
+    bound_service_account_namespaces=external-secrets
+    policies=eso-sync ttl=1h
+  changed_when: true
+  no_log: true
+
+- name: Ensure OpenBao secret KV v2 engine exists
+  ansible.builtin.shell: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+    bao secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
+  args:
+    executable: /bin/bash
+  changed_when: false
+  no_log: true
+
+- name: Seed OpenBao Postgres app user secret
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+    bao kv put -mount=secret dev/platform/postgres/app-user username=app password={{ openbao_db_password | quote }}
+  changed_when: true
+  no_log: true
+
+- name: Seed OpenBao visit-web DB secret
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+    bao kv put -mount=secret dev/apps/visit-demo/web DB_PASSWORD={{ openbao_db_password | quote }}
+  changed_when: true
+  no_log: true
+
+- name: Seed OpenBao visit-processing DB secret
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+    bao kv put -mount=secret dev/apps/visit-demo/processing DB_PASSWORD={{ openbao_db_password | quote }}
+  changed_when: true
+  no_log: true
+
+- name: Report OpenBao bootstrap completion
+  ansible.builtin.debug:
+    msg: "OpenBao bootstrap completed. Init material is stored in {{ openbao_init_file }}."

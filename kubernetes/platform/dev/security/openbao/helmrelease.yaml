@@ -4,6 +4,7 @@ metadata:
   name: openbao
   namespace: flux-system
 spec:
+  releaseName: openbao
   interval: 10m
   timeout: 15m
   targetNamespace: openbao
@@ -17,7 +18,7 @@ spec:
   chart:
     spec:
       chart: openbao
-      version: "0.28.3"
+      version: "0.28.4"
       sourceRef:
         kind: HelmRepository
         name: openbao
@@ -37,10 +38,9 @@ spec:
         ingressClassName: nginx
         pathType: Prefix
         hosts:
-          - paths:
-              - /bao
-              - /ui
-              - /v1
+          - host: bao.gitops.local
+            paths:
+              - /
       resources:
         requests:
           cpu: 250m
@@ -52,24 +52,8 @@ spec:
         enabled: true
         storageClass: ceph-block
         size: 2Gi
-      affinity: |
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: {{ template "openbao.name" . }}
-                  app.kubernetes.io/instance: "{{ .Release.Name }}"
-                  component: server
-              topologyKey: kubernetes.io/hostname
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: node-role.kubernetes.io/control-plane
-                    operator: DoesNotExist
       ha:
         enabled: true
         replicas: 3
         raft:
           enabled: true
-          setNodeId: true
