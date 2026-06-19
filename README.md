@@ -137,7 +137,7 @@ Planned layout:
 ## Environment Naming
 
 - The active environment name is `dev`.
-- Flux cluster entrypoint is `kubernetes/flux/clusters/dev/`.
+- Flux cluster stage definitions are under `kubernetes/flux/clusters/dev/`.
 - Platform and app overlays are under `kubernetes/platform/dev/` and `kubernetes/apps/dev/`.
 
 ## Direct Kubernetes API Access (Dev Option)
@@ -197,9 +197,13 @@ Common usage:
 task -l
 task env:check
 task pipeline:check
-task tofu:plan
-task tofu:apply
-task ansible:all
+task pipeline:init_cluster
+task ansible:core
+task ansible:openbao
+task ansible:postgres
+task ansible:kafka
+task ansible:apps
+task pipeline:main
 task ansible:get_kubeconfig_public
 ```
 
@@ -260,8 +264,8 @@ Ansible Iteration 4 kubeadm bootstrap automation is implemented:
 
 Ansible Iteration 5 Flux bootstrap handoff automation is implemented:
 - Flux bootstrap playbook (`ansible/playbooks/flux-bootstrap.yml`) and role (`ansible/roles/flux_bootstrap/`)
-- installs Flux controllers (including image reflector/automation) and applies Git source + cluster Kustomizations
-- validates `GitRepository` and Kustomization readiness for `platform` and `apps`
+- installs Flux controllers (including image reflector/automation) and applies the core cluster stage
+- validates `GitRepository` readiness; stage-specific readiness is handled by later Ansible tasks
 
 GitHub Actions now includes Ansible automation workflows:
 - OpenTofu check/plan workflow and manual apply/destroy workflow
@@ -270,16 +274,25 @@ GitHub Actions now includes Ansible automation workflows:
 - runbooks in `docs/github-actions-runbook.md` and `docs/ansible-ci-runbook.md`
 
 GitOps structure and Flux-managed charts are implemented:
-- cluster entrypoint and source chain: `kubernetes/flux/clusters/dev/`
+- cluster stage definitions: `kubernetes/flux/clusters/dev/`
 - platform root: `kubernetes/platform/dev/`
 - apps root: `kubernetes/apps/dev/`
 - platform ingress chart: `kubernetes/platform/dev/ingress-nginx/`
 - app stacks: `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`
 
+Flux cluster stages:
+- `core/` installs the Git source, core operators, ingress, and Ceph.
+- `security/` installs OpenBao after the core stage is ready.
+- `data-postgres/` installs Postgres after OpenBao/ESO are ready.
+- `data-kafka/` installs Kafka after the core stage is ready.
+- `apps/` installs app policies and visit demo workloads.
+- `observability/` is staged separately and not part of `pipeline:main` yet.
+
 Flux dependency split for data platform:
 - `platform-core` installs operators/CRDs (`cloudnative-pg`, `strimzi`, `rook-ceph`)
 - `platform-data-ceph` applies Ceph cluster resources under `kubernetes/platform/dev/data-platform/ceph/`
-- `platform-data-services` applies Kafka/Postgres under `kubernetes/platform/dev/data-platform/services/`
+- `platform-data-postgres` applies Postgres under `kubernetes/platform/dev/data-platform/services/postgres/`
+- `platform-data-kafka` applies Kafka under `kubernetes/platform/dev/data-platform/services/kafka/`
 
 Flux image automation for apps is implemented:
 - `ImageRepository`, `ImagePolicy`, and `ImageUpdateAutomation` for `visit-web`, `visit-gateway`, and `visit-processor`
@@ -303,7 +316,7 @@ Established deployment model:
 
 Current pipeline gates on `main`:
 - manual gate 1: `.github/workflows/opentofu-apply-destroy.yml` with `action=apply` provisions/updates infrastructure
-- manual gate 2: `.github/workflows/ansible-run.yml` runs the ordered Ansible bootstrap chain after apply
+- manual gate 2: `.github/workflows/ansible-run.yml` runs the ordered Ansible deployment chain after apply
 - manual gate 3: `.github/workflows/opentofu-apply-destroy.yml` with `action=destroy` tears everything down (requires `destroy_confirm=yes`)
 
 Phase 2 status:

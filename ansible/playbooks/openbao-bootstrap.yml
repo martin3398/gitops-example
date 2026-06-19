@@ -1,7 +1,7 @@
 ---
 - name: Bootstrap OpenBao dev cluster
-  hosts: localhost
-  connection: local
+  hosts: control_plane[0]
+  become: true
   gather_facts: false
   roles:
     - openbao_bootstrap

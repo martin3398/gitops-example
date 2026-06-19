@@ -64,14 +64,14 @@ This file contains unseal keys and the root token. Keep it local only.
 Run the full dev bootstrap:
 
 ```bash
-task openbao:bootstrap_all
+task ansible:openbao
 ```
 
-The task fetches kubeconfig and runs the Ansible playbook. You can run the playbook directly with:
+The task runs the Ansible playbook on `control_plane[0]`. You can run the playbook directly with:
 
 ```bash
-KUBECONFIG=./kubeconfig.dev ANSIBLE_CONFIG=ansible/ansible.cfg \
-  .venv/bin/ansible-playbook -i 'localhost,' ansible/playbooks/openbao-bootstrap.yml
+ANSIBLE_CONFIG=ansible/ansible.cfg \
+  .venv/bin/ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/openbao-bootstrap.yml
 ```
 
 The automated sequence does:
@@ -114,7 +114,7 @@ flux resume helmrelease openbao -n flux-system
 flux reconcile helmrelease openbao -n flux-system
 ```
 
-Then run `task openbao:bootstrap_all` again.
+Then run `task ansible:openbao` again.
 
 ## Deterministic Dev Secret Seeding
 

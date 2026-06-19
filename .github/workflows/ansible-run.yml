@@ -118,3 +118,15 @@ jobs:
           export FLUX_GIT_SSH_PRIVATE_KEY="$(printf '%s' "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)"
           export FLUX_GIT_KNOWN_HOSTS="$(printf '%s' "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)"
           ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/flux-bootstrap.yml --tags flux
+
+      - name: Run OpenBao bootstrap
+        run: ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/openbao-bootstrap.yml
+
+      - name: Deploy Postgres
+        run: ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/postgres-deploy.yml
+
+      - name: Deploy Kafka
+        run: ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/kafka-deploy.yml
+
+      - name: Deploy apps
+        run: ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/apps-deploy.yml

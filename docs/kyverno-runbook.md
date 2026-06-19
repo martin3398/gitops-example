@@ -7,7 +7,7 @@ This runbook covers the Kyverno baseline deployed by Flux and the currently acti
 - Kyverno Helm source: `kubernetes/platform/dev/core-services/operators/kyverno/helmrepository.yaml`
 - Kyverno Helm release: `kubernetes/platform/dev/core-services/operators/kyverno/helmrelease.yaml`
 - Namespace: `kyverno`
-- Flux platform core dependency: `kubernetes/flux/clusters/dev/kustomization-platform-core.yaml`
+- Flux platform core dependency: `kubernetes/flux/clusters/dev/core/kustomization-platform-core.yaml`
 
 ## Current Baseline
 

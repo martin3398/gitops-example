@@ -1,9 +1,49 @@
 ---
-- name: Ensure local OpenBao secret directory exists
+- name: Copy OpenBao Flux stage to control plane
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../kubernetes/flux/clusters/dev/security/"
+    dest: /tmp/flux-security/
+    owner: root
+    group: root
+    mode: "0644"
+    directory_mode: "0755"
+
+- name: Wait for stage 1 Flux Kustomizations readiness
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n flux-system wait
+    --for=condition=Ready --timeout=5m
+    kustomizations.kustomize.toolkit.fluxcd.io/{{ item }}
+  loop:
+    - platform-core
+    - platform-data-ceph
+    - platform-ingress
+  changed_when: false
+
+- name: Apply OpenBao Flux Kustomization
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} apply --kustomize /tmp/flux-security
+  changed_when: true
+
+- name: Reconcile OpenBao Flux Kustomization
+  ansible.builtin.command: >-
+    flux reconcile kustomization platform-security -n flux-system --timeout=15m --kubeconfig {{ openbao_kubeconfig }}
+  register: openbao_platform_security_reconcile
+  changed_when: false
+  failed_when: false
+
+- name: Ensure remote OpenBao secret directory exists
   ansible.builtin.file:
     path: "{{ openbao_init_file | dirname }}"
     state: directory
     mode: "0700"
+
+- name: Ensure local OpenBao secret directory exists
+  ansible.builtin.file:
+    path: "{{ openbao_local_init_file | dirname }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
 
 - name: Wait for OpenBao leader pod to be running
   ansible.builtin.command: >-
@@ -23,19 +63,19 @@
   ansible.builtin.set_fact:
     openbao_leader_initialized: "{{ (openbao_leader_status_before_init.stdout | from_json).initialized | bool }}"
 
-- name: Check local OpenBao init file
+- name: Check remote OpenBao init file
   ansible.builtin.stat:
     path: "{{ openbao_init_file }}"
   register: openbao_init_file_stat
 
-- name: Fail if OpenBao is initialized but local init file is missing
+- name: Fail if OpenBao is initialized but remote init file is missing
   ansible.builtin.fail:
     msg: "OpenBao is already initialized, but {{ openbao_init_file }} is missing. Restore it or reset OpenBao state."
   when:
     - openbao_leader_initialized
     - not openbao_init_file_stat.stat.exists
 
-- name: Back up stale local OpenBao init file before fresh init
+- name: Back up stale remote OpenBao init file before fresh init
   ansible.builtin.command: >-
     mv {{ openbao_init_file | quote }} {{ (openbao_init_file ~ '.' ~ lookup('pipe', 'date +%Y%m%d%H%M%S') ~ '.bak') | quote }}
   changed_when: true
@@ -53,7 +93,7 @@
   no_log: true
   when: not openbao_leader_initialized
 
-- name: Save OpenBao init JSON locally
+- name: Save OpenBao init JSON on control plane
   ansible.builtin.copy:
     content: "{{ openbao_init_command.stdout | from_json | to_nice_json }}\n"
     dest: "{{ openbao_init_file }}"
@@ -65,6 +105,21 @@
   ansible.builtin.slurp:
     src: "{{ openbao_init_file }}"
   register: openbao_init_file_slurp
+  no_log: true
+
+- name: Fetch OpenBao init JSON to local repo
+  ansible.builtin.fetch:
+    src: "{{ openbao_init_file }}"
+    dest: "{{ openbao_local_init_file }}"
+    flat: true
+  no_log: true
+
+- name: Restrict local OpenBao init JSON permissions
+  ansible.builtin.file:
+    path: "{{ openbao_local_init_file }}"
+    mode: "0600"
+  delegate_to: localhost
+  become: false
   no_log: true
 
 - name: Parse OpenBao init JSON
@@ -162,6 +217,16 @@
   changed_when: true
   no_log: true
 
+- name: Reconcile OpenBao Flux Kustomization after bootstrap
+  ansible.builtin.command: flux reconcile kustomization platform-security -n flux-system --timeout=15m --kubeconfig {{ openbao_kubeconfig }}
+  changed_when: false
+
+- name: Wait for OpenBao ClusterSecretStore readiness
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} wait
+    --for=condition=Ready --timeout=5m clustersecretstore/openbao
+  changed_when: false
+
 - name: Report OpenBao bootstrap completion
   ansible.builtin.debug:
-    msg: "OpenBao bootstrap completed. Init material is stored in {{ openbao_init_file }}."
+    msg: "OpenBao bootstrap completed. Init material is stored on the control plane at {{ openbao_init_file }} and locally at {{ openbao_local_init_file }}."

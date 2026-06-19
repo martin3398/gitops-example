@@ -24,13 +24,12 @@ Ceph is split across Flux Kustomizations to avoid CRD dry-run races:
 
 - `platform-core` installs operators, including `rook-ceph`.
 - `platform-data-ceph` applies Ceph CRs (`CephCluster`, `CephBlockPool`, `StorageClass`).
-- `platform-data-services` applies service workloads (Kafka, Postgres) after Ceph.
+- Postgres and Kafka are applied later by staged Ansible tasks.
 
-The order is enforced by Flux `dependsOn` in:
+The stage 1 order is enforced by Flux `dependsOn` in:
 
-- `kubernetes/flux/clusters/dev/kustomization-platform-core.yaml`
-- `kubernetes/flux/clusters/dev/kustomization-platform-data-ceph.yaml`
-- `kubernetes/flux/clusters/dev/kustomization-platform-data-services.yaml`
+- `kubernetes/flux/clusters/dev/core/kustomization-platform-core.yaml`
+- `kubernetes/flux/clusters/dev/core/kustomization-platform-data-ceph.yaml`
 
 ## Device Selection Model
 

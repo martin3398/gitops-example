@@ -55,3 +55,7 @@ jobs:
           ansible-playbook -i "localhost," --syntax-check ansible/playbooks/runtime.yml
           ansible-playbook -i "localhost," --syntax-check ansible/playbooks/cluster-bootstrap.yml
           ansible-playbook -i "localhost," --syntax-check ansible/playbooks/flux-bootstrap.yml
+          ansible-playbook -i "localhost," --syntax-check ansible/playbooks/openbao-bootstrap.yml
+          ansible-playbook -i "localhost," --syntax-check ansible/playbooks/postgres-deploy.yml
+          ansible-playbook -i "localhost," --syntax-check ansible/playbooks/kafka-deploy.yml
+          ansible-playbook -i "localhost," --syntax-check ansible/playbooks/apps-deploy.yml

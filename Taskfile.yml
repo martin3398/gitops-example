@@ -104,6 +104,9 @@ tasks:
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/cluster-bootstrap.yml"
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/flux-bootstrap.yml"
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/openbao-bootstrap.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/postgres-deploy.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/kafka-deploy.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/apps-deploy.yml"
 
   "ansible:inventory":
     desc: "Generate Ansible inventory from infra outputs"
@@ -203,8 +206,8 @@ tasks:
     cmds:
       - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/cluster-bootstrap.yml --tags bootstrap'
 
-  "ansible:flux_bootstrap":
-    desc: "Run Ansible Flux bootstrap role"
+  "ansible:core":
+    desc: "Install Flux and deploy core platform stage"
     deps:
       - "venv:check"
     env:
@@ -253,14 +256,53 @@ tasks:
       - task: "ansible:get_kubeconfig"
       - task: "ansible:kubeconfig_public_endpoint"
 
-  "ansible:all":
-    desc: "Run the full ordered Ansible chain"
+  "ansible:openbao":
+    desc: "Deploy and bootstrap OpenBao"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
     cmds:
-      - task: "ansible:inventory"
-      - task: "ansible:smoke"
-      - task: "ansible:base"
-      - task: "ansible:runtime"
-      - task: "ansible:bootstrap"
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/openbao-bootstrap.yml'
+
+  "ansible:postgres":
+    desc: "Deploy Postgres data service"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/postgres-deploy.yml'
+
+  "ansible:kafka":
+    desc: "Deploy Kafka data service"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/kafka-deploy.yml'
+
+  "ansible:apps":
+    desc: "Deploy visit demo apps"
+    deps:
+      - "venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/apps-deploy.yml'
 
   "pipeline:check":
     desc: "Run local checks equivalent to CI check stages"
@@ -268,12 +310,26 @@ tasks:
       - task: "tofu:fmt_validate"
       - task: "ansible:lint_inventory"
 
-  "pipeline:main":
-    desc: "Run local main pipeline flow excluding app push"
+  "pipeline:init_cluster":
+    desc: "Provision infrastructure and bootstrap Kubernetes without Flux"
     cmds:
       - task: "tofu:plan"
       - task: "tofu:apply"
-      - task: "ansible:all"
+      - task: "ansible:inventory"
+      - task: "ansible:smoke"
+      - task: "ansible:base"
+      - task: "ansible:runtime"
+      - task: "ansible:bootstrap"
+
+  "pipeline:main":
+    desc: "Run full local deployment pipeline"
+    cmds:
+      - task: "pipeline:init_cluster"
+      - task: "ansible:core"
+      - task: "ansible:openbao"
+      - task: "ansible:postgres"
+      - task: "ansible:kafka"
+      - task: "ansible:apps"
 
   "openbao:hosts_entries":
     desc: "Print /etc/hosts entries for bao.gitops.local"
@@ -303,16 +359,3 @@ tasks:
         if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
           exit "$status"
         fi
-
-  "openbao:bootstrap_all":
-    desc: "Run Ansible OpenBao init, join, unseal, auth, and seed sequence"
-    deps:
-      - "venv:check"
-    env:
-      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
-      KUBECONFIG: "{{.KUBECONFIG_FILE}}"
-    preconditions:
-      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
-        msg: "Missing {{.KUBECONFIG_FILE}}. Run task ansible:get_kubeconfig_public first."
-    cmds:
-      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "localhost," ansible/playbooks/openbao-bootstrap.yml -e openbao_kubeconfig="{{.KUBECONFIG_FILE}}" -e openbao_init_file="{{.TASKFILE_DIR}}/.secrets/openbao-init.dev.json"'

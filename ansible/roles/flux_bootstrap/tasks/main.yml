@@ -167,11 +167,12 @@
 
 - name: Copy Flux sync manifests to control plane
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../kubernetes/flux/clusters/dev/"
+    src: "{{ playbook_dir }}/../../kubernetes/flux/clusters/dev/core/"
     dest: /tmp/flux-sync/
     owner: root
     group: root
     mode: "0644"
+    directory_mode: "0755"
 
 - name: Apply Flux Git deploy key secret
   ansible.builtin.shell: >-
