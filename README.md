@@ -231,8 +231,9 @@ Task groups:
 - Kafka baseline runbook: `docs/kafka-runbook.md`
 - Kyverno baseline runbook: `docs/kyverno-runbook.md`
 - GHCR setup runbook: `docs/ghcr-setup.md`
-  - GitHub Actions runbook: `docs/github-actions-runbook.md`
-  - Visit demo app runbook: `docs/visit-demo-runbook.md`
+- Deployment pipeline runbook: `docs/deployment-pipeline-runbook.md`
+- GitHub Actions runbook: `docs/github-actions-runbook.md`
+- Visit demo app runbook: `docs/visit-demo-runbook.md`
 - Ansible CI execution runbook: `docs/ansible-ci-runbook.md`
 
 ## Status

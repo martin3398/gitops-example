@@ -11,7 +11,11 @@ The Ansible workflow runs these ordered steps:
 3. base
 4. runtime
 5. cluster bootstrap
-6. flux bootstrap
+6. Flux/core bootstrap
+7. OpenBao bootstrap
+8. Postgres deploy
+9. Kafka deploy
+10. apps deploy
 
 Inventory is generated from `infra/outputs.json` that `ansible-run` creates by reading OpenTofu remote state directly.
 
@@ -65,12 +69,14 @@ Successful sequence should result in:
 - smoke connectivity passing all hosts
 - base and runtime playbooks converged
 - cluster bootstrap completed with all nodes Ready
-- Flux bootstrap completed with `dev-repo`, `platform`, and `apps` ready in `flux-system`
+- Flux/core bootstrap completed with `dev-repo`, `platform-core`, `platform-ingress`, and `platform-data-ceph` ready in `flux-system`
+- OpenBao initialized, unsealed, and ready for External Secrets
+- Postgres, Kafka, and app Flux Kustomizations applied by their staged playbooks
 
 Additional checks after bootstrap:
 
 - `kubectl -n flux-system get imagerepositories,imagepolicies,imageupdateautomations`
-- visit app image automation objects should appear from `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/` after `apps` becomes Ready
+- visit app image automation objects should appear from `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/` after app stages become Ready
 
 ## Flux Bootstrap Variables
 
