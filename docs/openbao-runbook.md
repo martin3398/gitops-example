@@ -67,6 +67,12 @@ Run the full dev bootstrap:
 task ansible:openbao
 ```
 
+Prerequisites:
+
+- `task ansible:core` has installed Flux, core operators, and Ceph.
+- `task ansible:core_platform` has installed monitoring and ingress.
+- The `platform-ingress` Flux Kustomization is Ready, so `bao.gitops.local` can route after OpenBao is unsealed.
+
 The task runs the Ansible playbook on `control_plane[0]`. You can run the playbook directly with:
 
 ```bash

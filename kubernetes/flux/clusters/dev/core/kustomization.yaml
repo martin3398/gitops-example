@@ -3,5 +3,4 @@ kind: Kustomization
 resources:
   - gitrepository.yaml
   - kustomization-platform-core.yaml
-  - kustomization-platform-ingress.yaml
   - kustomization-platform-data-ceph.yaml

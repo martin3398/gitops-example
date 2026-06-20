@@ -1,0 +1,25 @@
+version: "3"
+
+tasks:
+  install:
+    desc: "Create .venv and install Python + Ansible dependencies"
+    cmds:
+      - 'python3 -m venv .venv'
+      - '{{.VENV_PYTHON}} -m pip install --upgrade pip'
+      - '{{.VENV_PYTHON}} -m pip install -r ansible/python-requirements.txt'
+      - '{{.VENV_ANSIBLE}} --version'
+      - '{{.VENV_ANSIBLE_GALAXY}} collection install -r ansible/requirements.yml'
+
+  check:
+    internal: true
+    preconditions:
+      - sh: 'test -x "{{.VENV_PYTHON}}"'
+        msg: "Missing .venv/bin/python3. Create venv and install dependencies first."
+      - sh: 'test -x "{{.VENV_ANSIBLE_PLAYBOOK}}"'
+        msg: "Missing .venv/bin/ansible-playbook. Install ansible into .venv first."
+      - sh: 'test -x "{{.VENV_ANSIBLE_INVENTORY}}"'
+        msg: "Missing .venv/bin/ansible-inventory. Install ansible into .venv first."
+      - sh: 'test -x "{{.VENV_ANSIBLE}}"'
+        msg: "Missing .venv/bin/ansible. Install ansible into .venv first."
+    cmds:
+      - 'printf "Virtual environment looks good.\n"'

@@ -1,0 +1,43 @@
+version: "3"
+
+tasks:
+  fmt_validate:
+    desc: "Run tofu fmt check and validate"
+    dir: infra
+    cmds:
+      - "tofu fmt -check -recursive"
+      - "tofu validate"
+
+  plan:
+    desc: "Run tofu plan and save plan artifact"
+    dir: infra
+    cmds:
+      - "tofu plan -out phase1-infra.tfplan"
+      - "tofu show -no-color phase1-infra.tfplan > plan.txt"
+
+  apply:
+    desc: "Apply tofu plan and export outputs"
+    dir: infra
+    cmds:
+      - "tofu apply -auto-approve phase1-infra.tfplan"
+      - "tofu output -json > outputs.json"
+
+  destroy:
+    desc: "Destroy infrastructure (requires DESTROY_CONFIRM=yes)"
+    dir: infra
+    preconditions:
+      - sh: 'test "$DESTROY_CONFIRM" = "yes"'
+        msg: "DESTROY_CONFIRM=yes is required to run tofu:destroy"
+    cmds:
+      - "tofu plan -destroy -out destroy.tfplan"
+      - "tofu apply -auto-approve destroy.tfplan"
+
+  get_public_host:
+    desc: "Print public ingress host from tofu outputs"
+    preconditions:
+      - sh: 'command -v tofu >/dev/null 2>&1'
+        msg: "tofu is required in PATH"
+      - sh: 'test -n "$(tofu -chdir=infra output -raw ingress_public_endpoint 2>/dev/null)"'
+        msg: "Missing ingress_public_endpoint output. Run task tofu:apply first and enable public ingress."
+    cmds:
+      - 'tofu -chdir=infra output -raw ingress_public_endpoint'

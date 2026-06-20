@@ -12,10 +12,11 @@ The Ansible workflow runs these ordered steps:
 4. runtime
 5. cluster bootstrap
 6. Flux/core bootstrap
-7. OpenBao bootstrap
-8. Postgres deploy
-9. Kafka deploy
-10. apps deploy
+7. core platform deploy
+8. OpenBao bootstrap
+9. Postgres deploy
+10. Kafka deploy
+11. apps deploy
 
 Inventory is generated from `infra/outputs.json` that `ansible-run` creates by reading OpenTofu remote state directly.
 
@@ -60,6 +61,10 @@ Ansible-specific behavior:
   - Validate `AWS_REGION`, `TF_STATE_BUCKET`, `TF_STATE_KEY`, and `TF_LOCK_TABLE`, then re-run.
 - S3 transfer errors from Ansible SSM plugin:
   - CI identity lacks S3 permissions for `TF_STATE_BUCKET`.
+- `ServiceMonitor` CRD errors during ingress or logging chart install:
+  - The deployment order is wrong or `core platform deploy` did not complete.
+  - `kube-prometheus-stack` must install Prometheus Operator CRDs before ingress-nginx, Loki, or Promtail render `ServiceMonitor` resources.
+  - Re-run the core platform deploy step after confirming `platform-data-ceph` is Ready.
 
 ## Verification
 
@@ -69,7 +74,8 @@ Successful sequence should result in:
 - smoke connectivity passing all hosts
 - base and runtime playbooks converged
 - cluster bootstrap completed with all nodes Ready
-- Flux/core bootstrap completed with `dev-repo`, `platform-core`, `platform-ingress`, and `platform-data-ceph` ready in `flux-system`
+- Flux/core bootstrap completed with `dev-repo`, `platform-core`, and `platform-data-ceph` ready in `flux-system`
+- core platform deploy completed with `platform-observability` and `platform-ingress` ready in `flux-system`
 - OpenBao initialized, unsealed, and ready for External Secrets
 - Postgres, Kafka, and app Flux Kustomizations applied by their staged playbooks
 

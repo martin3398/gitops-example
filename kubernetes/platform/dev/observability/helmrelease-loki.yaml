@@ -6,6 +6,8 @@ metadata:
 spec:
   interval: 10m
   timeout: 15m
+  dependsOn:
+    - name: kube-prometheus-stack
   targetNamespace: monitoring
   install:
     createNamespace: true

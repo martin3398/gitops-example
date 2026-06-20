@@ -24,7 +24,8 @@ Ceph is split across Flux Kustomizations to avoid CRD dry-run races:
 
 - `platform-core` installs operators, including `rook-ceph`.
 - `platform-data-ceph` applies Ceph CRs (`CephCluster`, `CephBlockPool`, `StorageClass`).
-- Postgres and Kafka are applied later by staged Ansible tasks.
+- Monitoring and ingress are applied after Ceph by `ansible:core_platform` because monitoring uses `ceph-block` PVCs and ingress depends on monitoring `ServiceMonitor` CRDs.
+- OpenBao, Postgres, Kafka, and apps are applied later by staged Ansible tasks.
 
 The stage 1 order is enforced by Flux `dependsOn` in:
 

@@ -1,0 +1,228 @@
+version: "3"
+
+tasks:
+  lint_inventory:
+    desc: "Syntax check all Ansible playbooks"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    cmds:
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/smoke.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/base.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/runtime.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/cluster-bootstrap.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/flux-bootstrap.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/core-platform-deploy.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/openbao-bootstrap.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/postgres-deploy.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/kafka-deploy.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/apps-deploy.yml"
+
+  inventory:
+    desc: "Generate Ansible inventory from infra outputs"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.OUTPUTS}}"'
+        msg: "Missing infra/outputs.json. Run task tofu:apply first."
+      - sh: 'test -n "$AWS_REGION"'
+        msg: "AWS_REGION is required"
+      - sh: 'test -n "${ANSIBLE_SSM_BUCKET:-$TF_STATE_BUCKET}"'
+        msg: "ANSIBLE_SSM_BUCKET or TF_STATE_BUCKET is required"
+    cmds:
+      - '{{.VENV_PYTHON}} ansible/scripts/generate_inventory.py --input "{{.OUTPUTS}}" --output "{{.INVENTORY}}" --region "$AWS_REGION" --ssm-bucket "${ANSIBLE_SSM_BUCKET:-$TF_STATE_BUCKET}"'
+      - '{{.VENV_ANSIBLE_INVENTORY}} -i "{{.INVENTORY}}" --graph'
+
+  inventory_from_state:
+    desc: "Generate Ansible inventory from tofu state"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'command -v tofu >/dev/null 2>&1'
+        msg: "tofu is required in PATH"
+      - sh: 'tofu -chdir=infra output -json ansible_inventory >/dev/null 2>&1'
+        msg: "Missing ansible_inventory output in tofu state. Run task tofu:apply first."
+      - sh: 'test -n "$AWS_REGION"'
+        msg: "AWS_REGION is required"
+      - sh: 'test -n "${ANSIBLE_SSM_BUCKET:-$TF_STATE_BUCKET}"'
+        msg: "ANSIBLE_SSM_BUCKET or TF_STATE_BUCKET is required"
+    cmds:
+      - 'tmp_json="$(mktemp)" && tofu -chdir=infra output -json ansible_inventory > "$tmp_json" && {{.VENV_PYTHON}} ansible/scripts/generate_inventory.py --input "$tmp_json" --output "{{.INVENTORY}}" --region "$AWS_REGION" --ssm-bucket "${ANSIBLE_SSM_BUCKET:-$TF_STATE_BUCKET}" && rm -f "$tmp_json"'
+      - '{{.VENV_ANSIBLE_INVENTORY}} -i "{{.INVENTORY}}" --graph'
+
+  smoke:
+    desc: "Run Ansible smoke checks"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - |
+        tries=12
+        delay=15
+        i=1
+        while [ "$i" -le "$tries" ]; do
+          if {{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/smoke.yml; then
+            exit 0
+          fi
+          if [ "$i" -lt "$tries" ]; then
+            printf "SSM not ready yet (attempt %s/%s). Retrying in %ss...\n" "$i" "$tries" "$delay"
+            sleep "$delay"
+          fi
+          i=$((i + 1))
+        done
+        {{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/smoke.yml
+
+  base:
+    desc: "Run Ansible base role"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/base.yml --tags base'
+
+  runtime:
+    desc: "Run Ansible runtime role"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/runtime.yml --tags runtime'
+
+  bootstrap:
+    desc: "Run Ansible cluster bootstrap role"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/cluster-bootstrap.yml --tags bootstrap'
+
+  core:
+    desc: "Install Flux and deploy core operators and storage"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+      - sh: 'test -n "$FLUX_GIT_SSH_PRIVATE_KEY_B64"'
+        msg: "FLUX_GIT_SSH_PRIVATE_KEY_B64 is required"
+      - sh: 'test -n "$FLUX_GIT_KNOWN_HOSTS_B64"'
+        msg: "FLUX_GIT_KNOWN_HOSTS_B64 is required"
+    cmds:
+      - 'export FLUX_GIT_SSH_PRIVATE_KEY="$(printf %s "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)" && export FLUX_GIT_KNOWN_HOSTS="$(printf %s "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)" && {{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/flux-bootstrap.yml --tags flux'
+
+  core_platform:
+    desc: "Deploy monitoring and ingress core platform services"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/core-platform-deploy.yml'
+
+  get_kubeconfig:
+    internal: true
+    desc: "Fetch admin kubeconfig from first control plane"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE}} control_plane[0] -i "{{.INVENTORY}}" -b -m ansible.builtin.fetch -a "src=/etc/kubernetes/admin.conf dest={{.KUBECONFIG_FILE}} flat=true"'
+      - 'chmod 600 "{{.KUBECONFIG_FILE}}"'
+
+  kubeconfig_public_endpoint:
+    internal: true
+    desc: "Point local kubeconfig at external API endpoint"
+    preconditions:
+      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
+        msg: "Missing {{.KUBECONFIG_FILE}}. Run task ansible:get_kubeconfig first."
+      - sh: 'command -v kubectl >/dev/null 2>&1'
+        msg: "kubectl is required in PATH"
+      - sh: 'test -n "$(tofu -chdir=infra output -raw kubernetes_api_endpoint)"'
+        msg: "Missing kubernetes_api_endpoint output. Run task tofu:apply first."
+    cmds:
+      - 'endpoint="$(tofu -chdir=infra output -raw kubernetes_api_endpoint)" && kubectl config set-cluster kubernetes --server="https://${endpoint}" --kubeconfig "{{.KUBECONFIG_FILE}}"'
+      - 'chmod 600 "{{.KUBECONFIG_FILE}}"'
+
+  get_kubeconfig_public:
+    desc: "Fetch kubeconfig and point it to external API endpoint"
+    cmds:
+      - task: get_kubeconfig
+      - task: kubeconfig_public_endpoint
+
+  openbao:
+    desc: "Deploy and bootstrap OpenBao"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/openbao-bootstrap.yml'
+
+  postgres:
+    desc: "Deploy Postgres data service"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/postgres-deploy.yml'
+
+  kafka:
+    desc: "Deploy Kafka data service"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/kafka-deploy.yml'
+
+  apps:
+    desc: "Deploy visit demo apps"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/apps-deploy.yml'

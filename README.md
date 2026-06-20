@@ -189,7 +189,16 @@ Notes:
 
 ## Task Runner
 
-This repository now includes a root `Taskfile.yml` that mirrors the current CI jobs for local execution.
+This repository includes a root `Taskfile.yml` for local execution. The root file holds shared variables and includes task groups from `.taskfiles/`.
+
+Taskfile layout:
+- `Taskfile.yml` - shared vars and includes
+- `.taskfiles/venv.yml` - Python/Ansible virtualenv tasks
+- `.taskfiles/env.yml` - local environment checks
+- `.taskfiles/tofu.yml` - OpenTofu tasks
+- `.taskfiles/ansible.yml` - Ansible and staged deployment tasks
+- `.taskfiles/pipeline.yml` - pipeline orchestration tasks
+- `.taskfiles/openbao.yml` - OpenBao helper tasks
 
 Common usage:
 
@@ -199,6 +208,7 @@ task env:check
 task pipeline:check
 task pipeline:init_cluster
 task ansible:core
+task ansible:core_platform
 task ansible:openbao
 task ansible:postgres
 task ansible:kafka
@@ -282,12 +292,14 @@ GitOps structure and Flux-managed charts are implemented:
 - app stacks: `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`
 
 Flux cluster stages:
-- `core/` installs the Git source, core operators, ingress, and Ceph.
-- `security/` installs OpenBao after the core stage is ready.
+- `core/` installs the Git source, core operators, and Ceph.
+- `core-platform/` installs monitoring first, then ingress-nginx.
+- `security/` installs OpenBao after core platform services are ready.
 - `data-postgres/` installs Postgres after OpenBao/ESO are ready.
 - `data-kafka/` installs Kafka after the core stage is ready.
 - `apps/` installs app policies and visit demo workloads.
-- `observability/` is staged separately and not part of `pipeline:main` yet.
+
+The `core-platform/` split prevents ingress-nginx from rendering `ServiceMonitor` resources before Prometheus Operator CRDs are installed by `kube-prometheus-stack`.
 
 Flux dependency split for data platform:
 - `platform-core` installs operators/CRDs (`cloudnative-pg`, `strimzi`, `rook-ceph`)

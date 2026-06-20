@@ -1,0 +1,30 @@
+version: "3"
+
+tasks:
+  check:
+    desc: "Run local checks equivalent to CI check stages"
+    cmds:
+      - task: :tofu:fmt_validate
+      - task: :ansible:lint_inventory
+
+  init_cluster:
+    desc: "Provision infrastructure and bootstrap Kubernetes without Flux"
+    cmds:
+      - task: :tofu:plan
+      - task: :tofu:apply
+      - task: :ansible:inventory
+      - task: :ansible:smoke
+      - task: :ansible:base
+      - task: :ansible:runtime
+      - task: :ansible:bootstrap
+
+  main:
+    desc: "Run full local deployment pipeline"
+    cmds:
+      - task: :pipeline:init_cluster
+      - task: :ansible:core
+      - task: :ansible:core_platform
+      - task: :ansible:openbao
+      - task: :ansible:postgres
+      - task: :ansible:kafka
+      - task: :ansible:apps

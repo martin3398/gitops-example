@@ -8,10 +8,11 @@ The deployment is intentionally staged:
 
 1. create infrastructure
 2. bootstrap Kubernetes without Flux
-3. install Flux and the core platform stage
-4. bootstrap OpenBao procedurally
-5. deploy data services
-6. deploy applications
+3. install Flux, core operators, and Ceph
+4. deploy monitoring and ingress core platform services
+5. bootstrap OpenBao procedurally
+6. deploy data services
+7. deploy applications
 
 Flux remains the long-running reconciler for Kubernetes resources. Ansible controls when each stage is introduced to avoid bootstrap races, especially around OpenBao initialization and External Secrets.
 
@@ -29,10 +30,16 @@ Provision infrastructure and bootstrap Kubernetes without Flux:
 task pipeline:init_cluster
 ```
 
-Install Flux and deploy the core platform stage:
+Install Flux and deploy core operators and storage:
 
 ```bash
 task ansible:core
+```
+
+Deploy monitoring and ingress core platform services:
+
+```bash
+task ansible:core_platform
 ```
 
 Run the full deployment:
@@ -47,6 +54,34 @@ Fetch a local kubeconfig after deployment:
 task ansible:get_kubeconfig_public
 ```
 
+## Taskfile Layout
+
+The root `Taskfile.yml` only contains shared variables and includes. Task groups live under `.taskfiles/`:
+
+```text
+Taskfile.yml
+.taskfiles/
+  ansible.yml
+  env.yml
+  openbao.yml
+  pipeline.yml
+  tofu.yml
+  venv.yml
+```
+
+Public task names stay namespaced and stable:
+
+```bash
+task tofu:plan
+task ansible:core
+task ansible:core_platform
+task pipeline:main
+```
+
+Cross-namespace calls inside included Taskfiles use root-qualified task names, for example `:ansible:core`. Shared variables such as `INVENTORY`, `VENV_ANSIBLE_PLAYBOOK`, and `KUBECONFIG_FILE` stay in the root `Taskfile.yml`.
+
+`KUBECONFIG_FILE` is rooted with `pwd -P` so included Taskfiles do not accidentally resolve it under `.taskfiles/`.
+
 ## Full Deployment Sequence
 
 `task pipeline:main` runs:
@@ -54,6 +89,7 @@ task ansible:get_kubeconfig_public
 ```text
 pipeline:init_cluster
 ansible:core
+ansible:core_platform
 ansible:openbao
 ansible:postgres
 ansible:kafka
@@ -70,10 +106,11 @@ Expanded sequence:
 6. `ansible:runtime`
 7. `ansible:bootstrap`
 8. `ansible:core`
-9. `ansible:openbao`
-10. `ansible:postgres`
-11. `ansible:kafka`
-12. `ansible:apps`
+9. `ansible:core_platform`
+10. `ansible:openbao`
+11. `ansible:postgres`
+12. `ansible:kafka`
+13. `ansible:apps`
 
 ## Task Responsibilities
 
@@ -94,6 +131,13 @@ Expanded sequence:
 - creates Flux Git deploy credentials
 - applies `kubernetes/flux/clusters/dev/core/`
 - waits for `GitRepository/dev-repo`
+
+`ansible:core_platform`:
+
+- waits for `platform-core` and `platform-data-ceph`
+- applies `kubernetes/flux/clusters/dev/core-platform/`
+- reconciles `platform-observability`
+- reconciles `platform-ingress` after monitoring is ready
 
 `ansible:openbao`:
 
@@ -138,8 +182,11 @@ kubernetes/flux/clusters/dev/
     kustomization.yaml
     gitrepository.yaml
     kustomization-platform-core.yaml
-    kustomization-platform-ingress.yaml
     kustomization-platform-data-ceph.yaml
+  core-platform/
+    kustomization.yaml
+    kustomization-platform-observability.yaml
+    kustomization-platform-ingress.yaml
   security/
     kustomization.yaml
     kustomization-platform-security.yaml
@@ -154,9 +201,6 @@ kubernetes/flux/clusters/dev/
     kustomization-platform-apps.yaml
     kustomization-app-visit-web.yaml
     kustomization-app-visit-processing.yaml
-  observability/
-    kustomization.yaml
-    kustomization-platform-observability.yaml
 ```
 
 This avoids unreferenced sibling Kustomization files. A stage folder is applied only when the matching Ansible task runs.
@@ -165,12 +209,12 @@ This avoids unreferenced sibling Kustomization files. A stage folder is applied 
 
 | Stage folder | Applied by | Flux resources |
 | --- | --- | --- |
-| `core/` | `ansible:core` | `GitRepository/dev-repo`, `platform-core`, `platform-ingress`, `platform-data-ceph` |
+| `core/` | `ansible:core` | `GitRepository/dev-repo`, `platform-core`, `platform-data-ceph` |
+| `core-platform/` | `ansible:core_platform` | `platform-observability`, `platform-ingress` |
 | `security/` | `ansible:openbao` | `platform-security` |
 | `data-postgres/` | `ansible:postgres` | `platform-data-postgres` |
 | `data-kafka/` | `ansible:kafka` | `platform-data-kafka` |
 | `apps/` | `ansible:apps` | `platform-apps`, `app-visit-web`, `app-visit-processing` |
-| `observability/` | not in `pipeline:main` yet | `platform-observability` |
 
 ## Why Staged Flux Application
 
@@ -178,12 +222,47 @@ OpenBao cannot be fully bootstrapped by declarative manifests alone in this lab 
 
 If Postgres or apps are applied before OpenBao and External Secrets are ready, their required Kubernetes Secrets can be missing. The staged Ansible tasks make those dependencies explicit without making every Flux reconciliation depend on every upstream layer forever.
 
+Monitoring and ingress are also staged together because `ingress-nginx` renders a `ServiceMonitor` when metrics are enabled. The `ServiceMonitor` CRD is installed by Prometheus Operator through `kube-prometheus-stack`, so `platform-observability` must be ready before `platform-ingress` installs.
+
+The same CRD race can affect observability subcharts. `loki` depends on `kube-prometheus-stack`, and `promtail` depends on both `kube-prometheus-stack` and `loki`, because Loki and Promtail also render `ServiceMonitor` resources.
+
+## ServiceMonitor Failure Recovery
+
+If ingress was applied before Prometheus Operator CRDs existed, Flux can report an error like:
+
+```text
+Helm install failed ... no matches for kind "ServiceMonitor" in version "monitoring.coreos.com/v1"
+```
+
+After the refactor, apply the corrected stage order:
+
+```bash
+task ansible:core
+task ansible:core_platform
+```
+
+If the failed Helm release remains stuck, reconcile it after `platform-observability` is ready:
+
+```bash
+flux reconcile kustomization platform-observability -n flux-system --timeout=20m
+flux reconcile kustomization platform-ingress -n flux-system --timeout=15m
+flux reconcile helmrelease ingress-nginx -n flux-system
+```
+
+If Helm keeps retrying stale failed release state, uninstall the failed release and let Flux recreate it:
+
+```bash
+helm -n ingress-nginx uninstall ingress-nginx-ingress-nginx
+flux reconcile helmrelease ingress-nginx -n flux-system
+```
+
 ## Partial Reruns
 
 Common reruns:
 
 ```bash
 task ansible:core
+task ansible:core_platform
 task ansible:openbao
 task ansible:postgres
 task ansible:kafka
@@ -211,15 +290,21 @@ Check Ansible syntax:
 task ansible:lint_inventory
 ```
 
+Check pipeline order without executing it:
+
+```bash
+task --dry pipeline:main
+```
+
 Validate Flux stage folders locally:
 
 ```bash
 kubectl kustomize kubernetes/flux/clusters/dev/core
+kubectl kustomize kubernetes/flux/clusters/dev/core-platform
 kubectl kustomize kubernetes/flux/clusters/dev/security
 kubectl kustomize kubernetes/flux/clusters/dev/data-postgres
 kubectl kustomize kubernetes/flux/clusters/dev/data-kafka
 kubectl kustomize kubernetes/flux/clusters/dev/apps
-kubectl kustomize kubernetes/flux/clusters/dev/observability
 ```
 
 After deployment, check Flux:
@@ -248,9 +333,10 @@ The GitHub `ansible-run` workflow follows the same staged model after infrastruc
 4. runtime
 5. cluster bootstrap
 6. Flux/core bootstrap
-7. OpenBao bootstrap
-8. Postgres deploy
-9. Kafka deploy
-10. apps deploy
+7. core platform deploy
+8. OpenBao bootstrap
+9. Postgres deploy
+10. Kafka deploy
+11. apps deploy
 
 The local `task pipeline:main` command is the closest equivalent to the full deployment chain.

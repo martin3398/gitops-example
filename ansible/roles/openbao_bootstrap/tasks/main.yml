@@ -24,12 +24,35 @@
     kubectl --kubeconfig {{ openbao_kubeconfig }} apply --kustomize /tmp/flux-security
   changed_when: true
 
-- name: Reconcile OpenBao Flux Kustomization
+- name: Request OpenBao Flux Kustomization reconcile without waiting for health
   ansible.builtin.command: >-
-    flux reconcile kustomization platform-security -n flux-system --timeout=15m --kubeconfig {{ openbao_kubeconfig }}
-  register: openbao_platform_security_reconcile
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n flux-system annotate
+    kustomization.kustomize.toolkit.fluxcd.io/platform-security
+    reconcile.fluxcd.io/requestedAt={{ lookup('pipe', 'date +%s') }}
+    --overwrite
+  register: openbao_platform_security_reconcile_request
+  changed_when: true
+  failed_when: false
+
+- name: Wait for OpenBao HelmRelease to exist
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n flux-system get helmrelease openbao
+  register: openbao_helmrelease_exists
   changed_when: false
   failed_when: false
+  retries: 60
+  delay: 5
+  until: openbao_helmrelease_exists.rc == 0
+
+- name: Wait for OpenBao leader pod to exist
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }} get pod {{ openbao_leader_pod }}
+  register: openbao_leader_pod_exists
+  changed_when: false
+  failed_when: false
+  retries: 120
+  delay: 5
+  until: openbao_leader_pod_exists.rc == 0
 
 - name: Ensure remote OpenBao secret directory exists
   ansible.builtin.file:
