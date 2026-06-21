@@ -3,4 +3,5 @@ kind: Kustomization
 resources:
   - gitrepository.yaml
   - kustomization-platform-core.yaml
+  - kustomization-platform-scheduling-policies.yaml
   - kustomization-platform-data-ceph.yaml

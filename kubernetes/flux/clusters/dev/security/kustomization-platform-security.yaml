@@ -6,7 +6,7 @@ metadata:
 spec:
   interval: 1m
   dependsOn:
-    - name: platform-core
+    - name: platform-data-ceph
   sourceRef:
     kind: GitRepository
     name: dev-repo

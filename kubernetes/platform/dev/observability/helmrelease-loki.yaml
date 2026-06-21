@@ -48,7 +48,7 @@ spec:
       storage:
         type: filesystem
       limits_config:
-        retention_period: 336h
+        retention_period: 24h
     singleBinary:
       replicas: 1
       affinity:
@@ -64,14 +64,14 @@ spec:
       persistence:
         enabled: true
         storageClass: ceph-block
-        size: 80Gi
+        size: 1Gi
       resources:
         requests:
-          cpu: 200m
-          memory: 512Mi
+          cpu: 25m
+          memory: 128Mi
         limits:
-          cpu: "1"
-          memory: 2Gi
+          cpu: 500m
+          memory: 512Mi
     chunksCache:
       enabled: false
     resultsCache:

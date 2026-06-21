@@ -27,11 +27,11 @@ spec:
       - --kubelet-insecure-tls
       - --kubelet-preferred-address-types=InternalIP,Hostname,ExternalIP
       - --metric-resolution=15s
-    replicas: 2
+    replicas: 1
     resources:
       requests:
-        cpu: 100m
-        memory: 128Mi
+        cpu: 25m
+        memory: 64Mi
       limits:
-        cpu: 300m
-        memory: 256Mi
+        cpu: 200m
+        memory: 128Mi

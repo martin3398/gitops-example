@@ -37,22 +37,22 @@ spec:
   resources:
     mgr:
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 25m
+        memory: 128Mi
       limits:
-        cpu: 500m
+        cpu: 250m
         memory: 512Mi
     mon:
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 25m
+        memory: 128Mi
       limits:
-        cpu: 500m
+        cpu: 250m
         memory: 512Mi
     osd:
       requests:
+        cpu: 50m
+        memory: 1Gi
+      limits:
         cpu: 500m
         memory: 2Gi
-      limits:
-        cpu: "2"
-        memory: 4Gi

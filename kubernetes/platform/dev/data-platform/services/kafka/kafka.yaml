@@ -27,13 +27,13 @@ spec:
     volumes:
       - id: 0
         type: persistent-claim
-        size: 22Gi
+        size: 1Gi
         class: ceph-block
         deleteClaim: false
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
+      cpu: 25m
+      memory: 128Mi
     limits:
       cpu: 500m
       memory: 512Mi

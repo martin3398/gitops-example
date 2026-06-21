@@ -53,14 +53,14 @@ spec:
                 - ReadWriteOnce
               resources:
                 requests:
-                  storage: 10Gi
+                  storage: 512Mi
         resources:
           requests:
-            cpu: 100m
-            memory: 128Mi
+            cpu: 25m
+            memory: 64Mi
           limits:
-            cpu: 500m
-            memory: 512Mi
+            cpu: 250m
+            memory: 256Mi
     grafana:
       defaultDashboardsEnabled: true
       affinity:
@@ -79,14 +79,14 @@ spec:
       persistence:
         enabled: true
         storageClassName: ceph-block
-        size: 10Gi
+        size: 1Gi
       resources:
         requests:
-          cpu: 100m
-          memory: 256Mi
+          cpu: 25m
+          memory: 64Mi
         limits:
-          cpu: 500m
-          memory: 512Mi
+          cpu: 250m
+          memory: 256Mi
       grafana.ini:
         server:
           root_url: "%(protocol)s://%(domain)s/grafana"
@@ -123,8 +123,8 @@ spec:
                       operator: NotIn
                       values:
                         - ceph
-        retention: 15d
-        retentionSize: 40GB
+        retention: 24h
+        retentionSize: 800MB
         scrapeInterval: 30s
         evaluationInterval: 30s
         walCompression: true
@@ -138,11 +138,11 @@ spec:
                 - ReadWriteOnce
               resources:
                 requests:
-                  storage: 50Gi
+                  storage: 1Gi
         resources:
           requests:
-            cpu: 250m
-            memory: 1Gi
+            cpu: 50m
+            memory: 256Mi
           limits:
-            cpu: "1"
-            memory: 2Gi
+            cpu: 500m
+            memory: 1Gi

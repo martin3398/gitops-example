@@ -1,0 +1,36 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: tiny-pod-requests
+spec:
+  background: false
+  validationFailureAction: Audit
+  rules:
+    - name: force-tiny-container-requests
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - rook-ceph
+      mutate:
+        patchStrategicMerge:
+          spec:
+            containers:
+              - (name): "*"
+                resources:
+                  requests:
+                    cpu: 5m
+                    memory: 32Mi
+            initContainers:
+              - (name): "*"
+                resources:
+                  requests:
+                    cpu: 5m
+                    memory: 32Mi

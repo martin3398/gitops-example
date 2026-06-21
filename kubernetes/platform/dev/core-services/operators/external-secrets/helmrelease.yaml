@@ -23,11 +23,11 @@ spec:
         name: external-secrets
         namespace: flux-system
   values:
-    replicaCount: 2
+    replicaCount: 1
     resources:
       requests:
-        cpu: 50m
-        memory: 128Mi
+        cpu: 25m
+        memory: 64Mi
       limits:
-        cpu: 300m
-        memory: 256Mi
+        cpu: 200m
+        memory: 128Mi

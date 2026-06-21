@@ -43,15 +43,15 @@ spec:
               - /
       resources:
         requests:
-          cpu: 250m
-          memory: 512Mi
+          cpu: 25m
+          memory: 128Mi
         limits:
-          cpu: 1000m
-          memory: 1Gi
+          cpu: 500m
+          memory: 512Mi
       dataStorage:
         enabled: true
         storageClass: ceph-block
-        size: 2Gi
+        size: 1Gi
       ha:
         enabled: true
         replicas: 3

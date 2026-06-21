@@ -23,9 +23,6 @@ locals {
     worker-1 = { az_index = 0 }
     worker-2 = { az_index = 1 }
     worker-3 = { az_index = 2 }
-    worker-4 = { az_index = 0 }
-    worker-5 = { az_index = 1 }
-    worker-6 = { az_index = 2 }
   }
 
   ceph_worker_nodes = {

@@ -5,6 +5,10 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m
+  dependsOn:
+    - name: platform-data-kafka
+    - name: platform-data-postgres
+    - name: platform-ingress
   sourceRef:
     kind: GitRepository
     name: dev-repo

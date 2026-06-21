@@ -23,8 +23,8 @@ secretName: visit-demo-db
 
 resources:
   requests:
-    cpu: 50m
-    memory: 64Mi
+    cpu: 5m
+    memory: 32Mi
   limits:
     cpu: 250m
     memory: 256Mi
