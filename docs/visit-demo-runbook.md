@@ -23,6 +23,8 @@ This runbook covers the current delivery and operations model for the visit demo
 
 This keeps app and API on the same origin and avoids CORS complexity.
 
+The intended local browser URL is `http://visit.gitops.local` as part of the repo-wide `*.gitops.local` convention documented in the README. The current manifest keeps the same path contract but does not yet require a host rule.
+
 ## API Contract (Current)
 
 - `POST /api/v1/visit-events?count=N`
@@ -75,7 +77,7 @@ kubectl -n flux-system get kustomizations,helmreleases
 
 ## Next Scope (Roadmap Sync)
 
-- Vault lab remains pending and tracked as next major platform lab.
+- OpenBao integration is implemented through External Secrets for app database credentials.
 - Add load generator scenarios to validate throughput and queue behavior under controlled traffic.
 - Implement and tune HPA for `visit-processor` based on measured load behavior.
 - Apply cluster-level authentication hardening (authn/authz and RBAC), excluding app-level auth features.

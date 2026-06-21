@@ -18,8 +18,9 @@ This repository uses GitHub Actions for CI/CD workflows.
   - Triggers on PR and push to `main` for `ansible/` changes
 
 - `.github/workflows/ansible-run.yml`
-  - Manual workflow to run inventory/smoke/base/runtime/bootstrap/flux chain
+  - Manual workflow to run the full staged Ansible deployment chain
   - Reads OpenTofu outputs directly from remote state
+  - Order: inventory, smoke, base, runtime, cluster bootstrap, Flux/core, core platform, OpenBao, Postgres, Kafka, apps
 
 - `.github/workflows/apps-build-publish.yml`
   - Tests services on PR/push
@@ -45,6 +46,7 @@ Set as GitHub secrets (sensitive):
 - optional `AWS_SESSION_TOKEN`
 - `FLUX_GIT_SSH_PRIVATE_KEY_B64` (for `ansible-run` flux step)
 - `FLUX_GIT_KNOWN_HOSTS_B64` (required by current `ansible-run` workflow)
+- optional `OPENBAO_DEV_SEED` (overrides deterministic dev secret seeding)
 - optional `GHCR_TOKEN` (if unset in secrets, workflow defaults to GitHub token)
 
 GHCR auth behavior in `apps-build-publish`:

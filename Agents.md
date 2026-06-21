@@ -21,9 +21,9 @@ Implement a multi-phase learning platform with:
   - OpenTofu/Terraform: cloud infrastructure only
   - Ansible: host provisioning + Kubernetes bootstrap only
   - Flux: all cluster applications and platform add-ons
-- Introduce heavyweight stateful tools one by one (Vault, MongoDB, Kafka, Ceph) to keep troubleshooting tractable.
-- Delay backup and policy/security controls until the base platform and app delivery workflow are stable.
-- Ceph should be last (or isolated) due to high operational complexity.
+- Introduce heavyweight stateful tools one by one (OpenBao, MongoDB, Kafka, Ceph) to keep troubleshooting tractable.
+- Backup and policy/security controls are next-phase work now that the base platform and app delivery workflow are stable.
+- Treat stateful systems as implemented baselines that still need operational hardening, especially backup/restore and credential rotation.
 
 ## Platform Decisions
 - IaC: OpenTofu (Terraform-compatible)
@@ -37,6 +37,7 @@ Implement a multi-phase learning platform with:
 - TLS/certificate management: out of scope for this AWS lab phase
 - Monitoring: kube-prometheus-stack + Loki + Grafana
 - Data platform baselines: Postgres (CloudNativePG) and Kafka (Strimzi)
+- Secrets: OpenBao + External Secrets Operator
 
 ## Target Topology
 - Kubernetes nodes on EC2:
@@ -80,16 +81,16 @@ Exit criteria:
 - Observability dashboards show app and cluster metrics
 
 ### Phase 3 - Advanced Tool Labs
-Install and operate tools one at a time:
-1. Vault
-2. MongoDB
-3. Kafka (baseline implemented)
-4. Ceph (last)
+Current state:
+1. OpenBao baseline implemented for platform/app secrets
+2. Kafka baseline implemented with Strimzi in KRaft mode
+3. Ceph baseline implemented with `ceph-block` as default StorageClass
+4. MongoDB remains pending/optional
 
 Phase 3 focus TODOs:
-- Vault lab: secret management integration for platform/app credentials
-- MongoDB lab: reproducible deployment + operations notes
-- Ceph lab: storage classes and stateful workload migration validation
+- OpenBao hardening: snapshots, restore, auto-unseal, dynamic DB credentials, rotation
+- MongoDB lab: reproducible deployment + operations notes if still desired
+- Ceph hardening: restore drills and stateful workload failure testing
 - Load generator lab: reproducible traffic scenarios to observe queue/throughput behavior
 - HPA lab: `visit-processor` autoscaling policy and tuning under load
 
@@ -121,10 +122,32 @@ Exit criteria:
 - Define resource requests/limits for all workloads.
 - Document every major component with install, operate, and failure runbook notes.
 - Include teardown steps for cost control.
-- For this lab workflow, the human operator executes shell/OpenTofu/Ansible commands manually; agents provide plans, file changes, and command guidance only.
-- Agents must never execute shell/OpenTofu/Ansible commands for this repository. Command execution is always manual by the human operator.
+- Agents may run safe local inspection and validation commands when needed.
+- Destructive or cost-impacting infrastructure actions, especially `tofu apply`, `tofu destroy`, cluster rebuilds, and secret resets, require explicit human direction.
 - OpenTofu state backend for this lab uses S3 with DynamoDB locking; avoid local-state-only workflows once backend is initialized.
 - Infrastructure apply/destroy operations in CI remain manual-gated.
+
+## Current Deployment Model
+
+The full local deployment is staged:
+
+1. `pipeline:init_cluster` - infrastructure, inventory, host prep, kubeadm, Cilium
+2. `ansible:core` - Flux, core operators, Ceph
+3. `ansible:core_platform` - monitoring, then ingress-nginx
+4. `ansible:openbao` - OpenBao deploy/init/unseal/auth/seed
+5. `ansible:postgres` - Postgres and ESO-backed app user secret
+6. `ansible:kafka` - Kafka baseline
+7. `ansible:apps` - app policy and visit demo workloads
+
+Use `task pipeline:main` for the full ordered chain.
+
+## Next Agent Priorities
+
+- Keep docs aligned with the implemented stack; do not reintroduce Vault terminology unless a separate HashiCorp Vault lab is explicitly requested.
+- Add post-deploy verification automation (`pipeline:verify`) before adding more platform components.
+- Harden OpenBao operations: raft peer validation, snapshots, restore, auto-unseal decision, and dynamic Postgres credentials.
+- Add backup/restore coverage before treating stateful services as production-like.
+- Add load/HPA validation for the visit processor path.
 
 ## Suggested Repository Layout
 - `infra/` OpenTofu/Terraform infrastructure code
@@ -132,7 +155,7 @@ Exit criteria:
 - `kubernetes/flux/` Flux bootstrap and Kustomizations
 - `kubernetes/platform/` ingress, monitoring, logging
 - `kubernetes/apps/` frontend, microservices, Postgres
-- `kubernetes/labs/` Vault, MongoDB, Ceph experiments
+- `kubernetes/labs/` optional MongoDB and future experiments
 - `docs/` architecture, runbooks, troubleshooting, DR tests
 
 ## Definition of Done (Global)

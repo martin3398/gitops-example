@@ -323,6 +323,35 @@ kubectl get clustersecretstore openbao
 kubectl -n data-postgres get secret app-user
 ```
 
+## Open Work
+
+Platform reliability:
+- add `pipeline:verify` for post-deploy checks
+- add Velero and restore drills
+- add component restore notes for OpenBao, Postgres, Kafka, and Ceph
+
+Secrets and credentials:
+- add OpenBao Raft peer verification to automation
+- add OpenBao snapshot backup/restore
+- decide on auto-unseal for non-dev use
+- replace deterministic static Postgres credentials with dynamic OpenBao database credentials
+- add secret rotation workflow and narrower per-consumer OpenBao policies
+
+Security:
+- review cluster auth/RBAC
+- add baseline network policies
+- add image scanning in CI
+- expand Kyverno policies beyond the current scheduling preference baseline
+
+Application operations:
+- add reproducible load generator scenarios
+- implement and tune HPA for `visit-processor`
+- add Kafka consumer lag and app SLO dashboards/alerts
+
+Maintenance:
+- add Renovate or equivalent dependency/workflow update automation
+- keep MongoDB as pending/optional unless explicitly brought back into scope
+
 ## CI Flow
 
 The GitHub `ansible-run` workflow follows the same staged model after infrastructure apply:

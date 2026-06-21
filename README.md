@@ -10,7 +10,7 @@ It uses AWS EC2 for convenience, but follows a self-managed approach designed to
 - infrastructure as code
 - automated host and cluster bootstrap
 - GitOps-driven platform and workload delivery
-- operational practices (observability, backups, policy/security)
+- operational practices (observability, secrets, backups, policy/security)
 
 ## Architecture Target
 
@@ -40,12 +40,12 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Application GitOps image-update automation (Flux image automation writes GitOps values)
 - [x] Application GitOps delivery (visit-web + visit-gateway + visit-processor)
 - [x] Postgres baseline: CloudNativePG operator + dev cluster via Flux
-- [ ] Vault lab: secret management integration for platform/app credentials
+- [x] OpenBao baseline: HA Raft cluster + External Secrets integration for platform/app credentials
 - [ ] Load generator lab: reproducible traffic scenarios for scaling validation
 - [ ] Autoscaling lab: HPA for `visit-processor` with measured scaling behavior
 - [ ] Cluster authentication hardening (cluster-level authn/authz only; no app-level auth scope)
 - [ ] Dependency/update automation baseline (Renovate for app/runtime/workflow updates)
-- [ ] Credential management hardening: replace demo/static secrets with managed credentials (GHCR pull secrets, Flux Git write credentials, app DB secrets rotation)
+- [ ] Credential management hardening: dynamic DB credentials, secret rotation, stronger OpenBao init material handling, GHCR pull secrets, and Flux Git write credentials
 - [x] Kafka baseline: Strimzi operator + 3-broker KRaft cluster via Flux (dev defaults)
 - [x] Ceph lab: storage classes and stateful workload migration validation
 - [ ] Backups (Velero + restore drill)
@@ -85,7 +85,7 @@ Visit demo ownership model:
 - CI/CD: GitHub Actions
 - Monitoring/Logging: kube-prometheus-stack + Loki + Grafana
 - Application data: Postgres primary/replica
-- Advanced labs: Vault, MongoDB, Kafka, Ceph
+- Advanced labs: OpenBao, MongoDB, Kafka, Ceph
 - Later-stage reliability/security: Velero, Kyverno, Trivy, baseline network policies
 
 ## Delivery Plan
@@ -104,7 +104,7 @@ Visit demo ownership model:
 - Add GitHub Actions workflows for build/test/publish and use Flux image automation for GitOps image updates
 
 ### Phase 3 - Advanced Tooling
-- Add Vault, MongoDB, Kafka, and Ceph one by one
+- Add OpenBao, MongoDB, Kafka, and Ceph one by one
 - Capture setup and operations notes for each
 - Add reproducible load-generation scenarios and document scaling observations
 - Implement and tune HPA for `visit-processor` under controlled load
@@ -123,7 +123,7 @@ Planned layout:
 - `kubernetes/flux/` Flux bootstrap and Kustomizations
 - `kubernetes/platform/` ingress, monitoring/logging
 - `kubernetes/apps/` frontend, services, database
-- `kubernetes/labs/` Vault, MongoDB, Ceph
+- `kubernetes/labs/` optional MongoDB and future experiments
 - `docs/` architecture and runbooks
 
 ## Conventions
@@ -164,6 +164,31 @@ To expose application ingress publicly through an internet-facing NLB, enable th
 
 When enabled, OpenTofu exports `ingress_public_endpoint`.
 Ingress traffic path is NLB (`:80`) -> worker NodePort (`30080`) -> `ingress-nginx` controller.
+
+### Local Ingress Domains
+
+Use local `*.gitops.local` names for browser-facing dev UIs. Map every returned NLB address to the same hostname set in `/etc/hosts`:
+
+```text
+<nlb-ip-1> visit.gitops.local grafana.gitops.local bao.gitops.local
+<nlb-ip-2> visit.gitops.local grafana.gitops.local bao.gitops.local
+```
+
+Resolve the current NLB addresses with:
+
+```bash
+nslookup "$(tofu -chdir=infra output -raw ingress_public_endpoint)"
+```
+
+Refresh these entries after a full infrastructure destroy/recreate because NLB IPs can change.
+
+| Application | Intended local URL | Current manifest status |
+| --- | --- | --- |
+| Visit demo | `http://visit.gitops.local` | The app ingress currently routes `/` and `/api` without a host rule. |
+| Grafana | `http://grafana.gitops.local` | Grafana currently routes from `/grafana` and is configured with `serve_from_sub_path`. |
+| OpenBao | `http://bao.gitops.local` | OpenBao already uses host-based ingress for `bao.gitops.local`. |
+
+The intended cleanup is to keep each browser UI on its own local hostname and make redirects/base URLs match those hostnames. HTTPS and certificate management remain out of scope for this HTTP-only lab.
 
 ## Local Environment Variables
 
@@ -339,4 +364,12 @@ Phase 3 current status:
 - Kafka baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/services/kafka/`
 - Postgres baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/services/postgres/` (dev-only defaults)
 - Ceph baseline is implemented via Rook, with `ceph-block` as the default StorageClass
-- Vault and MongoDB labs remain pending
+- OpenBao baseline is implemented as the secret-management layer for External Secrets
+- MongoDB lab remains pending/optional
+
+Current open platform work:
+- backup/restore: Velero plus component-specific restore drills
+- secrets hardening: OpenBao auto-unseal, snapshots, dynamic DB credentials, secret rotation, and stronger init material custody
+- security hardening: cluster auth/RBAC review, network policies, image scanning, and policy expansion
+- application operations: load generation, HPA tuning for `visit-processor`, and alerting/lag dashboards
+- update hygiene: Renovate or equivalent dependency/workflow update automation

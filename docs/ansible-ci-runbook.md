@@ -20,6 +20,8 @@ The Ansible workflow runs these ordered steps:
 
 Inventory is generated from `infra/outputs.json` that `ansible-run` creates by reading OpenTofu remote state directly.
 
+This order mirrors local `task pipeline:main` after the OpenTofu apply step.
+
 ## Trigger Flow
 
 On `main` branch:
@@ -33,7 +35,8 @@ The manual workflows use `concurrency: infra` to prevent concurrent infrastructu
 ## Pipeline Gates
 
 - Gate 1 (provision): OpenTofu apply is manual.
-- Gate 2 (destroy): OpenTofu destroy is manual and requires explicit `destroy_confirm=yes` input.
+- Gate 2 (deploy): Ansible staged deployment is manual.
+- Gate 3 (destroy): OpenTofu destroy is manual and requires explicit `destroy_confirm=yes` input.
 
 ## Variables and Reuse
 

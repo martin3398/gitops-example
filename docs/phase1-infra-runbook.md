@@ -56,6 +56,19 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
    - `tofu plan -out phase1-infra.tfplan`
    - `tofu apply "phase1-infra.tfplan"`
 
+Task-based equivalents from the repository root:
+
+```bash
+task tofu:plan
+task tofu:apply
+```
+
+To provision infrastructure and continue through Kubernetes bootstrap without installing Flux:
+
+```bash
+task pipeline:init_cluster
+```
+
 ## Verification
 
 - `tofu output`

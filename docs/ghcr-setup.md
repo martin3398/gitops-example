@@ -43,6 +43,17 @@ Replace `ghcr.io/example/...` with your real owner in:
 
 ## 4) Create pull secrets for workloads
 
+Preferred path: export `GHCR_USERNAME` and `GHCR_TOKEN` before running the Flux/core stage. The Ansible Flux bootstrap role creates or updates:
+
+- `ghcr-pull` in `visit-web` and `visit-processing`
+- `ghcr-registry` in `flux-system`
+
+```bash
+task ansible:core
+```
+
+Manual fallback:
+
 Create `ghcr-pull` secret in both workload namespaces:
 
 ```bash
@@ -72,12 +83,12 @@ kubectl -n flux-system create secret docker-registry ghcr-registry \
 
 `ImageRepository` objects already reference `spec.secretRef.name: ghcr-registry`.
 
-### Optional: apply these via Ansible flux bootstrap
+### Apply these via Ansible flux bootstrap
 
 If you export `GHCR_USERNAME` and `GHCR_TOKEN` before running:
 
 ```bash
-ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/flux-bootstrap.yml --tags flux
+task ansible:core
 ```
 
 the role will create/update:

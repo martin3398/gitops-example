@@ -20,6 +20,7 @@ This runbook describes the production-style OpenBao baseline for this repository
 ## Local Host Entry
 
 OpenBao uses host-based ingress with the local-only hostname `bao.gitops.local`.
+The shared local ingress-domain convention is documented in the repository README under `Public Ingress Access`.
 
 1. Resolve the current AWS ingress NLB endpoint:
 
@@ -33,6 +34,8 @@ nslookup "$(tofu -chdir=infra output -raw ingress_public_endpoint)"
 <nlb-ip-1> bao.gitops.local
 <nlb-ip-2> bao.gitops.local
 ```
+
+If you are also exposing the other browser UIs locally, use the shared host entry shape from the README so `visit.gitops.local`, `grafana.gitops.local`, and `bao.gitops.local` resolve consistently.
 
 You can print the current entries with:
 
@@ -57,6 +60,12 @@ The init file path is in the repository root:
 
 ```text
 .secrets/openbao-init.dev.json
+```
+
+The same material is stored on the first control plane at:
+
+```text
+/root/.secrets/openbao-init.dev.json
 ```
 
 This file contains unseal keys and the root token. Keep it local only.
@@ -116,6 +125,7 @@ flux suspend helmrelease openbao -n flux-system
 helm -n openbao uninstall openbao
 kubectl -n openbao delete pvc -l app.kubernetes.io/instance=openbao
 rm -f .secrets/openbao-init.dev.json
+ansible control_plane[0] -i ansible/inventories/dev/hosts.yml -b -m ansible.builtin.file -a 'path=/root/.secrets/openbao-init.dev.json state=absent'
 flux resume helmrelease openbao -n flux-system
 flux reconcile helmrelease openbao -n flux-system
 ```
@@ -130,8 +140,32 @@ Override the deterministic seed with `OPENBAO_DEV_SEED` when running the task or
 
 This writes deterministic secrets for the current Postgres app user and visit demo DB consumers.
 
+## Validation
+
+Check OpenBao status:
+
+```bash
+task openbao:status
+```
+
+Check Raft peers from the leader:
+
+```bash
+kubectl -n openbao exec openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 bao operator raft list-peers
+```
+
+Check ESO integration:
+
+```bash
+kubectl get clustersecretstore openbao
+kubectl -n data-postgres get secret app-user
+```
+
 ## Notes
 
 - No TLS is configured in this phase; this is intentional for current lab scope.
 - Rotate dev credentials by changing `OPENBAO_DEV_SEED` and re-running the OpenBao Ansible bootstrap.
 - Kafka and Grafana are intentionally not seeded until manifests consume those secrets.
+- Auto-unseal is not implemented yet.
+- OpenBao snapshot backup/restore is not implemented yet.
+- Postgres uses deterministic static dev credentials; dynamic database credentials are not implemented yet.

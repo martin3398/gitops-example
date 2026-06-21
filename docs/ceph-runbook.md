@@ -42,8 +42,8 @@ This targets the first non-root NVMe disk on each worker that OpenTofu attaches 
 
 Current worker model:
 
-- 6 workers total for workload capacity.
-- Ceph OSD data disks are attached only to `worker-1`, `worker-2`, and `worker-3`.
+- 3 workers total for workload capacity.
+- Ceph OSD data disks are attached to `worker-1`, `worker-2`, and `worker-3`.
 - Ceph therefore uses only nodes that expose `/dev/nvme1n1`.
 
 ## Placement Policy for Non-Ceph Workloads
