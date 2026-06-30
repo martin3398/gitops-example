@@ -85,7 +85,7 @@ Successful sequence should result in:
 Additional checks after bootstrap:
 
 - `kubectl -n flux-system get imagerepositories,imagepolicies,imageupdateautomations`
-- visit app image automation objects should appear from `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/` after app stages become Ready
+- visit app image automation objects should appear from `kubernetes/apps/dev/visit-web/`, `kubernetes/apps/dev/visit-processing/`, and `kubernetes/apps/dev/visit-loadgen/` after app stages become Ready
 
 ## Flux Bootstrap Variables
 

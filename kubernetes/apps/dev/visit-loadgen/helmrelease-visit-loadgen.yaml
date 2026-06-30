@@ -1,0 +1,28 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: visit-loadgen
+  namespace: flux-system
+spec:
+  interval: 1m
+  targetNamespace: visit-loadgen
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: ./charts/visit-loadgen
+      sourceRef:
+        kind: GitRepository
+        name: dev-repo
+  values:
+    imagePullSecrets:
+      - name: ghcr-pull
+    image:
+      repository: ghcr.io/martin3398/visit-loadgen # {"$imagepolicy": "flux-system:visit-loadgen:name"}
+      tag: 20260630223607-736390ad # {"$imagepolicy": "flux-system:visit-loadgen:tag"}
+    config:
+      mode: fixed
+      fixedBand: below
+      targetBaseUrl: http://visit-web-visit-gateway.visit-web.svc/api/v1

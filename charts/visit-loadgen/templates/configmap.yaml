@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+data:
+  config.env: |
+    TARGET_BASE_URL={{ .Values.config.targetBaseUrl }}
+    LOADGEN_MODE={{ .Values.config.mode }}
+    LOADGEN_FIXED_BAND={{ .Values.config.fixedBand }}
+    LOADGEN_BANDS={{ .Values.config.bands }}
+    MIN_PHASE_DURATION={{ .Values.config.minPhaseDuration }}
+    MAX_PHASE_DURATION={{ .Values.config.maxPhaseDuration }}
+    STATUS_INTERVAL={{ .Values.config.statusInterval }}
+    RELOAD_INTERVAL={{ .Values.config.reloadInterval }}
+    REQUEST_TIMEOUT={{ .Values.config.requestTimeout }}
+    MAX_BATCH={{ .Values.config.maxBatch }}

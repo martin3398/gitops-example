@@ -174,7 +174,7 @@ Expanded sequence:
 `ansible:apps`:
 
 - applies `kubernetes/flux/clusters/dev/apps/`
-- reconciles app policy and visit demo app Flux Kustomizations
+- reconciles app policy, visit demo app, and load generator Flux Kustomizations
 
 `pipeline:verify`:
 
@@ -221,6 +221,7 @@ kubernetes/flux/clusters/dev/
     kustomization-platform-apps.yaml
     kustomization-app-visit-web.yaml
     kustomization-app-visit-processing.yaml
+    kustomization-app-visit-loadgen.yaml
 ```
 
 This avoids unreferenced sibling Kustomization files. A stage folder is applied only when the matching Ansible task runs.
@@ -234,7 +235,7 @@ This avoids unreferenced sibling Kustomization files. A stage folder is applied 
 | `security/` | `ansible:openbao` | `platform-security` |
 | `data-postgres/` | `ansible:postgres` | `platform-data-postgres` |
 | `data-kafka/` | `ansible:kafka` | `platform-data-kafka` |
-| `apps/` | `ansible:apps` | `platform-apps`, `app-visit-web`, `app-visit-processing` |
+| `apps/` | `ansible:apps` | `platform-apps`, `app-visit-web`, `app-visit-processing`, `app-visit-loadgen` |
 
 ## Why Staged Flux Application
 

@@ -7,6 +7,7 @@ on:
       - charts/visit-ui/**
       - charts/visit-gateway/**
       - charts/visit-processor/**
+      - charts/visit-loadgen/**
       - .github/workflows/apps-build-publish.yml
   push:
     branches: [main]
@@ -15,6 +16,7 @@ on:
       - charts/visit-ui/**
       - charts/visit-gateway/**
       - charts/visit-processor/**
+      - charts/visit-loadgen/**
       - .github/workflows/apps-build-publish.yml
 
 jobs:
@@ -38,6 +40,7 @@ jobs:
         service:
           - visit-gateway
           - visit-processor
+          - visit-loadgen
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -86,6 +89,9 @@ jobs:
           - image: visit-processor
             context: apps/visit-demo/visit-processor
             dockerfile: apps/visit-demo/visit-processor/Dockerfile
+          - image: visit-loadgen
+            context: apps/visit-demo/visit-loadgen
+            dockerfile: apps/visit-demo/visit-loadgen/Dockerfile
           - image: visit-ui
             context: apps/visit-demo/visit-ui
             dockerfile: apps/visit-demo/visit-ui/Dockerfile

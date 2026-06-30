@@ -3,6 +3,8 @@ import { VisitActions } from "./VisitActions.js";
 
 type Props = {
   count: number;
+  queued: number | null;
+  queueStatus: "ok" | "unavailable";
   message: string;
   toneClassName: "ok" | "err";
   isQueueing?: boolean;
@@ -14,6 +16,8 @@ type Props = {
 
 export function VisitCounterCard({
   count,
+  queued,
+  queueStatus,
   message,
   toneClassName,
   isQueueing = false,
@@ -51,6 +55,9 @@ export function VisitCounterCard({
               <span className={`spinner ${isRefreshing ? "is-visible" : ""}`} />
             </button>
           </div>
+          <p className="queue-row">
+            Queued visits: <strong>{queueStatus === "ok" && queued !== null ? queued : "unavailable"}</strong>
+          </p>
           <p className={`msg ${toneClassName}`}>{message}</p>
         </section>
       </div>

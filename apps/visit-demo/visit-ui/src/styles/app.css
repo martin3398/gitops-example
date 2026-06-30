@@ -14,6 +14,8 @@ button:disabled { opacity: 0.7; cursor: default; }
 .status-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; }
 .count-row { margin: 0; }
 .count { font-size: 1.75rem; font-weight: 700; }
+.queue-row { margin: 8px 0 0; color: #475569; }
+.queue-row strong { color: #334155; }
 .msg { min-height: 24px; margin: 8px 0 0; }
 .ok { color: #166534; }
 .err { color: #991b1b; }

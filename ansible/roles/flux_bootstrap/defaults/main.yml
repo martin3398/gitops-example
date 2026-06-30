@@ -32,3 +32,4 @@ ghcr_server: ghcr.io
 ghcr_workload_namespaces:
   - visit-web
   - visit-processing
+  - visit-loadgen

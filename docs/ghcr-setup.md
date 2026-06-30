@@ -3,6 +3,7 @@
 This runbook sets up private image build/push and deployment pulls for:
 
 - `visit-ui` (container image used by the `visit-web` HelmRelease)
+- `visit-loadgen` (container image used by the `visit-loadgen` HelmRelease)
 - `visit-gateway`
 - `visit-processor`
 
@@ -37,15 +38,17 @@ Replace `ghcr.io/example/...` with your real owner in:
 - `kubernetes/apps/dev/visit-web/helmrelease-visit-web.yaml`
 - `kubernetes/apps/dev/visit-web/helmrelease-visit-gateway.yaml`
 - `kubernetes/apps/dev/visit-processing/helmrelease-visit-processor.yaml`
+- `kubernetes/apps/dev/visit-loadgen/helmrelease-visit-loadgen.yaml`
 - `kubernetes/apps/dev/visit-web/imagerepository-visit-web.yaml`
 - `kubernetes/apps/dev/visit-web/imagerepository-visit-gateway.yaml`
 - `kubernetes/apps/dev/visit-processing/imagerepository-visit-processor.yaml`
+- `kubernetes/apps/dev/visit-loadgen/imagerepository-visit-loadgen.yaml`
 
 ## 4) Create pull secrets for workloads
 
 Preferred path: export `GHCR_USERNAME` and `GHCR_TOKEN` before running the Flux/core stage. The Ansible Flux bootstrap role creates or updates:
 
-- `ghcr-pull` in `visit-web` and `visit-processing`
+- `ghcr-pull` in `visit-web`, `visit-processing`, and `visit-loadgen`
 - `ghcr-registry` in `flux-system`
 
 ```bash
@@ -63,6 +66,10 @@ kubectl -n visit-web create secret docker-registry ghcr-pull \
   --docker-password="$GHCR_TOKEN"
 
 kubectl -n visit-processing create secret docker-registry ghcr-pull \
+  --docker-server=ghcr.io \
+  --docker-username="$GHCR_USERNAME" \
+  --docker-password="$GHCR_TOKEN"
+kubectl -n visit-loadgen create secret docker-registry ghcr-pull \
   --docker-server=ghcr.io \
   --docker-username="$GHCR_USERNAME" \
   --docker-password="$GHCR_TOKEN"
@@ -93,7 +100,7 @@ task ansible:core
 
 the role will create/update:
 
-- `ghcr-pull` in `visit-web` and `visit-processing`
+- `ghcr-pull` in `visit-web`, `visit-processing`, and `visit-loadgen`
 - `ghcr-registry` in `flux-system`
 
 ## 6) Run first pipeline and verify
@@ -112,6 +119,7 @@ kubectl -n flux-system get imagerepositories,imagepolicies,imageupdateautomation
 ```bash
 kubectl -n visit-web get pods
 kubectl -n visit-processing get pods
+kubectl -n visit-loadgen get pods
 ```
 
 If pods show `ImagePullBackOff`, verify `ghcr-pull` in both namespaces.

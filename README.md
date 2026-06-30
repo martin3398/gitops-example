@@ -41,7 +41,7 @@ Use this as the single source of truth for what is done and what is next.
 - [x] Application GitOps delivery (visit-web + visit-gateway + visit-processor)
 - [x] Postgres baseline: CloudNativePG operator + dev cluster via Flux
 - [x] OpenBao baseline: HA Raft cluster + External Secrets integration for platform/app credentials
-- [ ] Load generator lab: reproducible traffic scenarios for scaling validation
+- [x] Load generator lab: reproducible traffic scenarios for scaling validation
 - [ ] Autoscaling lab: HPA for `visit-processor` with measured scaling behavior
 - [ ] Cluster authentication hardening (cluster-level authn/authz only; no app-level auth scope)
 - [ ] Dependency/update automation baseline (Renovate for app/runtime/workflow updates)
@@ -51,8 +51,9 @@ Use this as the single source of truth for what is done and what is next.
 - [ ] Backups (Velero + restore drill)
 
 Visit demo ownership model:
-- each service has its own Helm chart under `charts/visit-ui`, `charts/visit-gateway`, and `charts/visit-processor`
+- each service has its own Helm chart under `charts/visit-ui`, `charts/visit-gateway`, `charts/visit-processor`, and `charts/visit-loadgen`
 - Flux deploys each service with its own `HelmRelease` under `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`
+- `visit-loadgen` runs as an always-on Kubernetes deployment in `paused` mode by default; switch it to `random` for stochastic load bands
 - GitHub Actions builds and pushes each service image via `.github/workflows/apps-build-publish.yml`
 - image flow: CI publishes immutable timestamped tags (`YYYYMMDDHHmmSS-<8sha>`) and Flux tracks newest matching tags for automatic updates
 - `visit-ui` runtime architecture uses React Router SSR (Node server entry + browser hydration entry); initial count comes from a route loader and queueing uses direct browser calls to `/api/v1/visit-events`

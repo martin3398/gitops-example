@@ -1,0 +1,28 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/martin3398/visit-loadgen
+  tag: v0.1.0
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+config:
+  targetBaseUrl: http://visit-web-visit-gateway.visit-web.svc/api/v1
+  mode: paused
+  fixedBand: idle
+  bands: idle=0:0.2:2,below=0.3:0.8:4,capacity=0.9:1.2:3,overload=2:3:2,burst=5:10:1
+  minPhaseDuration: 30s
+  maxPhaseDuration: 180s
+  statusInterval: 10s
+  reloadInterval: 10s
+  requestTimeout: 5s
+  maxBatch: "100"
+
+resources:
+  requests:
+    cpu: 5m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi

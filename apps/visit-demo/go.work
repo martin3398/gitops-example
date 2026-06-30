@@ -2,5 +2,6 @@ go 1.23.0
 
 use (
 	./visit-gateway
+	./visit-loadgen
 	./visit-processor
 )

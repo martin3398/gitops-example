@@ -14,6 +14,7 @@ service:
 env:
   KAFKA_BROKERS: kafka-kafka-bootstrap.data-kafka.svc:9092
   KAFKA_TOPIC: visits.requested
+  KAFKA_GROUP_ID: visit-processor-v1
   DB_HOST: postgres-rw.data-postgres.svc
   DB_PORT: "5432"
   DB_NAME: app

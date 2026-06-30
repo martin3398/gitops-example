@@ -30,6 +30,8 @@ spec:
               value: {{ .Values.env.KAFKA_BROKERS | quote }}
             - name: KAFKA_TOPIC
               value: {{ .Values.env.KAFKA_TOPIC | quote }}
+            - name: KAFKA_GROUP_ID
+              value: {{ .Values.env.KAFKA_GROUP_ID | quote }}
             - name: DB_HOST
               value: {{ .Values.env.DB_HOST | quote }}
             - name: DB_PORT

@@ -5,6 +5,8 @@ import { useVisitFeedback } from "../hooks/useVisitFeedback.js";
 
 type LoaderData = {
   count: number;
+  queued: number | null;
+  queueStatus: "ok" | "unavailable";
   error?: string;
 };
 
@@ -12,12 +14,22 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderDat
   try {
     const response = await fetch(`${getApiBase(request)}/visits/count`);
     if (!response.ok) {
-      return { count: 0, error: "Count service unavailable" };
+      return { count: 0, queued: null, queueStatus: "unavailable", error: "Count service unavailable" };
     }
-    const payload = (await response.json()) as { data?: { count?: number } };
-    return { count: typeof payload.data?.count === "number" ? payload.data.count : 0 };
+    const payload = (await response.json()) as {
+      data?: {
+        count?: number;
+        queued?: number | null;
+        queue?: { status?: string };
+      };
+    };
+    return {
+      count: typeof payload.data?.count === "number" ? payload.data.count : 0,
+      queued: typeof payload.data?.queued === "number" ? payload.data.queued : null,
+      queueStatus: payload.data?.queue?.status === "ok" ? "ok" : "unavailable",
+    };
   } catch {
-    return { count: 0, error: "Gateway unreachable" };
+    return { count: 0, queued: null, queueStatus: "unavailable", error: "Gateway unreachable" };
   }
 }
 
@@ -72,6 +84,8 @@ export function RootRoute() {
   return (
     <VisitCounterCard
       count={data.count}
+      queued={data.queued}
+      queueStatus={data.queueStatus}
       message={message}
       toneClassName={toneClassName}
       isQueueing={isQueueing}

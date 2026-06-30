@@ -1,0 +1,14 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: visit-loadgen
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: visit-loadgen
+  policy:
+    numerical:
+      order: asc
+  filterTags:
+    pattern: '^(?P<ts>[0-9]{14})-[a-f0-9]{8}$'
+    extract: '$ts'

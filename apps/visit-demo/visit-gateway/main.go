@@ -21,6 +21,7 @@ type config struct {
 	listenAddr      string
 	kafkaBrokers    []string
 	kafkaTopic      string
+	kafkaGroupID    string
 	dbHost          string
 	dbPort          string
 	dbName          string
@@ -48,8 +49,17 @@ type createVisitEventResponse struct {
 
 type visitCountResponse struct {
 	Data struct {
-		Count int64 `json:"count"`
+		Count  int64      `json:"count"`
+		Queued *int64     `json:"queued"`
+		Queue  queueState `json:"queue"`
 	} `json:"data"`
+}
+
+type queueState struct {
+	Topic   string `json:"topic"`
+	GroupID string `json:"group_id"`
+	Status  string `json:"status"`
+	Error   string `json:"error,omitempty"`
 }
 
 func main() {
@@ -125,6 +135,14 @@ func main() {
 
 		response := visitCountResponse{}
 		response.Data.Count = count
+		response.Data.Queue = queueState{Topic: cfg.kafkaTopic, GroupID: cfg.kafkaGroupID, Status: "ok"}
+		queued, err := readQueueLag(ctx, cfg)
+		if err != nil {
+			response.Data.Queue.Status = "unavailable"
+			response.Data.Queue.Error = err.Error()
+		} else {
+			response.Data.Queued = &queued
+		}
 		writeJSON(w, http.StatusOK, response)
 	}
 
@@ -146,6 +164,7 @@ func loadConfig() (config, error) {
 	cfg := config{
 		listenAddr:      envOrDefault("LISTEN_ADDR", ":8080"),
 		kafkaTopic:      envOrDefault("KAFKA_TOPIC", "visits.requested"),
+		kafkaGroupID:    envOrDefault("KAFKA_GROUP_ID", "visit-processor-v1"),
 		dbHost:          envOrDefault("DB_HOST", "postgres-rw.data-postgres.svc"),
 		dbPort:          envOrDefault("DB_PORT", "5432"),
 		dbName:          envOrDefault("DB_NAME", "app"),
@@ -162,6 +181,82 @@ func loadConfig() (config, error) {
 		return cfg, fmt.Errorf("DB_PASSWORD is required")
 	}
 	return cfg, nil
+}
+
+func readQueueLag(ctx context.Context, cfg config) (int64, error) {
+	client := &kafka.Client{Addr: kafka.TCP(cfg.kafkaBrokers...), Timeout: cfg.requestTimeoutS * time.Second}
+	metadata, err := client.Metadata(ctx, &kafka.MetadataRequest{Topics: []string{cfg.kafkaTopic}})
+	if err != nil {
+		return 0, err
+	}
+
+	var topic kafka.Topic
+	foundTopic := false
+	for _, candidate := range metadata.Topics {
+		if candidate.Name == cfg.kafkaTopic {
+			topic = candidate
+			foundTopic = true
+			break
+		}
+	}
+	if !foundTopic {
+		return 0, fmt.Errorf("topic %q not found", cfg.kafkaTopic)
+	}
+	if topic.Error != nil {
+		return 0, topic.Error
+	}
+
+	partitionIDs := make([]int, 0, len(topic.Partitions))
+	latestRequests := make([]kafka.OffsetRequest, 0, len(topic.Partitions))
+	for _, partition := range topic.Partitions {
+		if partition.Error != nil {
+			return 0, partition.Error
+		}
+		partitionIDs = append(partitionIDs, partition.ID)
+		latestRequests = append(latestRequests, kafka.LastOffsetOf(partition.ID))
+	}
+
+	latest, err := client.ListOffsets(ctx, &kafka.ListOffsetsRequest{
+		Topics: map[string][]kafka.OffsetRequest{cfg.kafkaTopic: latestRequests},
+	})
+	if err != nil {
+		return 0, err
+	}
+	committed, err := client.OffsetFetch(ctx, &kafka.OffsetFetchRequest{
+		GroupID: cfg.kafkaGroupID,
+		Topics:  map[string][]int{cfg.kafkaTopic: partitionIDs},
+	})
+	if err != nil {
+		return 0, err
+	}
+	if committed.Error != nil {
+		return 0, committed.Error
+	}
+
+	committedByPartition := make(map[int]int64, len(partitionIDs))
+	for _, partition := range committed.Topics[cfg.kafkaTopic] {
+		if partition.Error != nil {
+			return 0, partition.Error
+		}
+		committedByPartition[partition.Partition] = partition.CommittedOffset
+	}
+
+	var lag int64
+	for _, partition := range latest.Topics[cfg.kafkaTopic] {
+		if partition.Error != nil {
+			return 0, partition.Error
+		}
+		committedOffset := committedByPartition[partition.Partition]
+		if committedOffset < 0 {
+			committedOffset = 0
+		}
+		partitionLag := partition.LastOffset - committedOffset
+		if partitionLag > 0 {
+			lag += partitionLag
+		}
+	}
+
+	return lag, nil
 }
 
 func openDB(cfg config) *sql.DB {
