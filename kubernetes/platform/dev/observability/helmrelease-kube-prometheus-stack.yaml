@@ -94,7 +94,7 @@ spec:
       additionalDataSources:
         - name: Loki
           type: loki
-          url: http://loki.monitoring.svc.cluster.local:3100
+          url: http://monitoring-loki-gateway.monitoring.svc.cluster.local
           access: proxy
           isDefault: false
           jsonData:
