@@ -142,6 +142,14 @@ This writes deterministic secrets for the current Postgres app user and visit de
 
 ## Validation
 
+The standard post-deploy verification path is:
+
+```bash
+task pipeline:verify
+```
+
+It checks OpenBao pod readiness, initialized/unsealed status, `ClusterSecretStore/openbao`, and synced ExternalSecrets.
+
 Check OpenBao status:
 
 ```bash

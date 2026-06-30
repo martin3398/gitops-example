@@ -25,6 +25,14 @@ This repository deploys a platform-owned Kafka baseline with Flux using Strimzi 
 
 ## Validation
 
+The standard post-deploy verification path is:
+
+```bash
+task pipeline:verify
+```
+
+It checks the Kafka custom resource, broker pods, `visits.requested` topic readiness, and the visit demo queue/count flow.
+
 Use a workstation with cluster access:
 
 ```bash
@@ -41,6 +49,8 @@ kubectl -n data-kafka describe kafka kafka
 ```
 
 The Flux `platform-data-kafka` stage has an explicit health check for the `Kafka/data-kafka/kafka` custom resource. If Strimzi rejects the Kafka version or the cluster is not ready, the stage should not be treated as fully healthy.
+
+If Kafka stays `NotReady`, verify that `spec.kafka.version` is supported by the pinned Strimzi operator chart version.
 
 ## Next Iteration (Self-Service)
 

@@ -133,3 +133,6 @@ jobs:
 
       - name: Deploy apps
         run: ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/apps-deploy.yml
+
+      - name: Verify deployment
+        run: ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/verify.yml

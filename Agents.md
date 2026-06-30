@@ -144,7 +144,7 @@ Use `task pipeline:main` for the full ordered chain.
 ## Next Agent Priorities
 
 - Keep docs aligned with the implemented stack; do not reintroduce Vault terminology unless a separate HashiCorp Vault lab is explicitly requested.
-- Add post-deploy verification automation (`pipeline:verify`) before adding more platform components.
+- Maintain and extend post-deploy verification automation (`pipeline:verify`) before adding more platform components.
 - Harden OpenBao operations: raft peer validation, snapshots, restore, auto-unseal decision, and dynamic Postgres credentials.
 - Add backup/restore coverage before treating stateful services as production-like.
 - Add load/HPA validation for the visit processor path.

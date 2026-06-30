@@ -69,6 +69,14 @@ kubectl label node worker-3 storage=ceph
 
 ## Validation
 
+The standard post-deploy verification path is:
+
+```bash
+task pipeline:verify
+```
+
+It checks Ceph CR readiness, `ceph -s`, block pool readiness, and that platform/data PVCs are bound.
+
 1. Check Flux reconciliation:
 
 ```bash

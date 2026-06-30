@@ -28,3 +28,9 @@ tasks:
       - task: :ansible:postgres
       - task: :ansible:kafka
       - task: :ansible:apps
+      - task: :pipeline:verify
+
+  verify:
+    desc: "Verify deployed GitOps dev environment"
+    cmds:
+      - task: :ansible:verify

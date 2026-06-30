@@ -245,6 +245,7 @@ task ansible:openbao
 task ansible:postgres
 task ansible:kafka
 task ansible:apps
+task pipeline:verify
 task pipeline:main
 task ingress:hosts_entries
 task ansible:get_kubeconfig_public
@@ -359,7 +360,7 @@ Established deployment model:
 - Git is the desired-state source of truth for cluster resources under `kubernetes/`.
 - Container registry is the artifact source (images/charts), not the desired-state source.
 - CI builds and publishes images; Flux selects allowed image tags and updates manifests via image automation.
-- Phase 2 application E2E verification (queue/count path through ingress) is completed.
+- Post-deploy verification is automated through `task pipeline:verify`, including Flux readiness, Ceph health, OpenBao/ESO, Postgres, Kafka, observability, and the visit demo queue/count path.
 
 Current pipeline gates on `main`:
 - manual gate 1: `.github/workflows/opentofu-apply-destroy.yml` with `action=apply` provisions/updates infrastructure
@@ -374,6 +375,7 @@ Phase 3 current status:
 - Postgres baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/services/postgres/` (dev-only defaults)
 - Ceph baseline is implemented via Rook, with `ceph-block` as the default StorageClass
 - OpenBao baseline is implemented as the secret-management layer for External Secrets
+- The current dev baseline is verified end-to-end by `pipeline:verify` after `pipeline:main`
 - MongoDB lab remains pending/optional
 
 Current open platform work:

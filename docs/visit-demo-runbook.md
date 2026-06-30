@@ -63,6 +63,14 @@ kubectl -n visit-processing get pods
 kubectl -n flux-system get kustomizations,helmreleases
 ```
 
+Automated post-deploy verification is included in:
+
+```bash
+task pipeline:verify
+```
+
+The verification task checks visit app deployment readiness and exercises the gateway queue/count API path.
+
 ## Troubleshooting
 
 - `react/jsx-runtime` browser error:

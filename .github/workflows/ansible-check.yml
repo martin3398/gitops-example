@@ -60,3 +60,4 @@ jobs:
           ansible-playbook -i "localhost," --syntax-check ansible/playbooks/postgres-deploy.yml
           ansible-playbook -i "localhost," --syntax-check ansible/playbooks/kafka-deploy.yml
           ansible-playbook -i "localhost," --syntax-check ansible/playbooks/apps-deploy.yml
+          ansible-playbook -i "localhost," --syntax-check ansible/playbooks/verify.yml

@@ -48,6 +48,12 @@ Run the full deployment:
 task pipeline:main
 ```
 
+Verify an already-deployed environment:
+
+```bash
+task pipeline:verify
+```
+
 Fetch a local kubeconfig after deployment:
 
 ```bash
@@ -77,6 +83,7 @@ task tofu:plan
 task ansible:core
 task ansible:core_platform
 task pipeline:main
+task pipeline:verify
 ```
 
 Cross-namespace calls inside included Taskfiles use root-qualified task names, for example `:ansible:core`. Shared variables such as `INVENTORY`, `VENV_ANSIBLE_PLAYBOOK`, and `KUBECONFIG_FILE` stay in the root `Taskfile.yml`.
@@ -95,6 +102,7 @@ ansible:openbao
 ansible:postgres
 ansible:kafka
 ansible:apps
+pipeline:verify
 ```
 
 Expanded sequence:
@@ -112,6 +120,7 @@ Expanded sequence:
 11. `ansible:postgres`
 12. `ansible:kafka`
 13. `ansible:apps`
+14. `pipeline:verify`
 
 ## Task Responsibilities
 
@@ -166,6 +175,16 @@ Expanded sequence:
 
 - applies `kubernetes/flux/clusters/dev/apps/`
 - reconciles app policy and visit demo app Flux Kustomizations
+
+`pipeline:verify`:
+
+- verifies node readiness and the expected 6-node topology
+- verifies Flux source, Kustomizations, and HelmReleases are Ready
+- verifies Ceph health, block pool readiness, and PVC binding
+- verifies monitoring/logging workload readiness, including Promtail rollout
+- verifies OpenBao is initialized/unsealed and External Secrets are synced
+- verifies Postgres and Kafka custom resources and pods are Ready
+- verifies visit demo deployments and runs a queue/count API check through the gateway service
 
 ## Flux Stage Layout
 
@@ -297,6 +316,12 @@ Check pipeline order without executing it:
 task --dry pipeline:main
 ```
 
+Run full post-deploy verification:
+
+```bash
+task pipeline:verify
+```
+
 Validate Flux stage folders locally:
 
 ```bash
@@ -327,7 +352,6 @@ kubectl -n data-postgres get secret app-user
 ## Open Work
 
 Platform reliability:
-- add `pipeline:verify` for post-deploy checks
 - add Velero and restore drills
 - add component restore notes for OpenBao, Postgres, Kafka, and Ceph
 
@@ -368,5 +392,6 @@ The GitHub `ansible-run` workflow follows the same staged model after infrastruc
 9. Postgres deploy
 10. Kafka deploy
 11. apps deploy
+12. deployment verification
 
 The local `task pipeline:main` command is the closest equivalent to the full deployment chain.
