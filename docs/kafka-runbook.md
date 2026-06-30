@@ -12,6 +12,8 @@ This repository deploys a platform-owned Kafka baseline with Flux using Strimzi 
 
 - 3 broker/controller nodes (single node pool)
 - KRaft enabled (no ZooKeeper)
+- Strimzi operator chart is pinned to `1.1.0`
+- Kafka broker version is pinned to `4.3.0`, which is supported by Strimzi chart `1.1.0`
 - Internal listeners only:
   - plaintext: `kafka-kafka-bootstrap.data-kafka.svc:9092`
   - TLS: `kafka-kafka-bootstrap.data-kafka.svc:9093`
@@ -37,6 +39,8 @@ Check Kafka readiness details:
 ```bash
 kubectl -n data-kafka describe kafka kafka
 ```
+
+The Flux `platform-data-kafka` stage has an explicit health check for the `Kafka/data-kafka/kafka` custom resource. If Strimzi rejects the Kafka version or the cluster is not ready, the stage should not be treated as fully healthy.
 
 ## Next Iteration (Self-Service)
 

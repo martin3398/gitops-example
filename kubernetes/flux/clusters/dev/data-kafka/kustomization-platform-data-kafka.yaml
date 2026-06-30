@@ -13,4 +13,9 @@ spec:
   path: ./kubernetes/platform/dev/data-platform/services/kafka
   prune: true
   wait: true
+  healthChecks:
+    - apiVersion: kafka.strimzi.io/v1
+      kind: Kafka
+      name: kafka
+      namespace: data-kafka
   timeout: 15m
