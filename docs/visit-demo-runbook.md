@@ -23,7 +23,7 @@ This runbook covers the current delivery and operations model for the visit demo
 
 This keeps app and API on the same origin and avoids CORS complexity.
 
-The intended local browser URL is `http://visit.gitops.local` as part of the repo-wide `*.gitops.local` convention documented in the README. The current manifest keeps the same path contract but does not yet require a host rule.
+The intended local browser URL is `http://gitops.local` as part of the repo-wide local domain convention documented in the README. The app also keeps a hostless ingress fallback so the AWS ingress NLB DNS name can be used directly for the visit app.
 
 ## API Contract (Current)
 

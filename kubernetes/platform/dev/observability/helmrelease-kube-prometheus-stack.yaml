@@ -89,8 +89,8 @@ spec:
           memory: 256Mi
       grafana.ini:
         server:
-          root_url: "%(protocol)s://%(domain)s/grafana"
-          serve_from_sub_path: true
+          root_url: "%(protocol)s://%(domain)s/"
+          serve_from_sub_path: false
       additionalDataSources:
         - name: Loki
           type: loki

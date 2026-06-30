@@ -6,9 +6,10 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - http:
+    - host: grafana.gitops.local
+      http:
         paths:
-          - path: /grafana
+          - path: /
             pathType: Prefix
             backend:
               service:

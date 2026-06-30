@@ -19,6 +19,7 @@ vars:
 includes:
   ansible: .taskfiles/ansible.yml
   env: .taskfiles/env.yml
+  ingress: .taskfiles/ingress.yml
   openbao: .taskfiles/openbao.yml
   pipeline: .taskfiles/pipeline.yml
   tofu: .taskfiles/tofu.yml

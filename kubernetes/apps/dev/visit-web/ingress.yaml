@@ -6,6 +6,23 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
+    - host: gitops.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: visit-web-visit-gateway
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: visit-web-visit-web
+                port:
+                  number: 80
     - http:
         paths:
           - path: /api

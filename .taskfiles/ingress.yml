@@ -1,0 +1,20 @@
+version: "3"
+
+tasks:
+  hosts_entries:
+    desc: "Print /etc/hosts entries for local ingress domains"
+    preconditions:
+      - sh: 'test -f "{{.OUTPUTS}}"'
+        msg: "Missing infra/outputs.json. Run task tofu:apply first and enable public ingress."
+      - sh: 'command -v jq >/dev/null 2>&1'
+        msg: "jq is required in PATH"
+    cmds:
+      - |
+        host="$(jq -r '.ingress_public_endpoint.value // ""' "{{.OUTPUTS}}")"
+        if [ -z "$host" ] || [ "$host" = "null" ]; then
+          printf 'Missing ingress_public_endpoint output. Run task tofu:apply first and enable public ingress.\n' >&2
+          exit 1
+        fi
+        getent ahostsv4 "$host" | awk '{print $1}' | sort -u | while read -r ip; do
+          printf '%s gitops.local grafana.gitops.local bao.gitops.local\n' "$ip"
+        done

@@ -1,20 +1,6 @@
 version: "3"
 
 tasks:
-  hosts_entries:
-    desc: "Print /etc/hosts entries for bao.gitops.local"
-    preconditions:
-      - sh: 'command -v tofu >/dev/null 2>&1'
-        msg: "tofu is required in PATH"
-      - sh: 'test -n "$(tofu -chdir=infra output -raw ingress_public_endpoint 2>/dev/null)"'
-        msg: "Missing ingress_public_endpoint output. Run task tofu:apply first and enable public ingress."
-    cmds:
-      - |
-        host="$(tofu -chdir=infra output -raw ingress_public_endpoint)"
-        getent ahostsv4 "$host" | awk '{print $1}' | sort -u | while read -r ip; do
-          printf '%s bao.gitops.local\n' "$ip"
-        done
-
   status:
     desc: "Show OpenBao status from first pod"
     preconditions:

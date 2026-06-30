@@ -63,6 +63,7 @@ Taskfile.yml
 .taskfiles/
   ansible.yml
   env.yml
+  ingress.yml
   openbao.yml
   pipeline.yml
   tofu.yml

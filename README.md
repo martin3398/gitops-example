@@ -167,11 +167,11 @@ Ingress traffic path is NLB (`:80`) -> worker NodePort (`30080`) -> `ingress-ngi
 
 ### Local Ingress Domains
 
-Use local `*.gitops.local` names for browser-facing dev UIs. Map every returned NLB address to the same hostname set in `/etc/hosts`:
+Use local `gitops.local` names for browser-facing dev UIs. Map every returned NLB address to the same hostname set in `/etc/hosts`:
 
 ```text
-<nlb-ip-1> visit.gitops.local grafana.gitops.local bao.gitops.local
-<nlb-ip-2> visit.gitops.local grafana.gitops.local bao.gitops.local
+<nlb-ip-1> gitops.local grafana.gitops.local bao.gitops.local
+<nlb-ip-2> gitops.local grafana.gitops.local bao.gitops.local
 ```
 
 Resolve the current NLB addresses with:
@@ -182,13 +182,19 @@ nslookup "$(tofu -chdir=infra output -raw ingress_public_endpoint)"
 
 Refresh these entries after a full infrastructure destroy/recreate because NLB IPs can change.
 
+Print the current entries with:
+
+```bash
+task ingress:hosts_entries
+```
+
 | Application | Intended local URL | Current manifest status |
 | --- | --- | --- |
-| Visit demo | `http://visit.gitops.local` | The app ingress currently routes `/` and `/api` without a host rule. |
-| Grafana | `http://grafana.gitops.local` | Grafana currently routes from `/grafana` and is configured with `serve_from_sub_path`. |
-| OpenBao | `http://bao.gitops.local` | OpenBao already uses host-based ingress for `bao.gitops.local`. |
+| Visit demo | `http://gitops.local` and the AWS ingress NLB DNS name | The app ingress routes `/` and `/api` for `gitops.local` and keeps a hostless fallback for direct AWS NLB access. |
+| Grafana | `http://grafana.gitops.local` | Grafana uses host-based ingress at `/` and is not exposed through the AWS NLB hostname or `gitops.local`. |
+| OpenBao | `http://bao.gitops.local` | OpenBao uses host-based ingress for `bao.gitops.local`. |
 
-The intended cleanup is to keep each browser UI on its own local hostname and make redirects/base URLs match those hostnames. HTTPS and certificate management remain out of scope for this HTTP-only lab.
+Grafana is the only browser-facing observability UI. Prometheus, Alertmanager, Loki, Promtail metrics, kube-state-metrics, and node-exporter remain internal cluster services. HTTPS and certificate management remain out of scope for this HTTP-only lab.
 
 ## Local Environment Variables
 
@@ -222,6 +228,7 @@ Taskfile layout:
 - `.taskfiles/env.yml` - local environment checks
 - `.taskfiles/tofu.yml` - OpenTofu tasks
 - `.taskfiles/ansible.yml` - Ansible and staged deployment tasks
+- `.taskfiles/ingress.yml` - local ingress host entry helper tasks
 - `.taskfiles/pipeline.yml` - pipeline orchestration tasks
 - `.taskfiles/openbao.yml` - OpenBao helper tasks
 
@@ -239,12 +246,14 @@ task ansible:postgres
 task ansible:kafka
 task ansible:apps
 task pipeline:main
+task ingress:hosts_entries
 task ansible:get_kubeconfig_public
 ```
 
 Task groups:
 - OpenTofu: `tofu:*`
 - Ansible: `ansible:*`
+- Ingress helpers: `ingress:*`
 - Pipeline orchestrators: `pipeline:*`
 
 ## Cost and Safety Notes
