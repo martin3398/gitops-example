@@ -21,7 +21,7 @@ spec:
       - name: ghcr-pull
     image:
       repository: ghcr.io/martin3398/visit-loadgen # {"$imagepolicy": "flux-system:visit-loadgen:name"}
-      tag: 20260630223607-736390ad # {"$imagepolicy": "flux-system:visit-loadgen:tag"}
+      tag: 20260630225005-183b2ff8 # {"$imagepolicy": "flux-system:visit-loadgen:tag"}
     config:
       mode: fixed
       fixedBand: below
