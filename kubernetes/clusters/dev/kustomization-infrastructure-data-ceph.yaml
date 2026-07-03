@@ -1,0 +1,25 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-data-ceph
+  namespace: flux-system
+spec:
+  interval: 1m
+  dependsOn:
+    - name: infrastructure-scheduling
+  sourceRef:
+    kind: GitRepository
+    name: dev-repo
+  path: ./kubernetes/infrastructure/overlays/dev/data-ceph
+  prune: true
+  wait: true
+  healthChecks:
+    - apiVersion: ceph.rook.io/v1
+      kind: CephCluster
+      name: rook-ceph
+      namespace: rook-ceph
+    - apiVersion: ceph.rook.io/v1
+      kind: CephBlockPool
+      name: replicapool
+      namespace: rook-ceph
+  timeout: 15m

@@ -12,11 +12,8 @@ The Ansible workflow runs these ordered steps:
 4. runtime
 5. cluster bootstrap
 6. Flux/core bootstrap
-7. core platform deploy
-8. OpenBao bootstrap
-9. Postgres deploy
-10. Kafka deploy
-11. apps deploy
+7. OpenBao bootstrap
+8. verification
 
 Inventory is generated from `infra/outputs.json` that `ansible-run` creates by reading OpenTofu remote state directly.
 
@@ -65,9 +62,9 @@ Ansible-specific behavior:
 - S3 transfer errors from Ansible SSM plugin:
   - CI identity lacks S3 permissions for `TF_STATE_BUCKET`.
 - `ServiceMonitor` CRD errors during ingress or logging chart install:
-  - The deployment order is wrong or `core platform deploy` did not complete.
+  - The deployment order is wrong or Flux/core bootstrap did not complete.
   - `kube-prometheus-stack` must install Prometheus Operator CRDs before ingress-nginx, Loki, or Promtail render `ServiceMonitor` resources.
-  - Re-run the core platform deploy step after confirming `platform-data-ceph` is Ready.
+  - Re-run Flux/core bootstrap and OpenBao bootstrap after confirming `infrastructure-data-ceph` is Ready.
 
 ## Verification
 
@@ -77,15 +74,14 @@ Successful sequence should result in:
 - smoke connectivity passing all hosts
 - base and runtime playbooks converged
 - cluster bootstrap completed with all nodes Ready
-- Flux/core bootstrap completed with `dev-repo`, `platform-core`, and `platform-data-ceph` ready in `flux-system`
-- core platform deploy completed with `platform-observability` and `platform-ingress` ready in `flux-system`
+- Flux/core bootstrap completed with `dev-repo`, `infrastructure-core`, and `infrastructure-data-ceph` ready in `flux-system`
 - OpenBao initialized, unsealed, and ready for External Secrets
-- Postgres, Kafka, and app Flux Kustomizations applied by their staged playbooks
+- post-deploy verification completed against Flux, OpenBao, Postgres, Kafka, observability, ingress, and the visit demo workloads
 
 Additional checks after bootstrap:
 
 - `kubectl -n flux-system get imagerepositories,imagepolicies,imageupdateautomations`
-- visit app image automation objects should appear from `kubernetes/apps/dev/visit-web/`, `kubernetes/apps/dev/visit-processing/`, and `kubernetes/apps/dev/visit-loadgen/` after app stages become Ready
+- visit app image automation objects should appear from `kubernetes/apps/base/visit-web/`, `kubernetes/apps/base/visit-processing/`, and `kubernetes/apps/base/visit-loadgen/` after Flux reconciliation
 
 ## Flux Bootstrap Variables
 

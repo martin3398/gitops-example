@@ -7,17 +7,18 @@
     kubeconfig: /etc/kubernetes/admin.conf
     expected_node_count: 6
     flux_kustomizations:
-      - platform-core
-      - platform-scheduling-policies
-      - platform-data-ceph
-      - platform-observability
-      - platform-ingress
-      - platform-security
-      - platform-data-postgres
-      - platform-data-kafka
-      - platform-apps
+      - infrastructure-core
+      - infrastructure-scheduling
+      - infrastructure-data-ceph
+      - infrastructure-observability
+      - infrastructure-ingress
+      - infrastructure-security
+      - infrastructure-data-postgres
+      - infrastructure-data-kafka
+      - app-policies
       - app-visit-web
       - app-visit-processing
+      - app-visit-loadgen
   tasks:
     - name: Wait for all Kubernetes nodes to be ready
       ansible.builtin.command: >-

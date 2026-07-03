@@ -35,14 +35,14 @@ These are used by `.github/workflows/apps-build-publish.yml`.
 
 Replace `ghcr.io/example/...` with your real owner in:
 
-- `kubernetes/apps/dev/visit-web/helmrelease-visit-web.yaml`
-- `kubernetes/apps/dev/visit-web/helmrelease-visit-gateway.yaml`
-- `kubernetes/apps/dev/visit-processing/helmrelease-visit-processor.yaml`
-- `kubernetes/apps/dev/visit-loadgen/helmrelease-visit-loadgen.yaml`
-- `kubernetes/apps/dev/visit-web/imagerepository-visit-web.yaml`
-- `kubernetes/apps/dev/visit-web/imagerepository-visit-gateway.yaml`
-- `kubernetes/apps/dev/visit-processing/imagerepository-visit-processor.yaml`
-- `kubernetes/apps/dev/visit-loadgen/imagerepository-visit-loadgen.yaml`
+- `kubernetes/apps/base/visit-web/helmrelease-visit-web.yaml`
+- `kubernetes/apps/base/visit-web/helmrelease-visit-gateway.yaml`
+- `kubernetes/apps/base/visit-processing/helmrelease-visit-processor.yaml`
+- `kubernetes/apps/base/visit-loadgen/helmrelease-visit-loadgen.yaml`
+- `kubernetes/apps/base/visit-web/imagerepository-visit-web.yaml`
+- `kubernetes/apps/base/visit-web/imagerepository-visit-gateway.yaml`
+- `kubernetes/apps/base/visit-processing/imagerepository-visit-processor.yaml`
+- `kubernetes/apps/base/visit-loadgen/imagerepository-visit-loadgen.yaml`
 
 ## 4) Create pull secrets for workloads
 

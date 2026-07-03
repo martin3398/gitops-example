@@ -4,8 +4,8 @@ This repository deploys a platform-owned Kafka baseline with Flux using Strimzi 
 
 ## Components
 
-- Strimzi operator: `kubernetes/platform/dev/core-services/operators/strimzi/`
-- Kafka cluster manifests: `kubernetes/platform/dev/data-platform/services/kafka/`
+- Strimzi operator: `kubernetes/infrastructure/base/core-services/operators/strimzi/`
+- Kafka cluster manifests: `kubernetes/infrastructure/base/data-kafka/`
 - Namespace: `data-kafka`
 
 ## Current Baseline
@@ -48,7 +48,7 @@ Check Kafka readiness details:
 kubectl -n data-kafka describe kafka kafka
 ```
 
-The Flux `platform-data-kafka` stage has an explicit health check for the `Kafka/data-kafka/kafka` custom resource. If Strimzi rejects the Kafka version or the cluster is not ready, the stage should not be treated as fully healthy.
+The Flux `infrastructure-data-kafka` stage has an explicit health check for the `Kafka/data-kafka/kafka` custom resource. If Strimzi rejects the Kafka version or the cluster is not ready, the stage should not be treated as fully healthy.
 
 If Kafka stays `NotReady`, verify that `spec.kafka.version` is supported by the pinned Strimzi operator chart version.
 

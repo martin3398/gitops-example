@@ -12,25 +12,25 @@ This runbook covers the Ceph baseline deployed by Flux with Rook.
 
 ## Manifests
 
-- `kubernetes/platform/dev/core-services/storage/rook-ceph-operator/helmrelease-rook-ceph.yaml`
-- `kubernetes/platform/dev/data-platform/ceph/cephcluster.yaml`
-- `kubernetes/platform/dev/data-platform/ceph/cephblockpool.yaml`
-- `kubernetes/platform/dev/data-platform/ceph/storageclass-ceph-block.yaml`
-- `kubernetes/platform/dev/data-platform/ceph/toolbox.yaml`
+- `kubernetes/infrastructure/base/core-services/storage/rook-ceph-operator/helmrelease-rook-ceph.yaml`
+- `kubernetes/infrastructure/base/data-ceph/cephcluster.yaml`
+- `kubernetes/infrastructure/base/data-ceph/cephblockpool.yaml`
+- `kubernetes/infrastructure/base/data-ceph/storageclass-ceph-block.yaml`
+- `kubernetes/infrastructure/base/data-ceph/toolbox.yaml`
 
 ## Reconciliation Order
 
 Ceph is split across Flux Kustomizations to avoid CRD dry-run races:
 
-- `platform-core` installs operators, including `rook-ceph`.
-- `platform-data-ceph` applies Ceph CRs (`CephCluster`, `CephBlockPool`, `StorageClass`).
-- Monitoring and ingress are applied after Ceph by `ansible:core_platform` because monitoring uses `ceph-block` PVCs and ingress depends on monitoring `ServiceMonitor` CRDs.
+- `infrastructure-core` installs operators, including `rook-ceph`.
+- `infrastructure-data-ceph` applies Ceph CRs (`CephCluster`, `CephBlockPool`, `StorageClass`).
+- Monitoring and ingress are applied after Ceph by Flux dependsOn chains.
 - OpenBao, Postgres, Kafka, and apps are applied later by staged Ansible tasks.
 
 The stage 1 order is enforced by Flux `dependsOn` in:
 
-- `kubernetes/flux/clusters/dev/core/kustomization-platform-core.yaml`
-- `kubernetes/flux/clusters/dev/core/kustomization-platform-data-ceph.yaml`
+- `kubernetes/clusters/dev/kustomization-infrastructure-core.yaml`
+- `kubernetes/clusters/dev/kustomization-infrastructure-data-ceph.yaml`
 
 ## Device Selection Model
 
@@ -50,7 +50,8 @@ Current worker model:
 
 Kyverno applies a soft scheduling preference for general workloads to avoid Ceph nodes:
 
-- Policy: `kubernetes/platform/dev/apps/policies/clusterpolicy-prefer-non-ceph-nodes.yaml`
+- Policy: `kubernetes/apps/overlays/dev/policies/clusterpolicy-prefer-non-ceph-nodes.yaml`
+- Policy stage: `kubernetes/clusters/dev/apps/kustomization-app-policies.yaml`
 - Behavior: injects `preferredDuringSchedulingIgnoredDuringExecution` for `storage NotIn [ceph]`
 - Scope: Deployments/StatefulSets/DaemonSets/Jobs/CronJobs in application namespaces
 - Excludes: system and platform namespaces (`kube-system`, `flux-system`, `kyverno`, `rook-ceph`, `monitoring`, `data-kafka`, `data-postgres`)

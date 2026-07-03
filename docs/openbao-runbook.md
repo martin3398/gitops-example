@@ -10,12 +10,12 @@ This runbook describes the production-style OpenBao baseline for this repository
 
 ## Kubernetes/Flux Layout
 
-- `kubernetes/platform/dev/security/openbao/` - OpenBao namespace, chart, and ClusterSecretStore
-- `kubernetes/platform/dev/core-services/operators/external-secrets/` - External Secrets Operator
+- `kubernetes/infrastructure/base/security/openbao/` - OpenBao namespace, chart, and ClusterSecretStore
+- `kubernetes/infrastructure/base/core-services/operators/external-secrets/` - External Secrets Operator
 - app secret consumers:
-  - `kubernetes/apps/dev/visit-web/externalsecret-web.yaml`
-  - `kubernetes/apps/dev/visit-processing/externalsecret-processing.yaml`
-  - `kubernetes/platform/dev/data-platform/services/postgres/externalsecret-app-user.yaml`
+  - `kubernetes/apps/base/visit-web/externalsecret-web.yaml`
+  - `kubernetes/apps/base/visit-processing/externalsecret-processing.yaml`
+  - `kubernetes/infrastructure/base/data-postgres/externalsecret-app-user.yaml`
 
 ## Local Host Entry
 
@@ -78,9 +78,8 @@ task ansible:openbao
 
 Prerequisites:
 
-- `task ansible:core` has installed Flux, core operators, and Ceph.
-- `task ansible:core_platform` has installed monitoring and ingress.
-- The `platform-ingress` Flux Kustomization is Ready, so `bao.gitops.local` can route after OpenBao is unsealed.
+- `task ansible:core` has installed Flux and all Kustomizations.
+- The `infrastructure-data-ceph` Flux Kustomization is Ready, which OpenBao depends on.
 
 The task runs the Ansible playbook on `control_plane[0]`. You can run the playbook directly with:
 
@@ -91,14 +90,17 @@ ANSIBLE_CONFIG=ansible/ansible.cfg \
 
 The automated sequence does:
 
-1. waits for `openbao-0`
-2. initializes `openbao-0` with `bao operator init -format=json`
-3. saves init output to `.secrets/openbao-init.dev.json`
-4. unseals `openbao-0`
-5. joins `openbao-1` and `openbao-2` to `openbao-0`
-6. unseals `openbao-1` and `openbao-2`
-7. configures Kubernetes auth for External Secrets Operator
-8. seeds current dev DB secrets
+1. waits for `infrastructure-data-ceph`
+2. waits for `openbao-0`
+3. initializes `openbao-0` with `bao operator init -format=json`
+4. saves init output to `.secrets/openbao-init.dev.json`
+5. unseals `openbao-0`
+6. joins `openbao-1` and `openbao-2` to `openbao-0`
+7. unseals `openbao-1` and `openbao-2`
+8. configures Kubernetes auth for External Secrets Operator
+9. seeds current dev DB secrets
+10. restarts the External Secrets controller to force a fresh `ClusterSecretStore` reconcile
+11. waits for `ClusterSecretStore/openbao` to become Ready
 
 Manual Raft join command, for reference:
 

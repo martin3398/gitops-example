@@ -20,7 +20,7 @@ This repository uses GitHub Actions for CI/CD workflows.
 - `.github/workflows/ansible-run.yml`
   - Manual workflow to run the full staged Ansible deployment chain
   - Reads OpenTofu outputs directly from remote state
-  - Order: inventory, smoke, base, runtime, cluster bootstrap, Flux/core, core platform, OpenBao, Postgres, Kafka, apps
+  - Order: inventory, smoke, base, runtime, cluster bootstrap, Flux/core, OpenBao, verification
 
 - `.github/workflows/apps-build-publish.yml`
   - Tests services on PR/push

@@ -133,11 +133,8 @@ The full local deployment is staged:
 
 1. `pipeline:init_cluster` - infrastructure, inventory, host prep, kubeadm, Cilium
 2. `ansible:core` - Flux, core operators, Ceph
-3. `ansible:core_platform` - monitoring, then ingress-nginx
-4. `ansible:openbao` - OpenBao deploy/init/unseal/auth/seed
-5. `ansible:postgres` - Postgres and ESO-backed app user secret
-6. `ansible:kafka` - Kafka baseline
-7. `ansible:apps` - app policy and visit demo workloads
+3. `ansible:openbao` - OpenBao deploy/init/unseal/auth/seed
+4. `pipeline:verify` - full post-deploy verification
 
 Use `task pipeline:main` for the full ordered chain.
 
@@ -152,8 +149,8 @@ Use `task pipeline:main` for the full ordered chain.
 ## Suggested Repository Layout
 - `infra/` OpenTofu/Terraform infrastructure code
 - `ansible/` host and cluster bootstrap automation
-- `kubernetes/flux/` Flux bootstrap and Kustomizations
-- `kubernetes/platform/` ingress, monitoring, logging
+- `kubernetes/clusters/` Flux bootstrap and Kustomizations
+- `kubernetes/infrastructure/` platform components and overlays
 - `kubernetes/apps/` frontend, microservices, Postgres
 - `kubernetes/labs/` optional MongoDB and future experiments
 - `docs/` architecture, runbooks, troubleshooting, DR tests

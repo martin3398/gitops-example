@@ -167,7 +167,7 @@
 
 - name: Copy Flux sync manifests to control plane
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../kubernetes/flux/clusters/dev/core/"
+    src: "{{ playbook_dir }}/../../kubernetes/clusters/dev/"
     dest: /tmp/flux-sync/
     owner: root
     group: root

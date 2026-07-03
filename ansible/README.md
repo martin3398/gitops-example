@@ -27,7 +27,7 @@ Kubernetes bootstrap (kubeadm init/join) is included in `playbooks/cluster-boots
 
 Iteration 5 adds Flux bootstrap handoff automation:
 - install Flux controllers on the first control plane
-- apply Git source and root Kustomizations from `kubernetes/flux/clusters/dev`
+- apply Git source and root Kustomizations from `kubernetes/clusters/dev`
 - validate Flux `GitRepository` and `Kustomization` readiness
 
 Active environment naming:
@@ -40,7 +40,7 @@ Kubernetes API endpoint behavior:
 - API cert SANs include `kube_api_public_endpoint` host when provided
 - fallback is first control-plane private IP (`<cp-1-private-ip>:6443`) when no endpoint is provided
 
-Flux image automation is configured under `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`:
+Flux image automation is configured under `kubernetes/apps/base/visit-web/` and `kubernetes/apps/base/visit-processing/`:
 - `ImageRepository` tracks available tags for `visit-web`, `visit-gateway`, and `visit-processor`
 - `ImagePolicy` selects newest timestamp tags matching `YYYYMMDDHHmmSS-<8-char-git-sha>`
 - `ImageUpdateAutomation` writes selected image updates back to Git (`main`) using setters

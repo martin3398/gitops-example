@@ -11,3 +11,5 @@ openbao_local_init_file: "{{ playbook_dir }}/../../.secrets/openbao-init.dev.jso
 openbao_key_shares: 5
 openbao_key_threshold: 3
 openbao_dev_seed: "{{ lookup('env', 'OPENBAO_DEV_SEED') | default('gitops-dev-seed', true) }}"
+openbao_eso_service_account_name: external-secrets-external-secrets
+openbao_eso_service_account_namespace: external-secrets

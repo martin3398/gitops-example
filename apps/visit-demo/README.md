@@ -10,7 +10,8 @@ Event-driven visit counter demo:
 Deployment ownership model:
 
 - service charts: `charts/visit-ui`, `charts/visit-gateway`, `charts/visit-processor`, `charts/visit-loadgen`
-- Flux `HelmRelease` resources: `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`
+- Flux `HelmRelease` resources: `kubernetes/apps/base/visit-web/` and `kubernetes/apps/base/visit-processing/`
+- Flux app stages: `kubernetes/clusters/dev/apps/`
 - GitHub Actions build pipeline: `.github/workflows/apps-build-publish.yml`
 
 ## Project layout
@@ -42,7 +43,7 @@ Modes:
 
 The default random bands are calibrated around the current processor capacity of one `visit-processor` pod handling about `1 msg/s`.
 
-Enable random load by changing the Helm values under `kubernetes/apps/dev/visit-loadgen/helmrelease-visit-loadgen.yaml`:
+Enable random load by changing the Helm values under `kubernetes/apps/base/visit-loadgen/helmrelease-visit-loadgen.yaml`:
 
 ```yaml
 config:

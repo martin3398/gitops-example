@@ -52,7 +52,8 @@ Use this as the single source of truth for what is done and what is next.
 
 Visit demo ownership model:
 - each service has its own Helm chart under `charts/visit-ui`, `charts/visit-gateway`, `charts/visit-processor`, and `charts/visit-loadgen`
-- Flux deploys each service with its own `HelmRelease` under `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`
+- Flux deploys each service with its own `HelmRelease` under `kubernetes/apps/base/visit-web/` and `kubernetes/apps/base/visit-processing/`
+- Flux reconciles app stages through `kubernetes/clusters/dev/apps/`
 - `visit-loadgen` runs as an always-on Kubernetes deployment in `paused` mode by default; switch it to `random` for stochastic load bands
 - GitHub Actions builds and pushes each service image via `.github/workflows/apps-build-publish.yml`
 - image flow: CI publishes immutable timestamped tags (`YYYYMMDDHHmmSS-<8sha>`) and Flux tracks newest matching tags for automatic updates
@@ -121,9 +122,9 @@ Visit demo ownership model:
 Planned layout:
 - `infra/` infrastructure code
 - `ansible/` host and kubeadm automation
-- `kubernetes/flux/` Flux bootstrap and Kustomizations
-- `kubernetes/platform/` ingress, monitoring/logging
-- `kubernetes/apps/` frontend, services, database
+- `kubernetes/clusters/` Flux bootstrap entrypoints and cluster Kustomizations
+- `kubernetes/infrastructure/` platform components and overlays
+- `kubernetes/apps/` application bases and overlays
 - `kubernetes/labs/` optional MongoDB and future experiments
 - `docs/` architecture and runbooks
 
@@ -138,8 +139,9 @@ Planned layout:
 ## Environment Naming
 
 - The active environment name is `dev`.
-- Flux cluster stage definitions are under `kubernetes/flux/clusters/dev/`.
-- Platform and app overlays are under `kubernetes/platform/dev/` and `kubernetes/apps/dev/`.
+- Flux cluster stage definitions are under `kubernetes/clusters/dev/`
+- Platform overlays are under `kubernetes/infrastructure/overlays/dev/`
+- App stage definitions are under `kubernetes/clusters/dev/apps/`
 
 ## Direct Kubernetes API Access (Dev Option)
 
@@ -241,11 +243,7 @@ task env:check
 task pipeline:check
 task pipeline:init_cluster
 task ansible:core
-task ansible:core_platform
 task ansible:openbao
-task ansible:postgres
-task ansible:kafka
-task ansible:apps
 task pipeline:verify
 task pipeline:main
 task ingress:hosts_entries
@@ -321,40 +319,35 @@ GitHub Actions now includes Ansible automation workflows:
 - runbooks in `docs/github-actions-runbook.md` and `docs/ansible-ci-runbook.md`
 
 GitOps structure and Flux-managed charts are implemented:
-- cluster stage definitions: `kubernetes/flux/clusters/dev/`
-- platform root: `kubernetes/platform/dev/`
-- apps root: `kubernetes/apps/dev/`
-- platform ingress chart: `kubernetes/platform/dev/ingress-nginx/`
-- app stacks: `kubernetes/apps/dev/visit-web/` and `kubernetes/apps/dev/visit-processing/`
+- cluster stage definitions: `kubernetes/clusters/dev/`
+- infrastructure root: `kubernetes/infrastructure/`
+- apps root: `kubernetes/apps/`
+- ingress chart: `kubernetes/infrastructure/base/ingress-nginx/`
+- app stacks: `kubernetes/apps/base/visit-web/` and `kubernetes/apps/base/visit-processing/`
 
 Flux cluster stages:
-- `core/` installs the Git source, core operators, and Ceph.
-- `core-platform/` installs monitoring first, then ingress-nginx.
-- `security/` installs OpenBao after core platform services are ready.
-- `data-postgres/` installs Postgres after OpenBao/ESO are ready.
-- `data-kafka/` installs Kafka after the core stage is ready.
-- `apps/` installs app policies and visit demo workloads.
-
-The `core-platform/` split prevents ingress-nginx from rendering `ServiceMonitor` resources before Prometheus Operator CRDs are installed by `kube-prometheus-stack`.
-
-Flux dependency split for data platform:
-- `platform-core` installs operators/CRDs (`cloudnative-pg`, `strimzi`, `rook-ceph`)
-- `platform-data-ceph` applies Ceph cluster resources under `kubernetes/platform/dev/data-platform/ceph/`
-- `platform-data-postgres` applies Postgres under `kubernetes/platform/dev/data-platform/services/postgres/`
-- `platform-data-kafka` applies Kafka under `kubernetes/platform/dev/data-platform/services/kafka/`
+- `infrastructure-core` installs the Git source and core operators.
+- `infrastructure-scheduling` installs the scheduling policy layer after core.
+- `infrastructure-data-ceph` installs Ceph storage resources after scheduling.
+- `infrastructure-security` installs OpenBao after Ceph.
+- `infrastructure-data-postgres` installs Postgres after Ceph.
+- `infrastructure-data-kafka` installs Kafka after Ceph.
+- `infrastructure-observability` installs monitoring and logging after Ceph.
+- `infrastructure-ingress` installs ingress-nginx after observability.
+- `apps` installs app policies and visit demo workloads after the required infra is ready.
 
 Flux image automation for apps is implemented:
 - `ImageRepository`, `ImagePolicy`, and `ImageUpdateAutomation` for `visit-web`, `visit-gateway`, and `visit-processor`
 - image updates commit directly to `main` and are then reconciled by Flux
 
 Kafka baseline is now implemented via Flux:
-- Strimzi operator under `kubernetes/platform/dev/core-services/operators/strimzi/`
-- 3-broker KRaft Kafka cluster under `kubernetes/platform/dev/data-platform/services/kafka/`
+- Strimzi operator under `kubernetes/infrastructure/base/core-services/operators/strimzi/`
+- 3-broker KRaft Kafka cluster under `kubernetes/infrastructure/base/data-kafka/`
 - topic and user operators enabled for later tenant self-service templates
 
 Kyverno baseline is now implemented via Flux:
-- Kyverno operator under `kubernetes/platform/dev/core-services/operators/kyverno/`
-- Active cluster policy set under `kubernetes/platform/dev/apps/policies/`
+- Kyverno operator under `kubernetes/infrastructure/base/core-services/operators/kyverno/`
+- Active cluster policy set under `kubernetes/clusters/dev/apps/kustomization-app-policies.yaml`
 - Current policy: soft non-Ceph node placement preference for general workloads
 
 Established deployment model:
@@ -372,8 +365,8 @@ Phase 2 status:
 - complete for defined AWS lab scope (HTTP ingress only; cert-manager/HTTPS intentionally excluded)
 
 Phase 3 current status:
-- Kafka baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/services/kafka/`
-- Postgres baseline is implemented via Flux under `kubernetes/platform/dev/data-platform/services/postgres/` (dev-only defaults)
+- Kafka baseline is implemented via Flux under `kubernetes/infrastructure/base/data-kafka/`
+- Postgres baseline is implemented via Flux under `kubernetes/infrastructure/base/data-postgres/` (dev-only defaults)
 - Ceph baseline is implemented via Rook, with `ceph-block` as the default StorageClass
 - OpenBao baseline is implemented as the secret-management layer for External Secrets
 - The current dev baseline is verified end-to-end by `pipeline:verify` after `pipeline:main`

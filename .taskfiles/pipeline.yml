@@ -23,11 +23,7 @@ tasks:
     cmds:
       - task: :pipeline:init_cluster
       - task: :ansible:core
-      - task: :ansible:core_platform
       - task: :ansible:openbao
-      - task: :ansible:postgres
-      - task: :ansible:kafka
-      - task: :ansible:apps
       - task: :pipeline:verify
 
   verify:

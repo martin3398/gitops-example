@@ -1,38 +1,10 @@
 ---
-- name: Copy OpenBao Flux stage to control plane
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../kubernetes/flux/clusters/dev/security/"
-    dest: /tmp/flux-security/
-    owner: root
-    group: root
-    mode: "0644"
-    directory_mode: "0755"
-
-- name: Wait for stage 1 Flux Kustomizations readiness
+- name: Wait for infrastructure-data-ceph Kustomization readiness
   ansible.builtin.command: >-
     kubectl --kubeconfig {{ openbao_kubeconfig }} -n flux-system wait
     --for=condition=Ready --timeout=5m
-    kustomizations.kustomize.toolkit.fluxcd.io/{{ item }}
-  loop:
-    - platform-core
-    - platform-data-ceph
-    - platform-ingress
+    kustomizations.kustomize.toolkit.fluxcd.io/infrastructure-data-ceph
   changed_when: false
-
-- name: Apply OpenBao Flux Kustomization
-  ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} apply --kustomize /tmp/flux-security
-  changed_when: true
-
-- name: Request OpenBao Flux Kustomization reconcile without waiting for health
-  ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n flux-system annotate
-    kustomization.kustomize.toolkit.fluxcd.io/platform-security
-    reconcile.fluxcd.io/requestedAt={{ lookup('pipe', 'date +%s') }}
-    --overwrite
-  register: openbao_platform_security_reconcile_request
-  changed_when: true
-  failed_when: false
 
 - name: Wait for OpenBao HelmRelease to exist
   ansible.builtin.command: >-
@@ -200,8 +172,8 @@
     kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
     bao write auth/kubernetes/role/eso-sync
-    bound_service_account_names=external-secrets-external-secrets
-    bound_service_account_namespaces=external-secrets
+    bound_service_account_names={{ openbao_eso_service_account_name }}
+    bound_service_account_namespaces={{ openbao_eso_service_account_namespace }}
     policies=eso-sync ttl=1h
   changed_when: true
   no_log: true
@@ -240,14 +212,33 @@
   changed_when: true
   no_log: true
 
-- name: Reconcile OpenBao Flux Kustomization after bootstrap
-  ansible.builtin.command: flux reconcile kustomization platform-security -n flux-system --timeout=15m --kubeconfig {{ openbao_kubeconfig }}
+- name: Wait for External Secrets controller service account to exist
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_eso_service_account_namespace }}
+    get serviceaccount {{ openbao_eso_service_account_name }}
+  register: openbao_eso_service_account_exists
+  changed_when: false
+  failed_when: false
+  retries: 30
+  delay: 5
+  until: openbao_eso_service_account_exists.rc == 0
+
+- name: Restart External Secrets controller to refresh ClusterSecretStore
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} rollout restart
+    deploy/external-secrets-external-secrets -n external-secrets
+  changed_when: true
+
+- name: Wait for External Secrets controller rollout
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} rollout status
+    deploy/external-secrets-external-secrets -n external-secrets --timeout=5m
   changed_when: false
 
-- name: Wait for OpenBao ClusterSecretStore readiness
+- name: Wait for OpenBao auth binding to validate ClusterSecretStore
   ansible.builtin.command: >-
     kubectl --kubeconfig {{ openbao_kubeconfig }} wait
-    --for=condition=Ready --timeout=5m clustersecretstore/openbao
+    --for=condition=Ready --timeout=10m clustersecretstore/openbao
   changed_when: false
 
 - name: Report OpenBao bootstrap completion

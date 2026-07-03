@@ -13,11 +13,7 @@ tasks:
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/runtime.yml"
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/cluster-bootstrap.yml"
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/flux-bootstrap.yml"
-      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/core-platform-deploy.yml"
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/openbao-bootstrap.yml"
-      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/postgres-deploy.yml"
-      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/kafka-deploy.yml"
-      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/apps-deploy.yml"
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/verify.yml"
 
   inventory:
@@ -119,7 +115,7 @@ tasks:
       - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/cluster-bootstrap.yml --tags bootstrap'
 
   core:
-    desc: "Install Flux and deploy core operators and storage"
+    desc: "Install Flux and deploy infrastructure"
     deps:
       - ":venv:check"
     env:
@@ -133,18 +129,6 @@ tasks:
         msg: "FLUX_GIT_KNOWN_HOSTS_B64 is required"
     cmds:
       - 'export FLUX_GIT_SSH_PRIVATE_KEY="$(printf %s "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)" && export FLUX_GIT_KNOWN_HOSTS="$(printf %s "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)" && {{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/flux-bootstrap.yml --tags flux'
-
-  core_platform:
-    desc: "Deploy monitoring and ingress core platform services"
-    deps:
-      - ":venv:check"
-    env:
-      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
-    preconditions:
-      - sh: 'test -f "{{.INVENTORY}}"'
-        msg: "Missing ansible inventory file. Run task ansible:inventory first."
-    cmds:
-      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/core-platform-deploy.yml'
 
   get_kubeconfig:
     internal: true
@@ -191,42 +175,6 @@ tasks:
         msg: "Missing ansible inventory file. Run task ansible:inventory first."
     cmds:
       - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/openbao-bootstrap.yml'
-
-  postgres:
-    desc: "Deploy Postgres data service"
-    deps:
-      - ":venv:check"
-    env:
-      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
-    preconditions:
-      - sh: 'test -f "{{.INVENTORY}}"'
-        msg: "Missing ansible inventory file. Run task ansible:inventory first."
-    cmds:
-      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/postgres-deploy.yml'
-
-  kafka:
-    desc: "Deploy Kafka data service"
-    deps:
-      - ":venv:check"
-    env:
-      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
-    preconditions:
-      - sh: 'test -f "{{.INVENTORY}}"'
-        msg: "Missing ansible inventory file. Run task ansible:inventory first."
-    cmds:
-      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/kafka-deploy.yml'
-
-  apps:
-    desc: "Deploy visit demo apps"
-    deps:
-      - ":venv:check"
-    env:
-      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
-    preconditions:
-      - sh: 'test -f "{{.INVENTORY}}"'
-        msg: "Missing ansible inventory file. Run task ansible:inventory first."
-    cmds:
-      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/apps-deploy.yml'
 
   verify:
     desc: "Verify deployed GitOps dev environment"

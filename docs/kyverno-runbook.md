@@ -4,22 +4,22 @@ This runbook covers the Kyverno baseline deployed by Flux and the currently acti
 
 ## Components
 
-- Kyverno Helm source: `kubernetes/platform/dev/core-services/operators/kyverno/helmrepository.yaml`
-- Kyverno Helm release: `kubernetes/platform/dev/core-services/operators/kyverno/helmrelease.yaml`
+- Kyverno Helm source: `kubernetes/infrastructure/base/core-services/operators/kyverno/helmrepository.yaml`
+- Kyverno Helm release: `kubernetes/infrastructure/base/core-services/operators/kyverno/helmrelease.yaml`
 - Namespace: `kyverno`
-- Flux platform core dependency: `kubernetes/flux/clusters/dev/core/kustomization-platform-core.yaml`
+- Flux platform core dependency: `kubernetes/clusters/dev/kustomization-infrastructure-core.yaml`
 
 ## Current Baseline
 
 - Kyverno chart `kyverno` version `3.3.7` is managed by Flux.
 - `admissionController` runs with `2` replicas for webhook availability.
 - `backgroundController`, `cleanupController`, and `reportsController` are enabled with explicit resource requests/limits.
-- Kyverno is deployed as part of `platform-core` (`kubernetes/platform/dev/core-services/kustomization.yaml`).
+- Kyverno is deployed as part of `infrastructure-core` (`kubernetes/infrastructure/base/core-services/kustomization.yaml`).
 
 ## Policy Inventory (Current)
 
-- Policy set entrypoint: `kubernetes/platform/dev/apps/policies/kustomization.yaml`
-- Active policy: `kubernetes/platform/dev/apps/policies/clusterpolicy-prefer-non-ceph-nodes.yaml`
+- Policy stage: `kubernetes/clusters/dev/apps/kustomization-app-policies.yaml`
+- Active policy: `kubernetes/apps/overlays/dev/policies/clusterpolicy-prefer-non-ceph-nodes.yaml`
 
 Policy behavior summary:
 
@@ -91,5 +91,6 @@ In the deployment spec, confirm `spec.template.spec.affinity.nodeAffinity.prefer
 ## Troubleshooting
 
 - If Kyverno pods are not ready, inspect events and deployment status in `kyverno` namespace.
-- If policies are missing, confirm `kubernetes/platform/dev/apps/policies/` is included by `kubernetes/platform/dev/apps/kustomization.yaml` and Flux app kustomizations are ready.
+- If policies are missing, confirm `kubernetes/clusters/dev/apps/kustomization-app-policies.yaml` is Ready and Flux app kustomizations are ready.
+- If policies are missing, confirm `kubernetes/clusters/dev/apps/kustomization-app-policies.yaml` is Ready and Flux app stages are ready.
 - If mutation is not visible on a workload, check policy exclusions (namespace or opt-out label).
