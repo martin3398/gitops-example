@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-visit-processing-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  visit-processing-overview.json: |
+    {
+      "id": null,
+      "uid": "visit-processing-overview",
+      "title": "Visit Processing Overview",
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Processor pods ready",
+          "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_ready{namespace=\"visit-processing\",condition=\"true\",pod=~\"visit-processing-visit-processor-.*\"})",
+              "legendFormat": "ready"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Processor pods total",
+          "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+          "targets": [
+            {
+              "expr": "count(kube_pod_info{namespace=\"visit-processing\",pod=~\"visit-processing-visit-processor-.*\"})",
+              "legendFormat": "total"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Kafka consumer lag",
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(max by (partition) (kafka_consumergroup_lag{topic=\"visits.requested\", consumergroup=\"visit-processor-v1\"}))",
+              "legendFormat": "total lag"
+            }
+          ]
+        },
+        {
+          "type": "logs",
+          "title": "Loadgen logs",
+          "gridPos": {"h": 12, "w": 24, "x": 0, "y": 6},
+          "datasource": "Loki",
+          "targets": [
+            {
+              "expr": "{namespace=\"visit-loadgen\"}",
+              "refId": "A"
+            }
+          ]
+        }
+      ],
+      "templating": {"list": []},
+      "annotations": {"list": []}
+    }
