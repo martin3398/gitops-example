@@ -23,6 +23,6 @@ spec:
       repository: ghcr.io/martin3398/visit-loadgen # {"$imagepolicy": "flux-system:visit-loadgen:name"}
       tag: 20260630225005-183b2ff8 # {"$imagepolicy": "flux-system:visit-loadgen:tag"}
     config:
-      mode: fixed
+      mode: random
       fixedBand: below
       targetBaseUrl: http://visit-web-visit-gateway.visit-web.svc/api/v1
