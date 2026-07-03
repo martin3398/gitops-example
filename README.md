@@ -173,8 +173,8 @@ Ingress traffic path is NLB (`:80`) -> worker NodePort (`30080`) -> `ingress-ngi
 Use local `gitops.local` names for browser-facing dev UIs. Map every returned NLB address to the same hostname set in `/etc/hosts`:
 
 ```text
-<nlb-ip-1> gitops.local grafana.gitops.local bao.gitops.local
-<nlb-ip-2> gitops.local grafana.gitops.local bao.gitops.local
+<nlb-ip-1> gitops.local grafana.gitops.local prometheus.gitops.local bao.gitops.local
+<nlb-ip-2> gitops.local grafana.gitops.local prometheus.gitops.local bao.gitops.local
 ```
 
 Resolve the current NLB addresses with:
@@ -195,9 +195,10 @@ task ingress:hosts_entries
 | --- | --- | --- |
 | Visit demo | `http://gitops.local` and the AWS ingress NLB DNS name | The app ingress routes `/` and `/api` for `gitops.local` and keeps a hostless fallback for direct AWS NLB access. |
 | Grafana | `http://grafana.gitops.local` | Grafana uses host-based ingress at `/` and is not exposed through the AWS NLB hostname or `gitops.local`. |
+| Prometheus | `http://prometheus.gitops.local` | Prometheus uses host-based ingress at `/` and is not exposed through the AWS NLB hostname or `gitops.local`. |
 | OpenBao | `http://bao.gitops.local` | OpenBao uses host-based ingress for `bao.gitops.local`. |
 
-Grafana is the only browser-facing observability UI. Prometheus, Alertmanager, Loki, Promtail metrics, kube-state-metrics, and node-exporter remain internal cluster services. HTTPS and certificate management remain out of scope for this HTTP-only lab.
+Grafana and Prometheus are the browser-facing observability UIs. Alertmanager, Loki, Promtail metrics, kube-state-metrics, and node-exporter remain internal cluster services. HTTPS and certificate management remain out of scope for this HTTP-only lab.
 
 ## Local Environment Variables
 

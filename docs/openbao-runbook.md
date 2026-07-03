@@ -31,11 +31,11 @@ nslookup "$(tofu -chdir=infra output -raw ingress_public_endpoint)"
 2. Add each returned address to `/etc/hosts`:
 
 ```text
-<nlb-ip-1> gitops.local grafana.gitops.local bao.gitops.local
-<nlb-ip-2> gitops.local grafana.gitops.local bao.gitops.local
+<nlb-ip-1> gitops.local grafana.gitops.local prometheus.gitops.local bao.gitops.local
+<nlb-ip-2> gitops.local grafana.gitops.local prometheus.gitops.local bao.gitops.local
 ```
 
-If you are also exposing the other browser UIs locally, use the shared host entry shape from the README so `gitops.local`, `grafana.gitops.local`, and `bao.gitops.local` resolve consistently.
+If you are also exposing the other browser UIs locally, use the shared host entry shape from the README so `gitops.local`, `grafana.gitops.local`, `prometheus.gitops.local`, and `bao.gitops.local` resolve consistently.
 
 You can print the current entries with:
 

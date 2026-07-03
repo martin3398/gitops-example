@@ -16,5 +16,5 @@ tasks:
           exit 1
         fi
         getent ahostsv4 "$host" | awk '{print $1}' | sort -u | while read -r ip; do
-          printf '%s gitops.local grafana.gitops.local bao.gitops.local\n' "$ip"
+          printf '%s gitops.local grafana.gitops.local prometheus.gitops.local bao.gitops.local\n' "$ip"
         done
