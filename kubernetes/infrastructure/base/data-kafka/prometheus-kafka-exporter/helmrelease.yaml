@@ -32,6 +32,12 @@ spec:
         enabled: true
         additionalLabels:
           release: monitoring-kube-prometheus-stack
+        metricRelabelings:
+          - sourceLabels: [topic]
+            regex: 'visits\.requested'
+            targetLabel: namespace
+            replacement: visit-processing
+            action: replace
 
     podLabels:
       app.kubernetes.io/part-of: kafka-monitoring
