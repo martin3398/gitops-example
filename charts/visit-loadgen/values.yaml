@@ -12,8 +12,8 @@ config:
   mode: paused
   fixedBand: idle
   bands: idle=0.2:1:1,below=1:3:1,capacity=3:8:1,overload=8:12:1,burst=15:20:1
-  minPhaseDuration: 120s
-  maxPhaseDuration: 240s
+  minPhaseDuration: 300s
+  maxPhaseDuration: 600s
   statusInterval: 10s
   reloadInterval: 10s
   requestTimeout: 5s
