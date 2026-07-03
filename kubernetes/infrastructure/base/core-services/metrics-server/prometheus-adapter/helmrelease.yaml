@@ -18,6 +18,25 @@ spec:
     prometheus:
       url: http://monitoring-kube-prometheus-prometheus.monitoring.svc
       port: 9090
+    replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+      maxUnavailable: 0
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: prometheus-adapter
+            topologyKey: kubernetes.io/hostname
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: prometheus-adapter
     rules:
       external:
         - seriesQuery: 'kafka_consumergroup_lag{namespace="visit-processing"}'
