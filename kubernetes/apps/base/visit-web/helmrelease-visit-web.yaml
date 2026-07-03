@@ -13,6 +13,7 @@ spec:
   chart:
     spec:
       chart: ./charts/visit-ui
+      reconcileStrategy: Revision
       sourceRef:
         kind: GitRepository
         name: dev-repo
