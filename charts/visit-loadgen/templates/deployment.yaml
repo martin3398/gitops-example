@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: {{ .Release.Name }}
 spec:
+  revisionHistoryLimit: 5
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
