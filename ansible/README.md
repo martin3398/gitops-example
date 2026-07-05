@@ -1,49 +1,33 @@
 # Ansible Iterations 1-5 (SSM-first)
 
-This directory contains Ansible automation for Iterations 1-5:
+Use this directory for the local Ansible bootstrap flow.
+
+## What’s Here
+
 - inventory handoff from OpenTofu outputs
 - SSM-based connectivity model
 - smoke validation playbook
+- base, runtime, cluster bootstrap, Flux bootstrap, and OpenBao playbooks
 
-Iteration 2 adds base node preparation:
-- package baseline for Kubernetes host prerequisites
-- kernel module and sysctl preparation
-- swap disablement and validation checks
+## Bootstrap Flow
 
-Iteration 3 adds runtime and Kubernetes node binaries:
-- containerd installation and `SystemdCgroup = true` configuration
-- Kubernetes apt repository setup and package installation (`kubelet`, `kubeadm`, `kubectl`)
-- package hold and service validation for `containerd` and `kubelet`
+- Iteration 2: base node preparation
+- Iteration 3: containerd + kubelet/kubeadm/kubectl
+- Iteration 4: kubeadm + Cilium cluster bootstrap
+- Iteration 5: Flux bootstrap handoff
 
-Note: During iteration 3 (pre-bootstrap), `kubelet` is expected to be enabled but may not be `running` until kubeadm init/join is completed.
+## Key Paths
 
-Iteration 4 adds cluster bootstrap automation (4A-4D):
-- 4A: first control plane `kubeadm init`
-- 4B: Cilium CNI installation via Cilium CLI
-- 4C: join remaining control planes and workers
-- 4D: cluster-level validation from first control plane
-
-Kubernetes bootstrap (kubeadm init/join) is included in `playbooks/cluster-bootstrap.yml`.
-
-Iteration 5 adds Flux bootstrap handoff automation:
-- install Flux controllers on the first control plane
-- apply Git source and root Kustomizations from `kubernetes/clusters/dev`
-- validate Flux `GitRepository` and `Kustomization` readiness
-
-Active environment naming:
 - inventory path: `ansible/inventories/dev/hosts.yml`
 - Flux Git source object: `GitRepository/dev-repo`
+- Kubernetes bootstrap: `ansible/playbooks/cluster-bootstrap.yml`
+- Flux bootstrap: `ansible/playbooks/flux-bootstrap.yml`
 
-Kubernetes API endpoint behavior:
-- inventory generator writes `kube_api_internal_endpoint` and `kube_api_public_endpoint` into `all.vars`
-- `kubeadm init` uses `kube_api_internal_endpoint` for control-plane bootstrap
-- API cert SANs include `kube_api_public_endpoint` host when provided
-- fallback is first control-plane private IP (`<cp-1-private-ip>:6443`) when no endpoint is provided
+## Reference
 
-Flux image automation is configured under `kubernetes/apps/base/visit-web/` and `kubernetes/apps/base/visit-processing/`:
-- `ImageRepository` tracks available tags for `visit-web`, `visit-gateway`, and `visit-processor`
-- `ImagePolicy` selects newest timestamp tags matching `YYYYMMDDHHmmSS-<8-char-git-sha>`
-- `ImageUpdateAutomation` writes selected image updates back to Git (`main`) using setters
+- Full staged deployment flow: `docs/deployment-pipeline-runbook.md`
+- CI-specific notes: `docs/ansible-ci-runbook.md`
+- GHCR and image automation: `docs/github-actions-runbook.md`
 
 ## Prerequisites
 
@@ -118,61 +102,17 @@ ANSIBLE_CONFIG=ansible/ansible.cfg \
 ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/smoke.yml
 ```
 
-Run base preparation (iteration 2):
+## Common Playbooks
 
 ```bash
 cd ansible
 ansible-playbook -i inventories/dev/hosts.yml playbooks/base.yml --tags base
-```
-
-Idempotency check:
-
-```bash
-cd ansible
-ansible-playbook -i inventories/dev/hosts.yml playbooks/base.yml --tags base
-```
-
-Second run should show minimal changes.
-
-Run runtime preparation (iteration 3):
-
-```bash
-cd ansible
 ansible-playbook -i inventories/dev/hosts.yml playbooks/runtime.yml --tags runtime
-```
-
-Runtime idempotency check:
-
-```bash
-cd ansible
-ansible-playbook -i inventories/dev/hosts.yml playbooks/runtime.yml --tags runtime
-```
-
-Run full cluster bootstrap (iterations 4A-4D):
-
-```bash
-cd ansible
 ansible-playbook -i inventories/dev/hosts.yml playbooks/cluster-bootstrap.yml --tags bootstrap
-```
-
-Run Flux bootstrap handoff (iteration 5):
-
-```bash
-cd ansible
-export FLUX_GIT_SSH_PRIVATE_KEY_B64="$(base64 -w0 ../flux-github)"
-export FLUX_GIT_KNOWN_HOSTS_B64="$(printf 'github.com ssh-ed25519 <host-key>' | base64 -w0)"
-export FLUX_GIT_SSH_PRIVATE_KEY="$(printf '%s' "$FLUX_GIT_SSH_PRIVATE_KEY_B64" | base64 -d)"
-export FLUX_GIT_KNOWN_HOSTS="$(printf '%s' "$FLUX_GIT_KNOWN_HOSTS_B64" | base64 -d)"
-# Optional GHCR secret automation:
-# export GHCR_USERNAME="<github-username>"
-# export GHCR_TOKEN="<github-token-with-package-read-write>"
 ansible-playbook -i inventories/dev/hosts.yml playbooks/flux-bootstrap.yml --tags flux
 ```
 
-If `GHCR_USERNAME` and `GHCR_TOKEN` are set, the Flux bootstrap role also applies:
-
-- `ghcr-pull` in `visit-web` and `visit-processing`
-- `ghcr-registry` in `flux-system`
+See `docs/github-actions-runbook.md` for GHCR/image automation variables and `docs/deployment-pipeline-runbook.md` for the ordered pipeline.
 
 Fetch kubeconfig for local kubectl usage:
 

@@ -154,9 +154,8 @@ curl http://gitops.local/api/v1/visits/count
 - Layout jump during refresh:
   - spinner should use fixed-size icon slot (no conditional text row)
 
-## Next Scope (Roadmap Sync)
+## Current Limitations
 
-- OpenBao integration is implemented through External Secrets for app database credentials.
-- Implement and tune HPA for `visit-processor` based on measured load behavior.
-- Apply cluster-level authentication hardening (authn/authz and RBAC), excluding app-level auth features.
-- Add Renovate to automate dependency and workflow update cadence.
+- Ingress currently uses `ingress-nginx`; Gateway API migration is planned for Phase 6.
+- Cluster-level authentication hardening is not yet implemented.
+- Renovate-based dependency/update automation is not yet implemented.

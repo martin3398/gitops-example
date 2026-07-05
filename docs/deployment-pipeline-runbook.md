@@ -2,18 +2,6 @@
 
 This runbook describes the current dev deployment flow.
 
-## Goal
-
-The deployment is intentionally staged:
-
-1. create infrastructure
-2. bootstrap Kubernetes without Flux
-3. install Flux and core operators
-4. bootstrap OpenBao procedurally
-5. verify the full environment
-
-Flux remains the long-running reconciler for Kubernetes resources. Ansible only gates the bootstrap boundary and OpenBao initialization.
-
 ## Main Commands
 
 ```bash

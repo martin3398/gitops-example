@@ -2,32 +2,7 @@
 
 This runbook describes how Ansible automation stages execute in GitHub Actions after infrastructure apply.
 
-## Workflow Ordering
-
-The Ansible workflow runs these ordered steps:
-
-1. inventory generation
-2. smoke
-3. base
-4. runtime
-5. cluster bootstrap
-6. Flux/core bootstrap
-7. OpenBao bootstrap
-8. verification
-
-Inventory is generated from `infra/outputs.json` that `ansible-run` creates by reading OpenTofu remote state directly.
-
-This order mirrors local `task pipeline:main` after the OpenTofu apply step.
-
-## Trigger Flow
-
-On `main` branch:
-
-1. Run OpenTofu check/plan workflow
-2. Manually trigger OpenTofu apply workflow (provision gate)
-3. Manually trigger `ansible-run` workflow
-
-The manual workflows use `concurrency: infra` to prevent concurrent infrastructure/cluster mutation.
+See `docs/deployment-pipeline-runbook.md` for the canonical staged ordering.
 
 ## Pipeline Gates
 
@@ -83,16 +58,6 @@ Additional checks after bootstrap:
 - `kubectl -n flux-system get imagerepositories,imagepolicies,imageupdateautomations`
 - visit app image automation objects should appear from `kubernetes/apps/base/visit-web/`, `kubernetes/apps/base/visit-processing/`, and `kubernetes/apps/base/visit-loadgen/` after Flux reconciliation
 
-## Flux Bootstrap Variables
+## Flux Bootstrap Notes
 
-Required for flux bootstrap step:
-
-- `FLUX_GIT_SSH_PRIVATE_KEY_B64`: base64-encoded private key matching the deploy key used by Flux (must allow pushes for image automation updates)
-- `FLUX_GIT_KNOWN_HOSTS_B64`: base64-encoded Git host SSH known_hosts line (for example `github.com ssh-ed25519 ...`)
-
-Encoding example:
-
-```bash
-base64 -w0 flux-github
-printf 'github.com ssh-ed25519 <host-key>' | base64 -w0
-```
+- Flux bootstrap still requires the SSH key and known_hosts secrets described in the GitHub Actions runbook.

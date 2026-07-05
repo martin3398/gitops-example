@@ -10,18 +10,12 @@ Implement a multi-phase learning platform with:
 - GitOps with Flux
 - CI/CD with GitHub Actions
 
-## Assessment
-- The selected stack is strong and realistic for a self-managed Kubernetes GitOps example.
-- Using EC2 with self-managed Kubernetes is a good compromise between cost and on-prem relevance.
-- Flux + GitHub Actions is an excellent open-source combination.
-- A phased rollout is the right approach, especially with multiple stateful systems planned.
-
 ## Rethink / Scope Control
 - Keep strict ownership boundaries:
   - OpenTofu/Terraform: cloud infrastructure only
   - Ansible: host provisioning + Kubernetes bootstrap only
   - Flux: all cluster applications and platform add-ons
-- Introduce heavyweight stateful tools one by one (OpenBao, MongoDB, Kafka, Ceph) to keep troubleshooting tractable.
+- Introduce heavyweight stateful tools one by one (OpenBao, Kafka, Ceph) to keep troubleshooting tractable.
 - Backup and policy/security controls are next-phase work now that the base platform and app delivery workflow are stable.
 - Treat stateful systems as implemented baselines that still need operational hardening, especially backup/restore and credential rotation.
 
@@ -80,19 +74,17 @@ Exit criteria:
 - End-to-end app path is reachable through ingress
 - Observability dashboards show app and cluster metrics
 
-### Phase 3 - Advanced Tool Labs
+### Phase 3 - Advanced Tooling
 Current state:
 1. OpenBao baseline implemented for platform/app secrets
 2. Kafka baseline implemented with Strimzi in KRaft mode
 3. Ceph baseline implemented with `ceph-block` as default StorageClass
-4. MongoDB remains pending/optional
-
-Phase 3 focus TODOs:
+Phase 3 hardening:
 - OpenBao hardening: snapshots, restore, auto-unseal, dynamic DB credentials, rotation
-- MongoDB lab: reproducible deployment + operations notes if still desired
+- credential management hardening: stronger OpenBao init material handling, GHCR pull secrets, and Flux Git write credentials
 - Ceph hardening: restore drills and stateful workload failure testing
-- Load generator lab: reproducible traffic scenarios to observe queue/throughput behavior
-- HPA lab: `visit-processor` autoscaling policy and tuning under load
+- Traffic validation: reproducible load scenarios and queue/throughput observations
+- Alerting and dashboards: queue depth and lag visibility for the visit path
 
 Exit criteria per tool:
 - Install is reproducible
@@ -101,20 +93,37 @@ Exit criteria per tool:
 
 ### Phase 4 - Resilience, Backup, Policy & Security
 1. Backups:
-   - Velero for cluster resource backup/restore
-   - Database-specific backup and restore tests
+    - Velero for cluster resource backup/restore
+    - Database-specific backup and restore tests
 2. Policy/Security:
-   - cluster-level authentication hardening and RBAC review
    - Kyverno (or OPA Gatekeeper)
    - Trivy image scanning in CI
    - baseline network policies
    - Pod security standards/admission configuration
-3. Update hygiene:
-   - Renovate automation for dependency and workflow updates
+3. Observability:
+   - Grafana dashboard coverage for the current platform and app path
+4. Update hygiene:
+     - Renovate automation for dependency and workflow updates
 
 Exit criteria:
 - Restore drill passes
 - Policy violations are detectable and actionable
+
+### Phase 5 - RKE2 Migration / Regulatory Hardening
+1. Migrate the cluster runtime to RKE2.
+2. Revalidate bootstrap, CNI, observability, storage, and workloads on the new runtime.
+
+Exit criteria:
+- Cluster bootstrap is reproducible on RKE2.
+- Core add-ons and workloads still reconcile cleanly.
+
+### Phase 6 - Ingress Platform Migration
+1. Migrate ingress from ingress-nginx to Cilium Gateway API.
+2. Revalidate `/` and `/api` behavior for the visit app.
+
+Exit criteria:
+- App exposure works through the new Gateway API path.
+- Visit app routing remains same-origin and functional.
 
 ## Operational Rules
 - No long-lived manual drift in cluster resources; reconcile through Flux.
@@ -138,13 +147,13 @@ The full local deployment is staged:
 
 Use `task pipeline:main` for the full ordered chain.
 
-## Next Agent Priorities
+## Active Follow-ups
 
 - Keep docs aligned with the implemented stack; do not reintroduce Vault terminology unless a separate HashiCorp Vault lab is explicitly requested.
 - Maintain and extend post-deploy verification automation (`pipeline:verify`) before adding more platform components.
-- Harden OpenBao operations: raft peer validation, snapshots, restore, auto-unseal decision, and dynamic Postgres credentials.
-- Add backup/restore coverage before treating stateful services as production-like.
-- Add load/HPA validation for the visit processor path.
+- Execute Phase 4 hardening work: `Renovate`, failover drills, backup/restore, dashboards, and secret hardening.
+- Prepare the RKE2 migration as a separate phase with a clear cutover and rollback path.
+- Prepare the Gateway API ingress migration as a separate phase after cluster/runtime stability is proven.
 
 ## Suggested Repository Layout
 - `infra/` OpenTofu/Terraform infrastructure code
@@ -152,7 +161,6 @@ Use `task pipeline:main` for the full ordered chain.
 - `kubernetes/clusters/` Flux bootstrap and Kustomizations
 - `kubernetes/infrastructure/` platform components and overlays
 - `kubernetes/apps/` frontend, microservices, Postgres
-- `kubernetes/labs/` optional MongoDB and future experiments
 - `docs/` architecture, runbooks, troubleshooting, DR tests
 
 ## Definition of Done (Global)

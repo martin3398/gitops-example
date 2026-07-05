@@ -52,8 +52,6 @@ The Flux `infrastructure-data-kafka` stage has an explicit health check for the 
 
 If Kafka stays `NotReady`, verify that `spec.kafka.version` is supported by the pinned Strimzi operator chart version.
 
-## Next Iteration (Self-Service)
+## Notes
 
-- Add GitOps templates for `KafkaTopic` and `KafkaUser`
-- Add per-team namespace/network policy boundaries
-- Add broker and consumer lag alerting
+- KafkaTopic/KafkaUser templates, per-team boundaries, and lag alerting are not implemented yet.
