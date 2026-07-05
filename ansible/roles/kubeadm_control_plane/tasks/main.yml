@@ -53,6 +53,28 @@
   delay: 10
   until: "'ok' in (kubeadm_apiserver_readyz.stdout | default(''))"
 
+- name: Patch kube-proxy metrics bind address
+  ansible.builtin.shell: |
+    set -euo pipefail
+    kubectl --kubeconfig /etc/kubernetes/admin.conf -n kube-system get configmap kube-proxy -o yaml \
+      | python3 -c 'import sys; data = sys.stdin.read(); sys.stdout.write(data.replace("metricsBindAddress: \"\"", "metricsBindAddress: 0.0.0.0:10249", 1))' \
+      | kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: Restart kube-proxy daemonset
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf -n kube-system
+    rollout restart daemonset/kube-proxy
+  changed_when: false
+
+- name: Wait for kube-proxy daemonset rollout
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf -n kube-system
+    rollout status daemonset/kube-proxy --timeout=5m
+  changed_when: false
+
 - name: Generate worker join command
   ansible.builtin.command: kubeadm token create --print-join-command
   register: kubeadm_worker_join_command
