@@ -13,13 +13,60 @@ data:
       "title": "Visit Processing Overview",
       "timezone": "browser",
       "schemaVersion": 38,
-      "version": 1,
-      "refresh": "30s",
+      "version": 8,
+      "time": {"from": "now-30m", "to": "now"},
+      "refresh": "5s",
       "panels": [
+        {
+          "type": "timeseries",
+          "title": "Pods over time",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "axisPlacement": "auto"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {"id": "byName", "options": "pods ready"},
+                "properties": [
+                  {"id": "custom.axisPlacement", "value": "right"}
+                ]
+              },
+              {
+                "matcher": {"id": "byName", "options": "pods total"},
+                "properties": [
+                  {"id": "custom.axisPlacement", "value": "right"}
+                ]
+              },
+              {
+                "matcher": {"id": "byName", "options": "desired pods"},
+                "properties": [
+                  {"id": "custom.axisPlacement", "value": "right"}
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_ready{namespace=\"visit-processing\",condition=\"true\",pod=~\"visit-processing-visit-processor-.*\"})",
+              "legendFormat": "pods ready"
+            },
+            {
+              "expr": "count(kube_pod_info{namespace=\"visit-processing\",pod=~\"visit-processing-visit-processor-.*\"})",
+              "legendFormat": "pods total"
+            },
+            {
+              "expr": "max(kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"visit-processing\",horizontalpodautoscaler=\"visit-processor\"})",
+              "legendFormat": "desired pods"
+            }
+          ]
+        },
         {
           "type": "stat",
           "title": "Processor pods ready",
-          "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
           "targets": [
             {
               "expr": "sum(kube_pod_status_ready{namespace=\"visit-processing\",condition=\"true\",pod=~\"visit-processing-visit-processor-.*\"})",
@@ -30,7 +77,7 @@ data:
         {
           "type": "stat",
           "title": "Processor pods total",
-          "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
           "targets": [
             {
               "expr": "count(kube_pod_info{namespace=\"visit-processing\",pod=~\"visit-processing-visit-processor-.*\"})",
@@ -39,25 +86,117 @@ data:
           ]
         },
         {
-          "type": "timeseries",
+          "type": "stat",
           "title": "Kafka consumer lag",
-          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 0},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 4},
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "red", "value": 2000}
+                ]
+              }
+            },
+            "overrides": []
+          },
           "targets": [
             {
               "expr": "sum(max by (partition) (kafka_consumergroup_lag{topic=\"visits.requested\", consumergroup=\"visit-processor-v1\"}))",
-              "legendFormat": "total lag"
+              "legendFormat": "lag"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "HPA desired pods",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 4},
+          "targets": [
+            {
+              "expr": "max(kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"visit-processing\",horizontalpodautoscaler=\"visit-processor\"})",
+              "legendFormat": "target"
             }
           ]
         },
         {
           "type": "logs",
           "title": "Loadgen logs",
-          "gridPos": {"h": 12, "w": 24, "x": 0, "y": 6},
+          "gridPos": {"h": 12, "w": 24, "x": 0, "y": 16},
           "datasource": "Loki",
           "targets": [
             {
               "expr": "{namespace=\"visit-loadgen\"}",
               "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Kafka consumer lag and pods over time",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "axisPlacement": "auto"
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {"id": "byName", "options": "pods ready"},
+                "properties": [
+                  {"id": "custom.axisPlacement", "value": "right"}
+                ]
+              },
+              {
+                "matcher": {"id": "byName", "options": "desired pods"},
+                "properties": [
+                  {"id": "custom.axisPlacement", "value": "right"}
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum(max by (partition) (kafka_consumergroup_lag{topic=\"visits.requested\", consumergroup=\"visit-processor-v1\"}))",
+              "legendFormat": "consumer lag"
+            },
+            {
+              "expr": "sum(kube_pod_status_ready{namespace=\"visit-processing\",condition=\"true\",pod=~\"visit-processing-visit-processor-.*\"})",
+              "legendFormat": "pods ready"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Average lag per pod",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "axisPlacement": "auto"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "red", "value": 100}
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum(max by (partition) (kafka_consumergroup_lag{topic=\"visits.requested\", consumergroup=\"visit-processor-v1\"})) / clamp_min(count(kube_pod_info{namespace=\"visit-processing\",pod=~\"visit-processing-visit-processor-.*\"}), 1)",
+              "legendFormat": "avg lag / pod"
+            },
+            {
+              "expr": "vector(100)",
+              "legendFormat": "100"
             }
           ]
         }

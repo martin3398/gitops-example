@@ -89,14 +89,18 @@ Modes:
 Default bands:
 
 ```text
-idle=0:0.2:2
-below=0.3:0.8:4
-capacity=0.9:1.2:3
-overload=2:3:2
-burst=5:10:1
+idle=0:0.5:5
+below=1:4:4
+capacity=8:12:8
+overload=13:16:2
+burst=17:22:1
 ```
 
-One `visit-processor` pod is intentionally rate-limited to `1 msg/s`, so `overload` and `burst` phases should grow Kafka lag while `idle` and `below` phases should let lag drain.
+One `visit-processor` pod is intentionally rate-limited to `1 msg/s`, and the default load bands are chosen so `capacity` can settle at a mid-range replica count while `overload` and `burst` still push it up.
+
+The `visit-processor` HPA now targets a stepped metric that is effectively `ceil(lag / 100)`, so lag `0-100` maps to `1` pod, `100-200` maps to `2`, and so on.
+
+The default phase duration is `180-300s` so the HPA has time to react and settle during each band.
 
 Enable stochastic load by changing the loadgen HelmRelease values:
 

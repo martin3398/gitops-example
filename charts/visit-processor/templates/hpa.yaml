@@ -20,18 +20,18 @@ spec:
               topic: visits.requested
               consumergroup: visit-processor-v1
         target:
-          type: Value
-          value: "10"
+          type: AverageValue
+          averageValue: "100"
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 30
       policies:
         - type: Pods
-          value: 5
-          periodSeconds: 20
+          value: 10
+          periodSeconds: 10
     scaleDown:
       stabilizationWindowSeconds: 30
       policies:
         - type: Pods
           value: 5
-          periodSeconds: 20
+          periodSeconds: 10

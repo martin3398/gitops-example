@@ -41,7 +41,7 @@ Modes:
 - `random` - randomly switch between configured load bands
 - `fixed` - stay on one configured band, set by `LOADGEN_FIXED_BAND`
 
-The default random bands are calibrated around the current processor capacity of one `visit-processor` pod handling about `1 msg/s`.
+The default random bands are tuned to create visible HPA up/down behavior without letting Kafka lag explode.
 
 Enable random load by changing the Helm values under `kubernetes/apps/base/visit-loadgen/helmrelease-visit-loadgen.yaml`:
 

@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-const defaultBands = "idle=0:0.2:2,below=0.3:0.8:4,capacity=0.9:1.2:3,overload=2:3:2,burst=5:10:1"
+const defaultBands = "idle=0:0.5:5,below=1:4:4,capacity=8:12:8,overload=13:16:2,burst=17:22:1"
 
 type band struct {
 	name   string
@@ -250,8 +250,8 @@ func loadConfig() (config, error) {
 		"LOADGEN_MODE":        envOrDefault("LOADGEN_MODE", "paused"),
 		"LOADGEN_FIXED_BAND":  envOrDefault("LOADGEN_FIXED_BAND", "idle"),
 		"LOADGEN_BANDS":       envOrDefault("LOADGEN_BANDS", defaultBands),
-		"MIN_PHASE_DURATION":  envOrDefault("MIN_PHASE_DURATION", "30s"),
-		"MAX_PHASE_DURATION":  envOrDefault("MAX_PHASE_DURATION", "180s"),
+		"MIN_PHASE_DURATION":  envOrDefault("MIN_PHASE_DURATION", "300s"),
+		"MAX_PHASE_DURATION":  envOrDefault("MAX_PHASE_DURATION", "600s"),
 		"STATUS_INTERVAL":     envOrDefault("STATUS_INTERVAL", "10s"),
 		"RELOAD_INTERVAL":     envOrDefault("RELOAD_INTERVAL", "10s"),
 		"REQUEST_TIMEOUT":     envOrDefault("REQUEST_TIMEOUT", "5s"),
