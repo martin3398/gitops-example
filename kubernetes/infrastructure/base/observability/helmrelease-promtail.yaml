@@ -9,6 +9,7 @@ spec:
   dependsOn:
     - name: kube-prometheus-stack
     - name: loki
+      namespace: monitoring
   targetNamespace: monitoring
   install:
     createNamespace: true

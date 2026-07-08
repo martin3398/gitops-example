@@ -7,7 +7,7 @@ spec:
   interval: 1m
   dependsOn:
     - name: infrastructure-data-ceph
-    - name: infrastructure-data-kafka
+    - name: infrastructure-security
   sourceRef:
     kind: GitRepository
     name: dev-repo

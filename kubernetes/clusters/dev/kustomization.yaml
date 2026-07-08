@@ -9,5 +9,6 @@ resources:
   - kustomization-infrastructure-data-postgres.yaml
   - kustomization-infrastructure-data-kafka.yaml
   - kustomization-infrastructure-observability.yaml
+  - kustomization-infrastructure-observability-kafka.yaml
   - kustomization-infrastructure-ingress.yaml
   - apps

@@ -43,7 +43,7 @@
 - name: Wait for OpenBao leader pod to be running
   ansible.builtin.command: >-
     kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
-    wait --for=jsonpath='{.status.phase}'=Running --timeout=5m pod/{{ openbao_leader_pod }}
+    wait --for=jsonpath='{.status.phase}'=Running --timeout=15m pod/{{ openbao_leader_pod }}
   changed_when: false
 
 - name: Read OpenBao leader status before init
