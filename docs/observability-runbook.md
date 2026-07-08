@@ -8,6 +8,7 @@ This runbook covers the observability stack deployed by Flux.
 - Loki: `kubernetes/infrastructure/base/observability/helmrelease-loki.yaml`
 - Promtail: `kubernetes/infrastructure/base/observability/helmrelease-promtail.yaml`
 - Prometheus Adapter: `kubernetes/infrastructure/base/observability/prometheus-adapter/`
+- Kafka exporter: `kubernetes/infrastructure/base/observability/prometheus-kafka-exporter/`
 - Grafana ingress: `kubernetes/infrastructure/base/observability/grafana-ingress.yaml`
 - Prometheus ingress: `kubernetes/infrastructure/base/observability/prometheus-ingress.yaml`
 - Dashboards:

@@ -7,6 +7,7 @@ spec:
   interval: 1m
   dependsOn:
     - name: infrastructure-data-ceph
+    - name: infrastructure-data-kafka
   sourceRef:
     kind: GitRepository
     name: dev-repo
@@ -21,7 +22,7 @@ spec:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
       name: loki
-      namespace: flux-system
+      namespace: monitoring
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
       name: promtail

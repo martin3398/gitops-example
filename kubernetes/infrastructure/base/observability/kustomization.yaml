@@ -6,6 +6,11 @@ resources:
   - helmrepository-grafana.yaml
   - helmrelease-kube-prometheus-stack.yaml
   - prometheus-adapter
+<<<<<<< HEAD
+  - prometheus-kafka-exporter
+=======
+  - externalsecret-loki-s3-credentials.yaml
+>>>>>>> 5bbcfec (tmp)
   - helmrelease-loki.yaml
   - helmrelease-promtail.yaml
   - grafana-ingress.yaml

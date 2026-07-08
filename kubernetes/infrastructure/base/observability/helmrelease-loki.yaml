@@ -2,7 +2,7 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: loki
-  namespace: flux-system
+  namespace: monitoring
 spec:
   interval: 10m
   timeout: 15m
