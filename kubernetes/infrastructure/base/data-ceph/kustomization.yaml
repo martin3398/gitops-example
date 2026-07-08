@@ -3,5 +3,9 @@ kind: Kustomization
 resources:
   - cephcluster.yaml
   - cephblockpool.yaml
+  - externalsecret-loki-s3-credentials.yaml
+  - cephobjectstore-loki.yaml
+  - cephobjectstoreuser-loki.yaml
+  - job-loki-create-buckets.yaml
   - storageclass-ceph-block.yaml
   - toolbox.yaml

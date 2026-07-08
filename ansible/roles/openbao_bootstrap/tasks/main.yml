@@ -212,6 +212,16 @@
   changed_when: true
   no_log: true
 
+- name: Seed OpenBao Loki S3 credentials
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+    bao kv put -mount=secret dev/platform/observability/loki-s3
+    AWS_ACCESS_KEY_ID={{ openbao_loki_access_key_id | quote }}
+    AWS_SECRET_ACCESS_KEY={{ openbao_loki_secret_access_key | quote }}
+  changed_when: true
+  no_log: true
+
 - name: Wait for External Secrets controller service account to exist
   ansible.builtin.command: >-
     kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_eso_service_account_namespace }}

@@ -1,0 +1,81 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: loki-create-buckets
+  namespace: rook-ceph
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 900
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: awscli
+          image: public.ecr.aws/aws-cli/aws-cli:2.17.53
+          env:
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: AWS_EC2_METADATA_DISABLED
+              value: "true"
+            - name: AWS_ENDPOINT_URL
+              value: http://rook-ceph-rgw-loki.rook-ceph.svc:80
+          volumeMounts:
+            - name: loki-s3-credentials
+              mountPath: /etc/loki-credentials
+              readOnly: true
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              deadline_seconds=600
+              start_epoch="$(date +%s)"
+              deadline_epoch="$((start_epoch + deadline_seconds))"
+
+              fail() {
+                printf 'loki-create-buckets: %s\n' "$*" >&2
+                exit 1
+              }
+
+              log() {
+                printf 'loki-create-buckets: %s\n' "$*"
+              }
+
+              log "waiting for Loki credentials secret volume"
+              while [ ! -s /etc/loki-credentials/AWS_ACCESS_KEY_ID ] || [ ! -s /etc/loki-credentials/AWS_SECRET_ACCESS_KEY ]; do
+                if [ "$(date +%s)" -ge "$deadline_epoch" ]; then
+                  fail "timed out waiting for Loki credentials"
+                fi
+                sleep 5
+              done
+
+              export AWS_ACCESS_KEY_ID="$(cat /etc/loki-credentials/AWS_ACCESS_KEY_ID)"
+              export AWS_SECRET_ACCESS_KEY="$(cat /etc/loki-credentials/AWS_SECRET_ACCESS_KEY)"
+
+              log "waiting for Loki RGW endpoint at $AWS_ENDPOINT_URL"
+              until aws --endpoint-url "$AWS_ENDPOINT_URL" s3api list-buckets >/dev/null 2>&1; do
+                if [ "$(date +%s)" -ge "$deadline_epoch" ]; then
+                  fail "timed out waiting for RGW endpoint $AWS_ENDPOINT_URL"
+                fi
+                sleep 10
+              done
+
+              for bucket in loki-chunks loki-ruler; do
+                if ! aws --endpoint-url "$AWS_ENDPOINT_URL" s3api head-bucket --bucket "$bucket" >/dev/null 2>&1; then
+                  log "creating bucket $bucket"
+                  aws --endpoint-url "$AWS_ENDPOINT_URL" s3api create-bucket --bucket "$bucket" >/dev/null
+                else
+                  log "bucket $bucket already exists"
+                fi
+              done
+
+              log "bucket bootstrap completed"
+      volumes:
+        - name: loki-s3-credentials
+          secret:
+            secretName: loki-s3-credentials
+            optional: true
+            items:
+              - key: AWS_ACCESS_KEY_ID
+                path: AWS_ACCESS_KEY_ID
+              - key: AWS_SECRET_ACCESS_KEY
+                path: AWS_SECRET_ACCESS_KEY

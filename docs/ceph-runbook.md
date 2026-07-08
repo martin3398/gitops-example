@@ -8,6 +8,7 @@ This runbook covers the Ceph baseline deployed by Flux with Rook.
 - Worker data disks from OpenTofu are consumed as OSD devices.
 - Storage class `ceph-block` is created for dynamic PVC provisioning.
 - `ceph-block` is the default StorageClass for platform workloads.
+- The `loki` RGW object store provides S3-compatible storage for distributed Loki.
 - Local-path provisioner is not part of the platform baseline.
 
 ## Manifests
@@ -15,6 +16,10 @@ This runbook covers the Ceph baseline deployed by Flux with Rook.
 - `kubernetes/infrastructure/base/core-services/storage/rook-ceph-operator/helmrelease-rook-ceph.yaml`
 - `kubernetes/infrastructure/base/data-ceph/cephcluster.yaml`
 - `kubernetes/infrastructure/base/data-ceph/cephblockpool.yaml`
+- `kubernetes/infrastructure/base/data-ceph/cephobjectstore-loki.yaml`
+- `kubernetes/infrastructure/base/data-ceph/cephobjectstoreuser-loki.yaml`
+- `kubernetes/infrastructure/base/data-ceph/externalsecret-loki-s3-credentials.yaml`
+- `kubernetes/infrastructure/base/data-ceph/job-loki-create-buckets.yaml`
 - `kubernetes/infrastructure/base/data-ceph/storageclass-ceph-block.yaml`
 - `kubernetes/infrastructure/base/data-ceph/toolbox.yaml`
 

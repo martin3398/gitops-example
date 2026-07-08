@@ -21,7 +21,7 @@ This runbook covers the observability stack deployed by Flux.
 - Monitoring namespace: `monitoring`
 - Grafana exposes browser access through `http://grafana.gitops.local`
 - Prometheus exposes browser access through `http://prometheus.gitops.local`
-- Loki and Promtail provide cluster log aggregation
+- Loki runs in distributed mode on Ceph-backed S3 object storage, and Promtail provides cluster log aggregation
 - Prometheus Adapter exports custom metrics for workload scaling and dashboards
 
 ## Validation
@@ -40,4 +40,4 @@ task pipeline:verify
 
 - If Grafana or Prometheus is unreachable, confirm the ingress stage is Ready and the local host entries point at the current NLB addresses.
 - If metrics are missing, confirm `kube-prometheus-stack` and `prometheus-adapter` are both Ready.
-- If logs are missing, confirm Promtail is running on all nodes and Loki has healthy PVCs.
+- If logs are missing, confirm Promtail is running on all nodes and Loki has healthy pods and Ceph RGW access.

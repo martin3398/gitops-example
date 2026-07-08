@@ -1,0 +1,15 @@
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: loki
+  namespace: rook-ceph
+spec:
+  store: loki
+  clusterNamespace: rook-ceph
+  keys:
+    - accessKeyRef:
+        name: loki-s3-credentials
+        key: AWS_ACCESS_KEY_ID
+      secretKeyRef:
+        name: loki-s3-credentials
+        key: AWS_SECRET_ACCESS_KEY

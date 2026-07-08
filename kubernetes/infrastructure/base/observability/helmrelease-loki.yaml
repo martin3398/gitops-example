@@ -24,58 +24,70 @@ spec:
         kind: HelmRepository
         name: grafana
         namespace: flux-system
+  valuesFrom:
+    - kind: Secret
+      name: loki-s3-credentials
+      valuesKey: AWS_ACCESS_KEY_ID
+      targetPath: loki.storage.s3.accessKeyId
+    - kind: Secret
+      name: loki-s3-credentials
+      valuesKey: AWS_SECRET_ACCESS_KEY
+      targetPath: loki.storage.s3.secretAccessKey
   values:
-    deploymentMode: SingleBinary
-    backend:
-      replicas: 0
-    read:
-      replicas: 0
-    write:
-      replicas: 0
+    deploymentMode: Distributed
     loki:
       auth_enabled: false
       commonConfig:
-        replication_factor: 1
+        replication_factor: 3
       schemaConfig:
         configs:
           - from: "2024-01-01"
             store: tsdb
-            object_store: filesystem
+            object_store: s3
             schema: v13
             index:
               prefix: loki_index_
               period: 24h
       storage:
-        type: filesystem
+        bucketNames:
+          chunks: loki-chunks
+          ruler: loki-ruler
+        type: s3
+        s3:
+          endpoint: rook-ceph-rgw-loki.rook-ceph.svc:80
+          region: us-east-1
+          s3ForcePathStyle: true
+          insecure: true
       limits_config:
         retention_period: 24h
-    singleBinary:
+    distributor:
+      replicas: 3
+      maxUnavailable: 2
+    ingester:
+      replicas: 3
+      chunk_encoding: snappy
+    querier:
+      replicas: 3
+      max_concurrent: 4
+      maxUnavailable: 2
+    queryFrontend:
+      replicas: 2
+      maxUnavailable: 1
+    queryScheduler:
+      replicas: 2
+    indexGateway:
+      replicas: 2
+      maxUnavailable: 1
+    compactor:
       replicas: 1
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              preference:
-                matchExpressions:
-                  - key: storage
-                    operator: NotIn
-                    values:
-                      - ceph
-      persistence:
-        enabled: true
-        storageClass: ceph-block
-        size: 1Gi
-      resources:
-        requests:
-          cpu: 25m
-          memory: 128Mi
-        limits:
-          cpu: 500m
-          memory: 512Mi
-    chunksCache:
-      enabled: false
-    resultsCache:
-      enabled: false
+    read:
+      replicas: 0
+    write:
+      replicas: 0
+    backend:
+      replicas: 0
+    singleBinary:
+      replicas: 0
     monitoring:
       serviceMonitor:
         enabled: true

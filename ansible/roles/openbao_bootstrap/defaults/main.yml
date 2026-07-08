@@ -13,3 +13,5 @@ openbao_key_threshold: 3
 openbao_dev_seed: "{{ lookup('env', 'OPENBAO_DEV_SEED') | default('gitops-dev-seed', true) }}"
 openbao_eso_service_account_name: external-secrets-external-secrets
 openbao_eso_service_account_namespace: external-secrets
+openbao_loki_access_key_id: "loki-{{ ((openbao_dev_seed ~ ':loki-access') | hash('sha256'))[:15] }}"
+openbao_loki_secret_access_key: "dev-{{ ((openbao_dev_seed ~ ':loki-secret') | hash('sha256'))[:36] }}"

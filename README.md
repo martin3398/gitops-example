@@ -16,6 +16,7 @@ AWS-based Kubernetes GitOps lab with infra, bootstrap, workloads, and operationa
 - Phase 2 GitOps platform and workloads are implemented.
 - Visit demo delivery and image automation are implemented.
 - OpenBao, Postgres, Kafka, Ceph, observability, load generation, and autoscaling are implemented baselines.
+- Loki distributed mode on Ceph object storage is implemented.
 
 ## Open
 

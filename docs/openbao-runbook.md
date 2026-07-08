@@ -140,7 +140,7 @@ Dev seeding is handled by the OpenBao Ansible bootstrap role.
 
 Override the deterministic seed with `OPENBAO_DEV_SEED` when running the task or playbook.
 
-This writes deterministic secrets for the current Postgres app user and visit demo DB consumers.
+This writes deterministic secrets for the current Postgres app user, visit demo DB consumers, and Loki S3 credentials.
 
 ## Validation
 
