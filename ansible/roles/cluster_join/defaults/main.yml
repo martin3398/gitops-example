@@ -1,2 +1,12 @@
 ---
-cluster_join_cri_socket: unix:///run/containerd/containerd.sock
+rke2_config_dir: /etc/rancher/rke2
+rke2_join_config_path: /etc/rancher/rke2/config.yaml
+rke2_join_server_url: "https://{{ hostvars[groups['control_plane'][0]].private_ip }}:9345"
+rke2_kubectl_path: /var/lib/rancher/rke2/bin/kubectl
+rke2_cluster_cidr: 192.168.0.0/16
+rke2_service_cidr: 10.96.0.0/12
+rke2_ingress_controller: none
+rke2_kubeconfig_path: /etc/rancher/rke2/rke2.yaml
+rke2_api_server_sans:
+  - "{{ kube_api_internal_endpoint | split(':') | first }}"
+  - "{{ kube_api_public_endpoint | split(':') | first }}"

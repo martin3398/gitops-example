@@ -1,14 +1,14 @@
 ---
 - name: Wait for infrastructure-data-ceph Kustomization readiness
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n flux-system wait
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n flux-system wait
     --for=condition=Ready --timeout=5m
     kustomizations.kustomize.toolkit.fluxcd.io/infrastructure-data-ceph
   changed_when: false
 
 - name: Wait for OpenBao HelmRelease to exist
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n flux-system get helmrelease openbao
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n flux-system get helmrelease openbao
   register: openbao_helmrelease_exists
   changed_when: false
   failed_when: false
@@ -18,7 +18,7 @@
 
 - name: Wait for OpenBao leader pod to exist
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }} get pod {{ openbao_leader_pod }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }} get pod {{ openbao_leader_pod }}
   register: openbao_leader_pod_exists
   changed_when: false
   failed_when: false
@@ -42,13 +42,13 @@
 
 - name: Wait for OpenBao leader pod to be running
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     wait --for=jsonpath='{.status.phase}'=Running --timeout=15m pod/{{ openbao_leader_pod }}
   changed_when: false
 
 - name: Read OpenBao leader status before init
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- bao status -format=json
   register: openbao_leader_status_before_init
   changed_when: false
@@ -80,7 +80,7 @@
 
 - name: Initialize OpenBao leader and capture init JSON
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- bao operator init -format=json
     -key-shares={{ openbao_key_shares }} -key-threshold={{ openbao_key_threshold }}
   register: openbao_init_command
@@ -138,7 +138,7 @@
 
 - name: Enable OpenBao Kubernetes auth
   ansible.builtin.shell: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
     bao auth enable kubernetes >/dev/null 2>&1 || true
   args:
@@ -148,7 +148,7 @@
 
 - name: Configure OpenBao Kubernetes auth endpoint
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
     bao write auth/kubernetes/config kubernetes_host=https://kubernetes.default.svc
   changed_when: true
@@ -157,7 +157,7 @@
 - name: Write OpenBao ESO sync policy
   ansible.builtin.shell: |
     set -o pipefail
-    cat <<'EOF' | kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }} exec -i {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }} bao policy write eso-sync -
+    cat <<'EOF' | {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }} exec -i {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }} bao policy write eso-sync -
     path "secret/data/dev/*" {
       capabilities = ["read"]
     }
@@ -169,7 +169,7 @@
 
 - name: Configure OpenBao ESO Kubernetes role
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
     bao write auth/kubernetes/role/eso-sync
     bound_service_account_names={{ openbao_eso_service_account_name }}
@@ -180,7 +180,7 @@
 
 - name: Ensure OpenBao secret KV v2 engine exists
   ansible.builtin.shell: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
     bao secrets enable -path=secret kv-v2 >/dev/null 2>&1 || true
   args:
@@ -190,7 +190,7 @@
 
 - name: Seed OpenBao Postgres app user secret
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
     bao kv put -mount=secret dev/platform/postgres/app-user username=app password={{ openbao_db_password | quote }}
   changed_when: true
@@ -198,7 +198,7 @@
 
 - name: Seed OpenBao visit-web DB secret
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
     bao kv put -mount=secret dev/apps/visit-demo/web DB_PASSWORD={{ openbao_db_password | quote }}
   changed_when: true
@@ -206,7 +206,7 @@
 
 - name: Seed OpenBao visit-processing DB secret
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
     bao kv put -mount=secret dev/apps/visit-demo/processing DB_PASSWORD={{ openbao_db_password | quote }}
   changed_when: true
@@ -214,7 +214,7 @@
 
 - name: Seed OpenBao Loki S3 credentials
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
     bao kv put -mount=secret dev/platform/observability/loki-s3
     AWS_ACCESS_KEY_ID={{ openbao_loki_access_key_id | quote }}
@@ -224,7 +224,7 @@
 
 - name: Wait for External Secrets controller service account to exist
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_eso_service_account_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_eso_service_account_namespace }}
     get serviceaccount {{ openbao_eso_service_account_name }}
   register: openbao_eso_service_account_exists
   changed_when: false
@@ -235,19 +235,19 @@
 
 - name: Restart External Secrets controller to refresh ClusterSecretStore
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} rollout restart
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} rollout restart
     deploy/external-secrets-external-secrets -n external-secrets
   changed_when: true
 
 - name: Wait for External Secrets controller rollout
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} rollout status
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} rollout status
     deploy/external-secrets-external-secrets -n external-secrets --timeout=5m
   changed_when: false
 
 - name: Wait for OpenBao auth binding to validate ClusterSecretStore
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} wait
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} wait
     --for=condition=Ready --timeout=10m clustersecretstore/openbao
   changed_when: false
 

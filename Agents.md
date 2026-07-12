@@ -22,7 +22,7 @@ Implement a multi-phase learning platform with:
 ## Platform Decisions
 - IaC: OpenTofu (Terraform-compatible)
 - Config/Bootstrap: Ansible
-- Kubernetes: kubeadm
+- Kubernetes: RKE2
 - Runtime: containerd
 - CNI: Cilium (fallback Calico if needed)
 - GitOps: Flux
@@ -45,8 +45,8 @@ Implement a multi-phase learning platform with:
 1. Provision AWS base infrastructure with OpenTofu/Terraform:
    - VPC, subnets, security groups, IAM roles, 6 EC2 instances
 2. Bootstrap hosts with Ansible:
-   - OS packages, hardening baseline, containerd, kubeadm prerequisites
-3. Initialize cluster with kubeadm:
+   - OS packages, hardening baseline, and runtime prerequisites
+3. Initialize cluster with RKE2:
    - 3 control planes, 3 workers
    - Install CNI and validate cluster health
 
@@ -109,7 +109,7 @@ Exit criteria:
 - Restore drill passes
 - Policy violations are detectable and actionable
 
-### Phase 5 - RKE2 Migration / Regulatory Hardening
+### Phase 5 - RKE2 Migration / Regulatory Hardening (Implemented)
 1. Migrate the cluster runtime to RKE2.
 2. Revalidate bootstrap, CNI, observability, storage, and workloads on the new runtime.
 
@@ -140,7 +140,7 @@ Exit criteria:
 
 The full local deployment is staged:
 
-1. `pipeline:init_cluster` - infrastructure, inventory, host prep, kubeadm, Cilium
+1. `pipeline:init_cluster` - infrastructure, inventory, host prep, RKE2, Cilium
 2. `ansible:core` - Flux, core operators, Ceph
 3. `ansible:openbao` - OpenBao deploy/init/unseal/auth/seed
 4. `pipeline:verify` - full post-deploy verification
@@ -152,7 +152,6 @@ Use `task pipeline:main` for the full ordered chain.
 - Keep docs aligned with the implemented stack; do not reintroduce Vault terminology unless a separate HashiCorp Vault lab is explicitly requested.
 - Maintain and extend post-deploy verification automation (`pipeline:verify`) before adding more platform components.
 - Execute Phase 4 hardening work: `Renovate`, failover drills, backup/restore, dashboards, and secret hardening.
-- Prepare the RKE2 migration as a separate phase with a clear cutover and rollback path.
 - Prepare the Gateway API ingress migration as a separate phase after cluster/runtime stability is proven.
 
 ## Suggested Repository Layout

@@ -8,17 +8,17 @@
 
 - name: Check kubeconfig presence on first control plane
   ansible.builtin.stat:
-    path: /etc/kubernetes/admin.conf
+    path: "{{ rke2_kubeconfig_path }}"
   register: flux_bootstrap_admin_conf_stat
 
 - name: Fail if kubeconfig is missing
   ansible.builtin.assert:
     that:
       - flux_bootstrap_admin_conf_stat.stat.exists
-    fail_msg: "/etc/kubernetes/admin.conf is missing. Run cluster bootstrap first."
+    fail_msg: "{{ rke2_kubeconfig_path }} is missing. Run cluster bootstrap first."
 
 - name: Ensure Kubernetes API is reachable before Flux bootstrap
-  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get --raw=/readyz
+  ansible.builtin.command: "{{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} get --raw=/readyz"
   register: flux_bootstrap_apiserver_readyz
   changed_when: false
   retries: 30
@@ -35,7 +35,7 @@
 
 - name: Copy admin kubeconfig for root
   ansible.builtin.copy:
-    src: /etc/kubernetes/admin.conf
+    src: "{{ rke2_kubeconfig_path }}"
     dest: /root/.kube/config
     owner: root
     group: root
@@ -116,7 +116,7 @@
   when: flux_bootstrap_cli_needs_install
 
 - name: Ensure Flux namespace exists
-  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf create namespace {{ flux_bootstrap_namespace }}
+  ansible.builtin.command: "{{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} create namespace {{ flux_bootstrap_namespace }}"
   register: flux_bootstrap_namespace_create
   changed_when: "'created' in (flux_bootstrap_namespace_create.stdout | default(''))"
   failed_when:
@@ -133,7 +133,7 @@
     --watch-all-namespaces=true
     --toleration-keys=node-role.kubernetes.io/control-plane
     --export |
-    kubectl --kubeconfig /etc/kubernetes/admin.conf diff -f -
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} diff -f -
   args:
     executable: /bin/bash
   register: flux_bootstrap_install_diff
@@ -150,7 +150,7 @@
     --watch-all-namespaces=true
     --toleration-keys=node-role.kubernetes.io/control-plane
     --export |
-    kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} apply -f -
   args:
     executable: /bin/bash
   register: flux_bootstrap_install_apply
@@ -177,12 +177,12 @@
 - name: Apply Flux Git deploy key secret
   ansible.builtin.shell: >-
     set -o pipefail &&
-    kubectl --kubeconfig /etc/kubernetes/admin.conf create secret generic flux-system
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} create secret generic flux-system
     --namespace {{ flux_bootstrap_namespace }}
     --from-file=identity={{ flux_bootstrap_private_key_path }}
     --from-literal=known_hosts='{{ flux_git_known_hosts | replace("'", "'\"'\"'") }}'
     --dry-run=client -o yaml |
-    kubectl --kubeconfig /etc/kubernetes/admin.conf diff -f -
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} diff -f -
   args:
     executable: /bin/bash
   register: flux_bootstrap_secret_diff
@@ -193,12 +193,12 @@
 - name: Apply Flux Git deploy key secret
   ansible.builtin.shell: >-
     set -o pipefail &&
-    kubectl --kubeconfig /etc/kubernetes/admin.conf create secret generic flux-system
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} create secret generic flux-system
     --namespace {{ flux_bootstrap_namespace }}
     --from-file=identity={{ flux_bootstrap_private_key_path }}
     --from-literal=known_hosts='{{ flux_git_known_hosts | replace("'", "'\"'\"'") }}'
     --dry-run=client -o yaml |
-    kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} apply -f -
   args:
     executable: /bin/bash
   register: flux_bootstrap_secret_apply
@@ -208,7 +208,7 @@
 
 - name: Apply Flux source and kustomization manifests
   ansible.builtin.command: >-
-    kubectl --kubeconfig /etc/kubernetes/admin.conf diff
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} diff
     --kustomize /tmp/flux-sync
   register: flux_bootstrap_sync_diff
   changed_when: flux_bootstrap_sync_diff.rc == 1
@@ -216,7 +216,7 @@
 
 - name: Apply Flux source and kustomization manifests
   ansible.builtin.command: >-
-    kubectl --kubeconfig /etc/kubernetes/admin.conf apply
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} apply
     --kustomize /tmp/flux-sync
   register: flux_bootstrap_sync_apply
   changed_when: true
@@ -229,7 +229,7 @@
     fail_msg: "Set both GHCR_USERNAME and GHCR_TOKEN, or neither."
 
 - name: Ensure workload namespaces exist for GHCR pull secrets
-  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf create namespace {{ item }}
+  ansible.builtin.command: "{{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} create namespace {{ item }}"
   loop: "{{ ghcr_workload_namespaces }}"
   register: flux_bootstrap_ghcr_namespaces
   changed_when: false
@@ -241,13 +241,13 @@
 - name: Apply GHCR pull secret to workload namespaces
   ansible.builtin.shell: >-
     set -o pipefail &&
-    kubectl --kubeconfig /etc/kubernetes/admin.conf create secret docker-registry ghcr-pull
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} create secret docker-registry ghcr-pull
     --namespace {{ item }}
     --docker-server={{ ghcr_server }}
     --docker-username='{{ ghcr_username | replace("'", "'\"'\"'") }}'
     --docker-password='{{ ghcr_token | replace("'", "'\"'\"'") }}'
     --dry-run=client -o yaml |
-    kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} apply -f -
   args:
     executable: /bin/bash
   loop: "{{ ghcr_workload_namespaces }}"
@@ -259,13 +259,13 @@
 - name: Apply GHCR registry secret in flux-system
   ansible.builtin.shell: >-
     set -o pipefail &&
-    kubectl --kubeconfig /etc/kubernetes/admin.conf create secret docker-registry ghcr-registry
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} create secret docker-registry ghcr-registry
     --namespace {{ flux_bootstrap_namespace }}
     --docker-server={{ ghcr_server }}
     --docker-username='{{ ghcr_username | replace("'", "'\"'\"'") }}'
     --docker-password='{{ ghcr_token | replace("'", "'\"'\"'") }}'
     --dry-run=client -o yaml |
-    kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} apply -f -
   args:
     executable: /bin/bash
   register: flux_bootstrap_ghcr_registry_secret_apply
@@ -275,7 +275,7 @@
 
 - name: Wait for Flux GitRepository Ready condition with retry
   ansible.builtin.command: >-
-    kubectl --kubeconfig /etc/kubernetes/admin.conf wait
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} wait
     --for=condition=Ready
     --timeout={{ flux_bootstrap_ready_wait_timeout }}
     gitrepositories.source.toolkit.fluxcd.io/dev-repo

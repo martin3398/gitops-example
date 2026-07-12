@@ -24,6 +24,8 @@ flux_bootstrap_arch_map:
 flux_bootstrap_cli_path: /usr/local/bin/flux
 flux_bootstrap_known_hosts_path: /root/.ssh/known_hosts
 flux_bootstrap_private_key_path: /root/.ssh/flux-system
+rke2_kubeconfig_path: /etc/rancher/rke2/rke2.yaml
+rke2_kubectl_path: /var/lib/rancher/rke2/bin/kubectl
 flux_git_ssh_private_key: "{{ lookup('env', 'FLUX_GIT_SSH_PRIVATE_KEY') | default('', true) }}"
 flux_git_known_hosts: "{{ lookup('env', 'FLUX_GIT_KNOWN_HOSTS') | default('', true) }}"
 ghcr_username: "{{ lookup('env', 'GHCR_USERNAME') | default('', true) }}"

@@ -1,6 +1,6 @@
 ---
 - name: Wait for all nodes to register
-  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes --no-headers
+  ansible.builtin.command: "{{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} get nodes --no-headers"
   register: cluster_nodes
   changed_when: false
   retries: "{{ cluster_validate_retries }}"
@@ -8,7 +8,7 @@
   until: cluster_nodes.stdout_lines | length >= (cluster_validate_expected_nodes | int)
 
 - name: Wait until all nodes are Ready
-  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes --no-headers
+  ansible.builtin.command: "{{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} get nodes --no-headers"
   register: cluster_nodes_ready
   changed_when: false
   retries: "{{ cluster_validate_retries }}"
@@ -16,13 +16,13 @@
   until: (cluster_nodes_ready.stdout_lines | reject('search', '\\bReady\\b') | list | length) == 0
 
 - name: Check core kube-system pods
-  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get pods -n kube-system
+  ansible.builtin.command: "{{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} get pods -n kube-system"
   register: kube_system_pods
   changed_when: false
 
-- name: Verify cilium daemonset rollout
+- name: Verify RKE2 Cilium daemonset rollout
   ansible.builtin.command: >-
-    kubectl --kubeconfig /etc/kubernetes/admin.conf
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }}
     rollout status daemonset/cilium -n kube-system --timeout=5m
   register: cluster_validate_cilium_rollout
   changed_when: false

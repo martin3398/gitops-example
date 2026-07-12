@@ -4,7 +4,8 @@
   become: true
   gather_facts: false
   vars:
-    kubeconfig: /etc/kubernetes/admin.conf
+    kubeconfig: /etc/rancher/rke2/rke2.yaml
+    rke2_kubectl_path: /var/lib/rancher/rke2/bin/kubectl
     expected_node_count: 6
     flux_kustomizations:
       - infrastructure-core
@@ -22,14 +23,14 @@
   tasks:
     - name: Wait for all Kubernetes nodes to be ready
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} wait nodes --all
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} wait nodes --all
         --for=condition=Ready --timeout=5m
       changed_when: false
 
     - name: Verify expected node count
       ansible.builtin.shell: |
         set -euo pipefail
-        node_count="$(kubectl --kubeconfig {{ kubeconfig }} get nodes --no-headers | wc -l)"
+        node_count="$( {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} get nodes --no-headers | wc -l)"
         test "$node_count" -eq "{{ expected_node_count }}"
       args:
         executable: /bin/bash
@@ -37,14 +38,14 @@
 
     - name: Wait for Flux Git source readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n flux-system wait
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n flux-system wait
         gitrepositories.source.toolkit.fluxcd.io/dev-repo
         --for=condition=Ready --timeout=5m
       changed_when: false
 
     - name: Wait for expected Flux Kustomizations readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n flux-system wait
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n flux-system wait
         kustomizations.kustomize.toolkit.fluxcd.io/{{ item }}
         --for=condition=Ready --timeout=10m
       loop: "{{ flux_kustomizations }}"
@@ -52,21 +53,21 @@
 
     - name: Wait for all Flux HelmReleases readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n flux-system wait
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n flux-system wait
         helmreleases.helm.toolkit.fluxcd.io --all
         --for=condition=Ready --timeout=10m
       changed_when: false
 
     - name: Wait for Ceph cluster readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n rook-ceph wait
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n rook-ceph wait
         cephclusters.ceph.rook.io/rook-ceph
         --for=condition=Ready --timeout=10m
       changed_when: false
 
     - name: Wait for Ceph block pool readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n rook-ceph get
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n rook-ceph get
         cephblockpools.ceph.rook.io/replicapool
         -o jsonpath={.status.phase}
       register: ceph_block_pool_phase
@@ -78,7 +79,7 @@
     - name: Verify Ceph health is OK
       ansible.builtin.shell: |
         set -euo pipefail
-        kubectl --kubeconfig {{ kubeconfig }} -n rook-ceph exec deploy/rook-ceph-tools -- ceph -s | tee /tmp/ceph-status.txt
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n rook-ceph exec deploy/rook-ceph-tools -- ceph -s | tee /tmp/ceph-status.txt
         grep -q 'health: HEALTH_OK' /tmp/ceph-status.txt
       args:
         executable: /bin/bash
@@ -87,7 +88,7 @@
     - name: Verify all persistent volume claims are bound
       ansible.builtin.shell: |
         set -euo pipefail
-        kubectl --kubeconfig {{ kubeconfig }} get pvc -A -o json \
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} get pvc -A -o json \
           | jq -e '.items | map(select(.status.phase != "Bound")) | length == 0'
       args:
         executable: /bin/bash
@@ -95,19 +96,19 @@
 
     - name: Wait for observability workload readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n monitoring wait pod
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n monitoring wait pod
         --for=condition=Ready --all --timeout=10m
       changed_when: false
 
     - name: Verify Promtail DaemonSet rollout
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n monitoring rollout status
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n monitoring rollout status
         daemonset/monitoring-promtail --timeout=5m
       changed_when: false
 
     - name: Wait for OpenBao pods readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n openbao wait pod
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n openbao wait pod
         -l app.kubernetes.io/name=openbao
         --for=condition=Ready --timeout=10m
       changed_when: false
@@ -115,7 +116,7 @@
     - name: Verify OpenBao is initialized and unsealed
       ansible.builtin.shell: |
         set -euo pipefail
-        kubectl --kubeconfig {{ kubeconfig }} -n openbao exec openbao-0 -- bao status -format=json \
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n openbao exec openbao-0 -- bao status -format=json \
           | jq -e '.initialized == true and .sealed == false'
       args:
         executable: /bin/bash
@@ -123,41 +124,41 @@
 
     - name: Wait for OpenBao ClusterSecretStore readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} wait
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} wait
         clustersecretstore.external-secrets.io/openbao
         --for=condition=Ready --timeout=5m
       changed_when: false
 
     - name: Wait for all ExternalSecrets readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} wait externalsecrets.external-secrets.io
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} wait externalsecrets.external-secrets.io
         --all --all-namespaces --for=condition=Ready --timeout=5m
       changed_when: false
 
     - name: Wait for Postgres cluster readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n data-postgres wait
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-postgres wait
         clusters.postgresql.cnpg.io/postgres
         --for=condition=Ready --timeout=10m
       changed_when: false
 
     - name: Wait for Postgres pods readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n data-postgres wait pod
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-postgres wait pod
         -l cnpg.io/cluster=postgres
         --for=condition=Ready --timeout=10m
       changed_when: false
 
     - name: Wait for Kafka cluster readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n data-kafka wait
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-kafka wait
         kafka.kafka.strimzi.io/kafka
         --for=condition=Ready --timeout=10m
       changed_when: false
 
     - name: Wait for Kafka topic readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n data-kafka wait
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-kafka wait
         kafkatopic.kafka.strimzi.io/visits.requested
         --for=condition=Ready --timeout=5m
       changed_when: false
@@ -165,7 +166,7 @@
     - name: Verify expected Kafka brokers are running
       ansible.builtin.shell: |
         set -euo pipefail
-        broker_count="$(kubectl --kubeconfig {{ kubeconfig }} -n data-kafka get pods -l strimzi.io/pool-name=brokers -o json | jq '[.items[] | select(.status.phase == "Running")] | length')"
+        broker_count="$( {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-kafka get pods -l strimzi.io/pool-name=brokers -o json | jq '[.items[] | select(.status.phase == "Running")] | length')"
         test "$broker_count" -eq 3
       args:
         executable: /bin/bash
@@ -173,14 +174,14 @@
 
     - name: Wait for Kafka entity operator readiness
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n data-kafka wait pod
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-kafka wait pod
         -l strimzi.io/name=kafka-entity-operator
         --for=condition=Ready --timeout=5m
       changed_when: false
 
     - name: Wait for visit demo deployments availability
       ansible.builtin.command: >-
-        kubectl --kubeconfig {{ kubeconfig }} -n {{ item.namespace }} wait
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n {{ item.namespace }} wait
         deployment/{{ item.name }} --for=condition=Available --timeout=5m
       loop:
         - namespace: visit-web
@@ -195,7 +196,7 @@
       ansible.builtin.shell: |
         set -euo pipefail
         log_file="$(mktemp)"
-        kubectl --kubeconfig {{ kubeconfig }} -n visit-web port-forward svc/visit-web-visit-gateway 18080:80 >"$log_file" 2>&1 &
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n visit-web port-forward svc/visit-web-visit-gateway 18080:80 >"$log_file" 2>&1 &
         port_forward_pid="$!"
         trap 'kill "$port_forward_pid" 2>/dev/null || true; rm -f "$log_file"' EXIT
 

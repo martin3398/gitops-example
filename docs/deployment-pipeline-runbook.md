@@ -47,7 +47,7 @@ Expanded sequence:
 - validates SSM connectivity
 - prepares hosts
 - installs runtime dependencies
-- bootstraps kubeadm and Cilium
+- bootstraps RKE2 and bundled Cilium
 
 `ansible:core`:
 

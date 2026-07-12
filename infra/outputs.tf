@@ -88,7 +88,7 @@ output "kubernetes_api_endpoint" {
 }
 
 output "kubernetes_api_internal_endpoint" {
-  description = "Kubernetes API endpoint used by kubeadm control-plane bootstrap"
+  description = "Kubernetes API endpoint used by RKE2 control-plane bootstrap"
   value       = "${aws_instance.control_plane["cp-1"].private_ip}:6443"
 }
 

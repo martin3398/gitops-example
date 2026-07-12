@@ -1,9 +1,5 @@
 ---
 runtime_containerd_config_path: /etc/containerd/config.toml
-
 runtime_kubernetes_version: "1.30"
-
-runtime_k8s_packages:
-  - kubelet
-  - kubeadm
-  - kubectl
+rke2_version: "v1.30.13+rke2r1"
+rke2_install_script_url: https://get.rke2.io

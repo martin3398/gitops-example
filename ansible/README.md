@@ -12,8 +12,8 @@ Use this directory for the local Ansible bootstrap flow.
 ## Bootstrap Flow
 
 - Iteration 2: base node preparation
-- Iteration 3: containerd + kubelet/kubeadm/kubectl
-- Iteration 4: kubeadm + Cilium cluster bootstrap
+- Iteration 3: runtime preparation for RKE2
+- Iteration 4: RKE2 bootstrap + bundled Cilium
 - Iteration 5: Flux bootstrap handoff
 
 ## Key Paths
@@ -120,15 +120,18 @@ Fetch kubeconfig for local kubectl usage:
 task ansible:get_kubeconfig_public
 ```
 
+That task fetches the RKE2 kubeconfig from the first control plane and rewrites the `kubernetes` context to the current cluster endpoint.
+
 Use it locally:
 
 ```bash
 KUBECONFIG=./kubeconfig.dev kubectl get nodes
 ```
 
-Notes for 4B Cilium install:
-- Cilium version is pinned to `1.19.3` in `roles/cni/defaults/main.yml`.
-- Cilium CLI version is pinned separately (`v0.19.2`) and installed on the first control plane if missing or version-mismatched.
+Notes for RKE2 bundled Cilium:
+- Cilium is enabled through RKE2's bundled chart, with a `HelmChartConfig` manifest in `/var/lib/rancher/rke2/server/manifests/`.
+- WireGuard encryption is enabled in the chart config.
+- The bootstrap and verification roles wait on the `cilium` DaemonSet directly.
 
 ## Groups and Variables
 

@@ -1,110 +1,26 @@
 ---
-- name: Check kubeconfig presence on first control plane
+- name: Check RKE2 bundled Cilium manifest presence
   ansible.builtin.stat:
-    path: /etc/kubernetes/admin.conf
-  register: cni_admin_conf_stat
+    path: "{{ rke2_cilium_manifest_path }}"
+  register: cni_cilium_manifest_stat
 
-- name: Fail if kubeconfig is missing
+- name: Fail if the Cilium manifest is missing
   ansible.builtin.assert:
     that:
-      - cni_admin_conf_stat.stat.exists
-    fail_msg: "/etc/kubernetes/admin.conf is missing. Run control-plane init (4A) first."
+      - cni_cilium_manifest_stat.stat.exists
+    fail_msg: "{{ rke2_cilium_manifest_path }} is missing. Run the RKE2 control-plane bootstrap first."
 
-- name: Ensure Kubernetes API is reachable before Cilium install
-  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get --raw=/readyz
+- name: Ensure Kubernetes API is reachable before validating Cilium
+  ansible.builtin.command: "{{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} get --raw=/readyz"
   register: cni_apiserver_readyz
   changed_when: false
   retries: 30
   delay: 10
   until: "'ok' in (cni_apiserver_readyz.stdout | default(''))"
 
-- name: Resolve Cilium CLI architecture
-  ansible.builtin.set_fact:
-    cilium_cli_arch: "{{ cilium_cli_arch_map[ansible_architecture] | default('amd64') }}"
-
-- name: Check if Cilium CLI is already installed
-  ansible.builtin.command: "{{ cilium_cli_path }} version --client"
-  register: cni_cli_version
-  changed_when: false
-  failed_when: false
-
-- name: Determine if Cilium CLI version matches desired version
-  ansible.builtin.set_fact:
-    cni_cli_needs_install: "{{ cni_cli_version.rc != 0 or cilium_cli_version not in (cni_cli_version.stdout | default('')) }}"
-
-- name: Download Cilium CLI archive
-  ansible.builtin.get_url:
-    url: "{{ cilium_cli_download_base_url }}/{{ cilium_cli_version }}/cilium-linux-{{ cilium_cli_arch }}.tar.gz"
-    dest: /tmp/cilium-cli.tar.gz
-    mode: "0644"
-  when: cni_cli_needs_install
-
-- name: Create temporary Cilium CLI extraction directory
-  ansible.builtin.file:
-    path: /tmp/cilium-cli
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
-  when: cni_cli_needs_install
-
-- name: Extract Cilium CLI archive
-  ansible.builtin.unarchive:
-    src: /tmp/cilium-cli.tar.gz
-    dest: /tmp/cilium-cli
-    remote_src: true
-  when: cni_cli_needs_install
-
-- name: Install Cilium CLI binary
-  ansible.builtin.copy:
-    src: /tmp/cilium-cli/cilium
-    dest: "{{ cilium_cli_path }}"
-    remote_src: true
-    owner: root
-    group: root
-    mode: "0755"
-  when: cni_cli_needs_install
-
-- name: Check if Cilium daemonset already exists
-  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get daemonset cilium -n kube-system
-  register: cni_cilium_daemonset
-  changed_when: false
-  failed_when: false
-
-- name: Install Cilium using Cilium CLI
+- name: Wait for RKE2 Cilium rollout
   ansible.builtin.command: >-
-    {{ cilium_cli_path }} install
-    --version {{ cilium_version }}
-    --wait
-    --wait-duration {{ cilium_wait_timeout }}
-    --kubeconfig /etc/kubernetes/admin.conf
-  register: cni_install_result
-  changed_when: true
-  when: cni_cilium_daemonset.rc != 0
-
-- name: Wait for Cilium status to become ready
-  ansible.builtin.command: >-
-    {{ cilium_cli_path }} status
-    --wait
-    --wait-duration {{ cilium_wait_timeout }}
-    --kubeconfig /etc/kubernetes/admin.conf
-  register: cni_status_result
-  changed_when: false
-
-- name: Wait for cilium daemonset rollout
-  ansible.builtin.command: >-
-    kubectl --kubeconfig /etc/kubernetes/admin.conf
-    rollout status daemonset/cilium -n kube-system --timeout={{ cilium_wait_timeout }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }}
+    rollout status daemonset/cilium -n kube-system --timeout=10m
   register: cni_rollout_status
   changed_when: false
-
-- name: Wait for cilium pods to be running
-  ansible.builtin.shell: >-
-    kubectl --kubeconfig /etc/kubernetes/admin.conf get pods -n kube-system --no-headers |
-    grep -E '^cilium-' |
-    grep 'Running' || true
-  register: cni_running_pods
-  changed_when: false
-  retries: "{{ cni_wait_retries }}"
-  delay: "{{ cni_wait_delay }}"
-  until: cni_running_pods.stdout_lines | length > 0

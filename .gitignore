@@ -47,3 +47,5 @@ kubeconfig.*
 apps/visit-demo/visit-ui/dist/
 
 ai
+prompt
+

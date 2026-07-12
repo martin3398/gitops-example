@@ -1,4 +1,6 @@
 ---
-cluster_validate_retries: 30
+rke2_kubeconfig_path: /etc/rancher/rke2/rke2.yaml
+rke2_kubectl_path: /var/lib/rancher/rke2/bin/kubectl
+cluster_validate_retries: 60
 cluster_validate_delay: 10
-cluster_validate_expected_nodes: "{{ groups['k8s_cluster'] | length }}"
+cluster_validate_expected_nodes: 6

@@ -1,6 +1,6 @@
 # Roadmap
 
-This file tracks the remaining work after the current Phase 1-3 baseline.
+This file tracks the remaining work after the current Phase 1-5 baseline.
 
 ## Done
 
@@ -8,6 +8,7 @@ This file tracks the remaining work after the current Phase 1-3 baseline.
 - Phase 2 GitOps platform and workloads are implemented.
 - Visit demo delivery, image automation, and the main platform baselines are implemented.
 - Loki distributed mode on Ceph object storage is implemented.
+- Phase 5 RKE2 migration is implemented.
 
 ## Phase 3 - Remaining Hardening
 
@@ -22,11 +23,6 @@ This file tracks the remaining work after the current Phase 1-3 baseline.
 - `Velero` backups and restore drills.
 - Grafana dashboard coverage for the current platform and app path.
 - Network policy and policy/security expansion.
-
-## Phase 5 - RKE2 Migration / Regulatory Hardening
-
-- Migrate the cluster runtime to `RKE2`.
-- Revalidate bootstrap, CNI, observability, storage, and workloads on the new runtime.
 
 ## Phase 6 - Ingress Platform Migration
 

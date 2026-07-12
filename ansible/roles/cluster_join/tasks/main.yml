@@ -1,42 +1,65 @@
 ---
-- name: Check if host already joined
-  ansible.builtin.stat:
-    path: /etc/kubernetes/kubelet.conf
-  register: kubelet_conf_stat
-
-- name: Ensure join command exists for control plane
+- name: Ensure the first server exported RKE2 join facts
   ansible.builtin.assert:
     that:
-      - hostvars[groups['control_plane'][0]].cluster_control_plane_join_command is defined
-    fail_msg: "Missing cluster_control_plane_join_command fact from first control plane host."
-  when:
-    - inventory_hostname in groups['control_plane']
-    - inventory_hostname != groups['control_plane'][0]
+      - hostvars[groups['control_plane'][0]].rke2_cluster_token is defined
+    fail_msg: "Missing rke2_cluster_token fact from first control plane host."
 
-- name: Ensure join command exists for worker
-  ansible.builtin.assert:
-    that:
-      - hostvars[groups['control_plane'][0]].cluster_worker_join_command is defined
-    fail_msg: "Missing cluster_worker_join_command fact from first control plane host."
+- name: Ensure RKE2 config directory exists
+  ansible.builtin.file:
+    path: "{{ rke2_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Write RKE2 join configuration for control plane nodes
+  ansible.builtin.copy:
+    dest: "{{ rke2_join_config_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      token: "{{ hostvars[groups['control_plane'][0]].rke2_cluster_token }}"
+      server: "{{ rke2_join_server_url }}"
+      cluster-cidr: "{{ rke2_cluster_cidr }}"
+      service-cidr: "{{ rke2_service_cidr }}"
+      cni: cilium
+      ingress-controller: none
+      write-kubeconfig-mode: "0600"
+      node-name: "{{ inventory_hostname }}"
+      tls-san:
+        - "{{ rke2_api_server_sans[0] }}"
+        - "{{ rke2_api_server_sans[1] }}"
+      disable:
+        - rke2-metrics-server
+  when: inventory_hostname in groups['control_plane']
+
+- name: Write RKE2 join configuration for worker nodes
+  ansible.builtin.copy:
+    dest: "{{ rke2_join_config_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      token: "{{ hostvars[groups['control_plane'][0]].rke2_cluster_token }}"
+      server: "{{ rke2_join_server_url }}"
+      node-name: "{{ inventory_hostname }}"
   when: inventory_hostname in groups['workers']
 
-- name: Join additional control plane node
-  ansible.builtin.command: >-
-    {{ hostvars[groups['control_plane'][0]].cluster_control_plane_join_command }}
-    --cri-socket {{ cluster_join_cri_socket }}
-  register: cluster_join_control_plane_result
-  changed_when: "'This node has joined the cluster' in (cluster_join_control_plane_result.stdout | default(''))"
-  when:
-    - inventory_hostname in groups['control_plane']
-    - inventory_hostname != groups['control_plane'][0]
-    - not kubelet_conf_stat.stat.exists
+- name: Enable and start the RKE2 node service
+  ansible.builtin.systemd:
+    name: "{{ 'rke2-server' if inventory_hostname in groups['control_plane'] else 'rke2-agent' }}"
+    enabled: true
+    state: started
 
-- name: Join worker node
+- name: Wait for the node to become Ready
+  delegate_to: "{{ groups['control_plane'][0] }}"
   ansible.builtin.command: >-
-    {{ hostvars[groups['control_plane'][0]].cluster_worker_join_command }}
-    --cri-socket {{ cluster_join_cri_socket }}
-  register: cluster_join_worker_result
-  changed_when: "'This node has joined the cluster' in (cluster_join_worker_result.stdout | default(''))"
-  when:
-    - inventory_hostname in groups['workers']
-    - not kubelet_conf_stat.stat.exists
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} wait node/{{ inventory_hostname }}
+    --for=condition=Ready --timeout=10m
+  register: rke2_join_node_ready
+  changed_when: false
+  retries: 30
+  delay: 10
+  until: rke2_join_node_ready.rc == 0

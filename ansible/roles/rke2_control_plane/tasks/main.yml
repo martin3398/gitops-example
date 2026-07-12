@@ -1,0 +1,108 @@
+---
+- name: Ensure RKE2 config directory exists
+  ansible.builtin.file:
+    path: "{{ rke2_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check whether RKE2 token already exists
+  ansible.builtin.stat:
+    path: "{{ rke2_server_token_path }}"
+  register: rke2_server_token_stat
+
+- name: Generate a new RKE2 cluster token when needed
+  ansible.builtin.command:
+    cmd: python3 -c 'import secrets; print(secrets.token_urlsafe(48))'
+  register: rke2_generated_token
+  changed_when: false
+  when: not rke2_server_token_stat.stat.exists
+
+- name: Read existing RKE2 cluster token
+  ansible.builtin.slurp:
+    src: "{{ rke2_server_token_path }}"
+  register: rke2_existing_token
+  when: rke2_server_token_stat.stat.exists
+
+- name: Set the cluster token fact
+  ansible.builtin.set_fact:
+    rke2_cluster_token: >-
+      {{
+        (rke2_existing_token.content | b64decode | trim)
+        if rke2_server_token_stat.stat.exists
+        else (rke2_generated_token.stdout | trim)
+      }}
+
+- name: Write RKE2 server configuration
+  ansible.builtin.copy:
+    dest: "{{ rke2_server_config_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      token: "{{ rke2_cluster_token }}"
+      cluster-cidr: "{{ rke2_cluster_cidr }}"
+      service-cidr: "{{ rke2_service_cidr }}"
+      cni: cilium
+      ingress-controller: {{ rke2_ingress_controller }}
+      write-kubeconfig-mode: "0600"
+      node-name: "{{ inventory_hostname }}"
+      tls-san:
+        - "{{ rke2_api_server_sans[0] }}"
+        - "{{ rke2_api_server_sans[1] }}"
+      disable:
+        - rke2-metrics-server
+
+- name: Ensure RKE2 manifests directory exists
+  ansible.builtin.file:
+    path: "{{ rke2_manifests_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Write bundled Cilium HelmChartConfig for RKE2
+  ansible.builtin.copy:
+    dest: "{{ rke2_cilium_manifest_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      ---
+      apiVersion: helm.cattle.io/v1
+      kind: HelmChartConfig
+      metadata:
+        name: rke2-cilium
+        namespace: kube-system
+      spec:
+        valuesContent: |-
+          encryption:
+            enabled: true
+            type: wireguard
+
+- name: Enable and start the RKE2 server
+  ansible.builtin.systemd:
+    name: rke2-server
+    enabled: true
+    state: started
+
+- name: Wait for the Kubernetes API to become ready
+  ansible.builtin.command: "/var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get --raw=/readyz"
+  register: rke2_apiserver_readyz
+  changed_when: false
+  retries: 30
+  delay: 10
+  until: "'ok' in (rke2_apiserver_readyz.stdout | default(''))"
+
+- name: Refresh the cluster token from disk
+  ansible.builtin.slurp:
+    src: "{{ rke2_server_token_path }}"
+  register: rke2_current_token
+
+- name: Share RKE2 join facts with the cluster
+  ansible.builtin.set_fact:
+    rke2_cluster_token: "{{ rke2_current_token.content | b64decode | trim }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  loop: "{{ groups['k8s_cluster'] }}"

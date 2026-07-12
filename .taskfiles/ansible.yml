@@ -141,28 +141,14 @@ tasks:
       - sh: 'test -f "{{.INVENTORY}}"'
         msg: "Missing ansible inventory file. Run task ansible:inventory first."
     cmds:
-      - '{{.VENV_ANSIBLE}} control_plane[0] -i "{{.INVENTORY}}" -b -m ansible.builtin.fetch -a "src=/etc/kubernetes/admin.conf dest={{.KUBECONFIG_FILE}} flat=true"'
-      - 'chmod 600 "{{.KUBECONFIG_FILE}}"'
-
-  kubeconfig_public_endpoint:
-    internal: true
-    desc: "Point local kubeconfig at external API endpoint"
-    preconditions:
-      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
-        msg: "Missing {{.KUBECONFIG_FILE}}. Run task ansible:get_kubeconfig first."
-      - sh: 'command -v kubectl >/dev/null 2>&1'
-        msg: "kubectl is required in PATH"
-      - sh: 'test -n "$(tofu -chdir=infra output -raw kubernetes_api_endpoint)"'
-        msg: "Missing kubernetes_api_endpoint output. Run task tofu:apply first."
-    cmds:
-      - 'endpoint="$(tofu -chdir=infra output -raw kubernetes_api_endpoint)" && kubectl config set-cluster kubernetes --server="https://${endpoint}" --kubeconfig "{{.KUBECONFIG_FILE}}"'
+      - '{{.VENV_ANSIBLE}} control_plane[0] -i "{{.INVENTORY}}" -b -m ansible.builtin.fetch -a "src=/etc/rancher/rke2/rke2.yaml dest={{.KUBECONFIG_FILE}} flat=true"'
       - 'chmod 600 "{{.KUBECONFIG_FILE}}"'
 
   get_kubeconfig_public:
-    desc: "Fetch kubeconfig and point it to external API endpoint"
+    desc: "Fetch kubeconfig and set the kubernetes context"
     cmds:
       - task: get_kubeconfig
-      - task: kubeconfig_public_endpoint
+      - 'endpoint="$(tofu -chdir=infra output -raw kubernetes_api_endpoint)" && {{.VENV_PYTHON}} ansible/scripts/rewrite_kubeconfig.py --kubeconfig "{{.KUBECONFIG_FILE}}" --server "https://${endpoint}" --context kubernetes'
 
   openbao:
     desc: "Deploy and bootstrap OpenBao"

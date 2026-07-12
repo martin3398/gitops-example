@@ -1,5 +1,7 @@
 ---
-openbao_kubeconfig: /etc/kubernetes/admin.conf
+rke2_kubeconfig_path: /etc/rancher/rke2/rke2.yaml
+rke2_kubectl_path: /var/lib/rancher/rke2/bin/kubectl
+openbao_kubeconfig: "{{ rke2_kubeconfig_path }}"
 openbao_namespace: openbao
 openbao_leader_pod: openbao-0
 openbao_follower_pods:

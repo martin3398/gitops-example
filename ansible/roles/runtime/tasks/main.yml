@@ -5,12 +5,31 @@
     - runtime
     - containerd
 
-- name: Include Kubernetes packages tasks
-  ansible.builtin.import_tasks: kubernetes-packages.yml
+- name: Derive RKE2 node role
+  ansible.builtin.set_fact:
+    rke2_install_type: "{{ 'server' if inventory_hostname in groups['control_plane'] else 'agent' }}"
+    rke2_service_name: "rke2-{{ 'server' if inventory_hostname in groups['control_plane'] else 'agent' }}"
+
+- name: Install RKE2
+  ansible.builtin.shell: >-
+    curl -sfL {{ rke2_install_script_url }} |
+    INSTALL_RKE2_TYPE={{ rke2_install_type }}
+    INSTALL_RKE2_VERSION={{ rke2_version }}
+    sh -
+  args:
+    executable: /bin/bash
+    creates: /usr/local/bin/rke2
   tags:
     - runtime
-    - kubernetes
-    - packages
+    - rke2
+
+- name: Ensure RKE2 service is enabled
+  ansible.builtin.systemd:
+    name: "{{ rke2_service_name }}"
+    enabled: true
+  tags:
+    - runtime
+    - rke2
 
 - name: Include runtime validation tasks
   ansible.builtin.import_tasks: validate.yml

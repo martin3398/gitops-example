@@ -1,7 +1,7 @@
 ---
 - name: Read OpenBao status for {{ openbao_target_pod }}
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_target_pod }} -- bao status -format=json
   register: openbao_target_status_command
   changed_when: false
@@ -18,7 +18,7 @@
 
 - name: Unseal {{ openbao_target_pod }}
   ansible.builtin.command: >-
-    kubectl --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_target_pod }} -- bao operator unseal {{ item }}
   loop: "{{ openbao_unseal_keys[:openbao_key_threshold] }}"
   changed_when: true
