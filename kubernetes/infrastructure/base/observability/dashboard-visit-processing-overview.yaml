@@ -13,7 +13,7 @@ data:
       "title": "Visit Processing Overview",
       "timezone": "browser",
       "schemaVersion": 38,
-      "version": 8,
+      "version": 9,
       "time": {"from": "now-30m", "to": "now"},
       "refresh": "5s",
       "panels": [
@@ -183,7 +183,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {"color": "green", "value": null},
-                  {"color": "red", "value": 100}
+                  {"color": "red", "value": 30}
                 ]
               }
             },
@@ -195,8 +195,8 @@ data:
               "legendFormat": "avg lag / pod"
             },
             {
-              "expr": "vector(100)",
-              "legendFormat": "100"
+              "expr": "vector(30)",
+              "legendFormat": "30"
             }
           ]
         }

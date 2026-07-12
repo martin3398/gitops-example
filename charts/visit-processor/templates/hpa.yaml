@@ -21,7 +21,7 @@ spec:
               consumergroup: visit-processor-v1
         target:
           type: AverageValue
-          averageValue: "100"
+          averageValue: "30"
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 30
