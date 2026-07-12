@@ -46,7 +46,7 @@ GitHub secrets:
 - optional `AWS_SESSION_TOKEN`
 - `FLUX_GIT_SSH_PRIVATE_KEY_B64` (for `ansible-run` Flux step)
 - `FLUX_GIT_KNOWN_HOSTS_B64` (required by current `ansible-run` workflow)
-- optional `OPENBAO_DEV_SEED` (overrides deterministic dev secret seeding)
+- optional `OPENBAO_DEV_SEED` (overrides deterministic dev secret seeding for Postgres, visit demo, and Loki S3 credentials)
 - optional `GHCR_TOKEN`
 
 GHCR defaults in `apps-build-publish`:

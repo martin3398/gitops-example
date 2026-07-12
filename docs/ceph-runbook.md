@@ -17,18 +17,19 @@ This runbook covers the Ceph baseline deployed by Flux with Rook.
 - `kubernetes/infrastructure/base/data-ceph/cephcluster.yaml`
 - `kubernetes/infrastructure/base/data-ceph/cephblockpool.yaml`
 - `kubernetes/infrastructure/base/data-ceph/cephobjectstore-loki.yaml`
-- `kubernetes/infrastructure/base/data-ceph/cephobjectstoreuser-loki.yaml`
-- `kubernetes/infrastructure/base/data-ceph/externalsecret-loki-s3-credentials.yaml`
-- `kubernetes/infrastructure/base/data-ceph/job-loki-create-buckets.yaml`
 - `kubernetes/infrastructure/base/data-ceph/storageclass-ceph-block.yaml`
 - `kubernetes/infrastructure/base/data-ceph/toolbox.yaml`
+- `kubernetes/infrastructure/base/observability/loki-bootstrap/cephobjectstoreuser-loki.yaml`
+- `kubernetes/infrastructure/base/observability/loki-bootstrap/externalsecret-loki-s3-credentials.yaml`
+- `kubernetes/infrastructure/base/observability/loki-bootstrap/job-loki-create-buckets.yaml`
 
 ## Reconciliation Order
 
 Ceph is split across Flux Kustomizations to avoid CRD dry-run races:
 
 - `infrastructure-core` installs operators, including `rook-ceph`.
-- `infrastructure-data-ceph` applies Ceph CRs (`CephCluster`, `CephBlockPool`, `StorageClass`).
+- `infrastructure-data-ceph` applies Ceph CRs (`CephCluster`, `CephBlockPool`, `StorageClass`, `CephObjectStore`).
+- `infrastructure-observability` owns the Loki S3 credentials, RGW user, and bucket bootstrap resources.
 - Monitoring and ingress are applied after Ceph by Flux dependsOn chains.
 - OpenBao, Postgres, Kafka, and apps are applied later by staged Ansible tasks.
 

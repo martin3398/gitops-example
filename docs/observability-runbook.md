@@ -7,6 +7,7 @@ This runbook covers the observability stack deployed by Flux.
 - kube-prometheus-stack: `kubernetes/infrastructure/base/observability/helmrelease-kube-prometheus-stack.yaml`
 - Loki: `kubernetes/infrastructure/base/observability/helmrelease-loki.yaml`
 - Promtail: `kubernetes/infrastructure/base/observability/helmrelease-promtail.yaml`
+- Loki bootstrap: `kubernetes/infrastructure/base/observability/loki-bootstrap/`
 - Prometheus Adapter: `kubernetes/infrastructure/base/observability/prometheus-adapter/`
 - Kafka exporter: `kubernetes/infrastructure/base/observability/prometheus-kafka-exporter/`
 - Grafana ingress: `kubernetes/infrastructure/base/observability/grafana-ingress.yaml`
@@ -21,7 +22,8 @@ This runbook covers the observability stack deployed by Flux.
 - Monitoring namespace: `monitoring`
 - Grafana exposes browser access through `http://grafana.gitops.local`
 - Prometheus exposes browser access through `http://prometheus.gitops.local`
-- Loki runs in distributed mode on Ceph-backed S3 object storage, and Promtail provides cluster log aggregation
+- Loki runs in distributed mode on Ceph-backed S3 object storage, with Loki S3 credentials sourced from OpenBao and bootstrapped through `loki-bootstrap/`
+- Promtail provides cluster log aggregation
 - Prometheus Adapter exports custom metrics for workload scaling and dashboards
 
 ## Validation
@@ -40,4 +42,4 @@ task pipeline:verify
 
 - If Grafana or Prometheus is unreachable, confirm the ingress stage is Ready and the local host entries point at the current NLB addresses.
 - If metrics are missing, confirm `kube-prometheus-stack` and `prometheus-adapter` are both Ready.
-- If logs are missing, confirm Promtail is running on all nodes and Loki has healthy pods and Ceph RGW access.
+- If logs are missing, confirm Promtail is running on all nodes, Loki has healthy pods, and the Loki bootstrap resources have created the RGW user and buckets.

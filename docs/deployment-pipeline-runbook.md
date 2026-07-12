@@ -63,7 +63,7 @@ Expanded sequence:
 - saves init material remotely and fetches it locally to `.secrets/openbao-init.dev.json`
 - unseals leader and followers
 - configures Kubernetes auth for External Secrets Operator
-- seeds deterministic dev secrets
+- seeds deterministic dev secrets, including Loki S3 credentials
 - waits for `ClusterSecretStore/openbao`
 
 `pipeline:verify`:
@@ -105,7 +105,7 @@ Each stage uses `wait: true` and `prune: true`. `infrastructure-core`, `infrastr
 
 OpenBao cannot be fully bootstrapped by declarative manifests alone in this lab flow. It requires procedural init, unseal, auth, and seed steps.
 
-`infrastructure-data-postgres` and the visit workloads depend on the OpenBao-backed `ClusterSecretStore`, so they are verified only after OpenBao bootstrap completes.
+`infrastructure-data-postgres`, `infrastructure-observability` Loki bootstrap, and the visit workloads depend on the OpenBao-backed `ClusterSecretStore`, so they are verified only after OpenBao bootstrap completes.
 
 Monitoring and ingress are staged separately because `ingress-nginx`, Loki, and Promtail can render `ServiceMonitor` resources that need Prometheus Operator CRDs from `kube-prometheus-stack`.
 
