@@ -21,6 +21,77 @@
 - name: Wait for RKE2 Cilium rollout
   ansible.builtin.command: >-
     {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }}
-    rollout status daemonset/cilium -n kube-system --timeout=10m
+    rollout status ds/cilium -n kube-system --timeout=10m
   register: cni_rollout_status
+  changed_when: false
+  retries: 30
+  delay: 10
+  until: cni_rollout_status.rc == 0
+
+- name: Download Gateway API standard CRDs into the RKE2 manifests directory
+  ansible.builtin.get_url:
+    url: "{{ rke2_gateway_api_standard_manifest_url }}"
+    checksum: "{{ rke2_gateway_api_standard_manifest_checksum }}"
+    dest: "{{ rke2_gateway_api_standard_manifest_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Remove legacy Gateway API experimental CRDs from the RKE2 manifests directory
+  ansible.builtin.file:
+    path: "{{ rke2_gateway_api_experimental_manifest_path }}"
+    state: absent
+
+- name: Ensure Cilium Gateway bootstrap RBAC is present
+  ansible.builtin.template:
+    src: cilium-gateway-bootstrap-rbac.yaml.j2
+    dest: "{{ rke2_cilium_gateway_bootstrap_rbac_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Wait for Gateway API CRDs to be registered
+  ansible.builtin.command: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }} get crd
+    gatewayclasses.gateway.networking.k8s.io
+    gateways.gateway.networking.k8s.io
+    httproutes.gateway.networking.k8s.io
+    grpcroutes.gateway.networking.k8s.io
+    referencegrants.gateway.networking.k8s.io
+  register: cni_gateway_api_crds_ready
+  changed_when: false
+  retries: 30
+  delay: 10
+  until: cni_gateway_api_crds_ready.rc == 0
+
+- name: Wait for the Cilium GatewayClass to be Accepted
+  ansible.builtin.command: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }}
+    wait --for=condition=Accepted gatewayclass/cilium --timeout=5m
+  register: cni_gatewayclass_accepted
+  changed_when: false
+  retries: 6
+  delay: 10
+  until: cni_gatewayclass_accepted.rc == 0
+  failed_when: false
+
+- name: Restart cilium-operator when GatewayClass is not Accepted yet
+  when: cni_gatewayclass_accepted.rc != 0
+  ansible.builtin.command: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }}
+    -n kube-system rollout restart deploy/cilium-operator
+  changed_when: true
+
+- name: Wait for cilium-operator rollout after Gateway bootstrap
+  when: cni_gatewayclass_accepted.rc != 0
+  ansible.builtin.command: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }}
+    -n kube-system rollout status deploy/cilium-operator --timeout=5m
+  changed_when: false
+
+- name: Re-check the Cilium GatewayClass Accepted condition
+  when: cni_gatewayclass_accepted.rc != 0
+  ansible.builtin.command: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }}
+    wait --for=condition=Accepted gatewayclass/cilium --timeout=5m
   changed_when: false

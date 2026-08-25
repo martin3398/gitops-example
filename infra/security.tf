@@ -158,18 +158,7 @@ resource "aws_vpc_security_group_ingress_rule" "worker_ingress_http_public" {
   from_port         = var.ingress_nodeport_http
   ip_protocol       = "tcp"
   to_port           = var.ingress_nodeport_http
-  description       = "Ingress HTTP NodePort from ingress CIDRs"
-}
-
-resource "aws_vpc_security_group_ingress_rule" "worker_ingress_https_public" {
-  for_each = var.enable_public_ingress ? toset(var.ingress_allowed_cidrs) : toset([])
-
-  security_group_id = aws_security_group.worker.id
-  cidr_ipv4         = each.value
-  from_port         = var.ingress_nodeport_https
-  ip_protocol       = "tcp"
-  to_port           = var.ingress_nodeport_https
-  description       = "Reserved HTTPS NodePort from ingress CIDRs"
+  description       = "Gateway host listener port from gateway CIDRs"
 }
 
 resource "aws_vpc_security_group_ingress_rule" "worker_ingress_http_nlb_health" {
@@ -180,16 +169,5 @@ resource "aws_vpc_security_group_ingress_rule" "worker_ingress_http_nlb_health" 
   from_port         = var.ingress_nodeport_http
   ip_protocol       = "tcp"
   to_port           = var.ingress_nodeport_http
-  description       = "Ingress HTTP health checks from NLB subnets"
-}
-
-resource "aws_vpc_security_group_ingress_rule" "worker_ingress_https_nlb_health" {
-  for_each = var.enable_public_ingress ? toset(var.lb_public_subnet_cidrs) : toset([])
-
-  security_group_id = aws_security_group.worker.id
-  cidr_ipv4         = each.value
-  from_port         = var.ingress_nodeport_https
-  ip_protocol       = "tcp"
-  to_port           = var.ingress_nodeport_https
-  description       = "Reserved HTTPS health checks from NLB subnets"
+  description       = "Gateway host listener health checks from NLB subnets"
 }

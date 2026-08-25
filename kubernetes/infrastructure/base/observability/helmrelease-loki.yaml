@@ -35,6 +35,8 @@ spec:
       valuesKey: AWS_SECRET_ACCESS_KEY
       targetPath: loki.storage.s3.secretAccessKey
   values:
+    global:
+      dnsService: rke2-coredns-rke2-coredns
     deploymentMode: Distributed
     loki:
       auth_enabled: false

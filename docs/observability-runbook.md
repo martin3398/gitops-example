@@ -10,12 +10,11 @@ This runbook covers the observability stack deployed by Flux.
 - Loki bootstrap: `kubernetes/infrastructure/base/observability/loki-bootstrap/`
 - Prometheus Adapter: `kubernetes/infrastructure/base/observability/prometheus-adapter/`
 - Kafka exporter: `kubernetes/infrastructure/base/observability/prometheus-kafka-exporter/`
-- Grafana ingress: `kubernetes/infrastructure/base/observability/grafana-ingress.yaml`
-- Prometheus ingress: `kubernetes/infrastructure/base/observability/prometheus-ingress.yaml`
+- Grafana HTTPRoute: `kubernetes/infrastructure/base/observability/httproute-grafana.yaml`
+- Prometheus HTTPRoute: `kubernetes/infrastructure/base/observability/httproute-prometheus.yaml`
 - Dashboards:
   - `dashboard-gitops-flux.yaml`
-  - `dashboard-ingress-nginx.yaml`
-  - `dashboard-visit-processing-overview.yaml`
+- `dashboard-visit-processing-overview.yaml`
 
 ## Current Baseline
 
@@ -25,6 +24,7 @@ This runbook covers the observability stack deployed by Flux.
 - Loki runs in distributed mode on Ceph-backed S3 object storage, with Loki S3 credentials sourced from OpenBao and bootstrapped through `loki-bootstrap/`
 - Promtail provides cluster log aggregation
 - Prometheus Adapter exports custom metrics for workload scaling and dashboards
+- Cilium Gateway API access logs are available through Hubble Relay; application and platform logs still flow to Loki and Grafana
 
 ## Validation
 
@@ -40,6 +40,7 @@ task pipeline:verify
 
 ## Troubleshooting
 
-- If Grafana or Prometheus is unreachable, confirm the ingress stage is Ready and the local host entries point at the current NLB addresses.
+- If Grafana or Prometheus is unreachable, confirm the gateway stage is Ready and the local host entries point at the current gateway service address.
 - If metrics are missing, confirm `kube-prometheus-stack` and `prometheus-adapter` are both Ready.
-- If logs are missing, confirm Promtail is running on all nodes, Loki has healthy pods, and the Loki bootstrap resources have created the RGW user and buckets.
+- If application logs are missing, confirm Promtail is running on all nodes, Loki has healthy pods, and the Loki bootstrap resources have created the RGW user and buckets.
+- If gateway request visibility is missing, confirm the Cilium gateway pods are healthy and query Hubble Relay for HTTP flows.

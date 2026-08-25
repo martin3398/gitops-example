@@ -46,7 +46,7 @@ variable "enable_public_k8s_api" {
 }
 
 variable "enable_public_ingress" {
-  description = "Expose ingress traffic through an internet-facing NLB"
+  description = "Expose the public gateway traffic through an internet-facing NLB"
   type        = bool
   default     = false
 }
@@ -63,30 +63,19 @@ variable "lb_public_subnet_cidrs" {
 }
 
 variable "ingress_allowed_cidrs" {
-  description = "CIDRs allowed to access ingress through the ingress NLB"
+  description = "CIDRs allowed to access the public gateway through the NLB"
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
 
 variable "ingress_nodeport_http" {
-  description = "NodePort exposed by ingress-nginx for HTTP"
+  description = "Backend host port for the Cilium Gateway listener. Public NLB listens on :80 and forwards here."
   type        = number
   default     = 30080
 
   validation {
-    condition     = var.ingress_nodeport_http >= 30000 && var.ingress_nodeport_http <= 32767
-    error_message = "ingress_nodeport_http must be in Kubernetes NodePort range 30000-32767."
-  }
-}
-
-variable "ingress_nodeport_https" {
-  description = "Reserved NodePort for HTTPS ingress (currently out of scope for this AWS lab)"
-  type        = number
-  default     = 30443
-
-  validation {
-    condition     = var.ingress_nodeport_https >= 30000 && var.ingress_nodeport_https <= 32767
-    error_message = "ingress_nodeport_https must be in Kubernetes NodePort range 30000-32767."
+    condition     = var.ingress_nodeport_http >= 1 && var.ingress_nodeport_http <= 65535
+    error_message = "ingress_nodeport_http must be a valid TCP port."
   }
 }
 
@@ -105,7 +94,7 @@ variable "enable_ssh_from_admin_cidrs" {
 variable "control_plane_instance_type" {
   description = "EC2 instance type for control-plane nodes"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.large"
 }
 
 variable "worker_instance_type" {

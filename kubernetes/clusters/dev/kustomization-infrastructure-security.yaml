@@ -7,6 +7,7 @@ spec:
   interval: 1m
   dependsOn:
     - name: infrastructure-data-ceph
+    - name: infrastructure-gateway
   sourceRef:
     kind: GitRepository
     name: dev-repo

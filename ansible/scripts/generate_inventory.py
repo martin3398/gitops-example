@@ -80,6 +80,8 @@ def build_inventory(payload: Dict[str, Any], region: str, ssm_bucket: str) -> st
     worker_nodes = payload.get("workers", {})
     kube_api_internal_endpoint = payload.get("kube_api_internal_endpoint")
     kube_api_public_endpoint = payload.get("kube_api_public_endpoint")
+    ingress_public_endpoint = payload.get("ingress_public_endpoint") or ""
+    gateway_listener_port = payload.get("gateway_listener_port") or 30080
 
     if not isinstance(cp_nodes, dict) or not isinstance(worker_nodes, dict):
         raise ValueError("control_plane and workers must be maps")
@@ -103,6 +105,8 @@ def build_inventory(payload: Dict[str, Any], region: str, ssm_bucket: str) -> st
         "    ansible_aws_ssm_bucket_name: {}".format(ssm_bucket),
         "    kube_api_internal_endpoint: {}".format(kube_api_internal_endpoint),
         "    kube_api_public_endpoint: {}".format(kube_api_public_endpoint),
+        "    ingress_public_endpoint: {}".format(ingress_public_endpoint),
+        "    gateway_listener_port: {}".format(gateway_listener_port),
         "    ansible_shell_type: sh",
         "    ansible_shell_executable: /bin/sh",
         "  children:",

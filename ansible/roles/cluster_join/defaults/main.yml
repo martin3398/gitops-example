@@ -10,3 +10,4 @@ rke2_kubeconfig_path: /etc/rancher/rke2/rke2.yaml
 rke2_api_server_sans:
   - "{{ kube_api_internal_endpoint | split(':') | first }}"
   - "{{ kube_api_public_endpoint | split(':') | first }}"
+rke2_gateway_worker_label: "node-role.kubernetes.io/worker=true"

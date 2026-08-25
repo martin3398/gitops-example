@@ -53,6 +53,7 @@
         - "{{ rke2_api_server_sans[1] }}"
       disable:
         - rke2-metrics-server
+        - rke2-kube-proxy
 
 - name: Ensure RKE2 manifests directory exists
   ansible.builtin.file:
@@ -62,24 +63,35 @@
     group: root
     mode: "0755"
 
+- name: Download Gateway API standard CRDs into the RKE2 manifests directory
+  ansible.builtin.get_url:
+    url: "{{ rke2_gateway_api_standard_manifest_url }}"
+    checksum: "{{ rke2_gateway_api_standard_manifest_checksum }}"
+    dest: "{{ rke2_gateway_api_standard_manifest_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Remove legacy Gateway API experimental CRDs from the RKE2 manifests directory
+  ansible.builtin.file:
+    path: "{{ rke2_gateway_api_experimental_manifest_path }}"
+    state: absent
+
+- name: Write Cilium Gateway bootstrap RBAC for RKE2
+  ansible.builtin.template:
+    src: cilium-gateway-bootstrap-rbac.yaml.j2
+    dest: "{{ rke2_cilium_gateway_bootstrap_rbac_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
 - name: Write bundled Cilium HelmChartConfig for RKE2
-  ansible.builtin.copy:
+  ansible.builtin.template:
+    src: rke2-cilium-config.yaml.j2
     dest: "{{ rke2_cilium_manifest_path }}"
     owner: root
     group: root
     mode: "0644"
-    content: |
-      ---
-      apiVersion: helm.cattle.io/v1
-      kind: HelmChartConfig
-      metadata:
-        name: rke2-cilium
-        namespace: kube-system
-      spec:
-        valuesContent: |-
-          encryption:
-            enabled: true
-            type: wireguard
 
 - name: Enable and start the RKE2 server
   ansible.builtin.systemd:

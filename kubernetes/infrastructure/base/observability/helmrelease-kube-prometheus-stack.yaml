@@ -23,6 +23,9 @@ spec:
         name: prometheus-community
         namespace: flux-system
   values:
+    gatewayAPI:
+      hosts:
+        prometheus: prometheus.gitops.local
     defaultRules:
       create: true
     kubeControllerManager:
@@ -62,6 +65,16 @@ spec:
             cpu: 250m
             memory: 256Mi
     grafana:
+      gatewayAPI:
+        host: grafana.gitops.local
+      route:
+        main:
+          enabled: true
+          parentRefs:
+            - name: dev-gateway
+              namespace: gateway
+          hostnames:
+            - "{{ .Values.gatewayAPI.host }}"
       defaultDashboardsEnabled: true
       affinity:
         nodeAffinity:
@@ -100,6 +113,14 @@ spec:
           jsonData:
             maxLines: 5000
     prometheus:
+      route:
+        main:
+          enabled: true
+          parentRefs:
+            - name: dev-gateway
+              namespace: gateway
+          hostnames:
+            - "{{ .Values.gatewayAPI.hosts.prometheus }}"
       additionalServiceMonitors:
         - name: flux-controllers
           namespaceSelector:

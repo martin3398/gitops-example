@@ -36,9 +36,9 @@ Ansible-specific behavior:
   - Validate `AWS_REGION`, `TF_STATE_BUCKET`, `TF_STATE_KEY`, and `TF_LOCK_TABLE`, then re-run.
 - S3 transfer errors from Ansible SSM plugin:
   - CI identity lacks S3 permissions for `TF_STATE_BUCKET`.
-- `ServiceMonitor` CRD errors during ingress or logging chart install:
+- `ServiceMonitor` CRD errors during gateway or logging chart install:
   - The deployment order is wrong or Flux/core bootstrap did not complete.
-  - `kube-prometheus-stack` must install Prometheus Operator CRDs before ingress-nginx, Loki, or Promtail render `ServiceMonitor` resources.
+  - `kube-prometheus-stack` must install Prometheus Operator CRDs before Gateway API routes, Loki, or Promtail render `ServiceMonitor` resources.
   - Re-run Flux/core bootstrap and OpenBao bootstrap after confirming `infrastructure-data-ceph` is Ready.
 
 ## Verification
@@ -51,7 +51,7 @@ Successful sequence should result in:
 - cluster bootstrap completed with all nodes Ready
 - Flux/core bootstrap completed with `dev-repo`, `infrastructure-core`, and `infrastructure-data-ceph` ready in `flux-system`
 - OpenBao initialized, unsealed, and ready for External Secrets
-- post-deploy verification completed against Flux, OpenBao, Postgres, Kafka, observability, ingress, and the visit demo workloads
+- post-deploy verification completed against Flux, OpenBao, Postgres, Kafka, observability, gateway, and the visit demo workloads
 
 Additional checks after bootstrap:
 

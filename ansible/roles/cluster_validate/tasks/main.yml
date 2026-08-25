@@ -23,9 +23,21 @@
 - name: Verify RKE2 Cilium daemonset rollout
   ansible.builtin.command: >-
     {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }}
-    rollout status daemonset/cilium -n kube-system --timeout=5m
+    rollout status ds/cilium -n kube-system --timeout=5m
   register: cluster_validate_cilium_rollout
   changed_when: false
+  retries: 30
+  delay: 10
+  until: cluster_validate_cilium_rollout.rc == 0
+
+- name: Ensure worker nodes are labeled for Cilium Gateway listeners
+  ansible.builtin.command: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }}
+    label node {{ item }} {{ rke2_gateway_worker_label }} --overwrite
+  loop: "{{ groups['workers'] }}"
+  changed_when: false
+  loop_control:
+    label: "{{ item }}"
 
 - name: Assert API server and controller manager pods are present
   ansible.builtin.assert:

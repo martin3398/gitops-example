@@ -13,13 +13,11 @@ lb_public_subnet_cidrs = ["10.42.101.0/24", "10.42.102.0/24"]
 enable_public_ingress = true
 ingress_allowed_cidrs = ["0.0.0.0/0"]
 ingress_nodeport_http = 30080
-# ingress_nodeport_https is intentionally omitted in examples
-# (HTTPS/certificate management is out of scope for this AWS lab phase)
 
 allowed_admin_cidrs = ["203.0.113.10/32"]
 enable_ssh_from_admin_cidrs = false
 
-control_plane_instance_type = "t3.medium"
+control_plane_instance_type = "t3.large"
 worker_instance_type        = "t3.large"
 root_volume_size_gb         = 40
 

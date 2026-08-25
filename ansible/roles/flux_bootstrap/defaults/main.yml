@@ -1,6 +1,6 @@
 ---
 flux_bootstrap_namespace: flux-system
-flux_bootstrap_version: "2.4.0"
+flux_bootstrap_version: "2.6.4"
 flux_bootstrap_repo_url: ssh://git@github.com/martin3398/gitops-example.git
 flux_bootstrap_branch: main
 flux_bootstrap_path: ./kubernetes/clusters/dev

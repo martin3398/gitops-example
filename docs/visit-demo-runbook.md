@@ -25,7 +25,7 @@ This runbook covers the current delivery and operations model for the visit demo
 
 This keeps app and API on the same origin and avoids CORS complexity.
 
-The intended local browser URL is `http://gitops.local` as part of the repo-wide local domain convention documented in the README. The app also keeps a hostless ingress fallback so the AWS ingress NLB DNS name can be used directly for the visit app.
+The intended local browser URL is `http://gitops.local` as part of the repo-wide local domain convention documented in the README. The app also keeps a hostless gateway fallback so the gateway service endpoint can be used directly for the visit app.
 
 ## API Contract (Current)
 
@@ -144,7 +144,7 @@ curl http://gitops.local/api/v1/visits/count
   - stale or wrong client artifact is being served
   - ensure app serves `client.bundle.js`, then hard refresh browser
 - Queue request fails:
-  - verify ingress `/api` route and gateway pod health
+- verify gateway `/api` route and gateway pod health
 - Count stuck at old value:
   - check route revalidation and gateway count endpoint
 - Queued count unavailable:
@@ -156,6 +156,6 @@ curl http://gitops.local/api/v1/visits/count
 
 ## Current Limitations
 
-- Ingress currently uses `ingress-nginx`; Gateway API migration is planned for Phase 6.
+- The visit app now exposes `/` and `/api` through Cilium Gateway API.
 - Cluster-level authentication hardening is not yet implemented.
 - Renovate-based dependency/update automation is not yet implemented.

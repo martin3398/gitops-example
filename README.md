@@ -8,13 +8,14 @@ AWS-based Kubernetes GitOps lab with infra, bootstrap, workloads, and operationa
 - `Ansible` host prep, cluster bootstrap, and Flux handoff
 - `Flux`-managed platform and app delivery
 - `GitHub Actions` CI/CD and GHCR image publishing
-- Platform pieces: ingress, observability, OpenBao, Postgres, Kafka, Ceph, visit demo
+- Platform pieces: Gateway API edge, observability, OpenBao, Postgres, Kafka, Ceph, visit demo
 
 ## Done
 
 - Phase 1 infra and cluster bootstrap are implemented.
 - Phase 2 GitOps platform and workloads are implemented.
 - Phase 5 RKE2 migration is implemented.
+- Phase 6 Gateway API edge migration is implemented.
 - Visit demo delivery and image automation are implemented.
 - OpenBao, Postgres, Kafka, Ceph, observability, load generation, and autoscaling are implemented baselines.
 - Loki distributed mode on Ceph object storage is implemented.

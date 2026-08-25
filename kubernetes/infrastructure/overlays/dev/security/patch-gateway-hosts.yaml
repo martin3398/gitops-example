@@ -1,0 +1,4 @@
+# Override gateway hostnames for this environment.
+- op: replace
+  path: /spec/hostnames/0
+  value: bao.gitops.local

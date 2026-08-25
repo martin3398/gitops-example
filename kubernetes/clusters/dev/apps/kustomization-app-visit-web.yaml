@@ -8,7 +8,7 @@ spec:
   dependsOn:
     - name: app-policies
     - name: infrastructure-security
-    - name: infrastructure-ingress
+    - name: infrastructure-gateway
   sourceRef:
     kind: GitRepository
     name: dev-repo

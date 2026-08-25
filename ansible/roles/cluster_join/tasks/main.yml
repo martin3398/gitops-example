@@ -33,6 +33,7 @@
         - "{{ rke2_api_server_sans[1] }}"
       disable:
         - rke2-metrics-server
+        - rke2-kube-proxy
   when: inventory_hostname in groups['control_plane']
 
 - name: Write RKE2 join configuration for worker nodes
@@ -45,6 +46,8 @@
       token: "{{ hostvars[groups['control_plane'][0]].rke2_cluster_token }}"
       server: "{{ rke2_join_server_url }}"
       node-name: "{{ inventory_hostname }}"
+      disable:
+        - rke2-kube-proxy
   when: inventory_hostname in groups['workers']
 
 - name: Enable and start the RKE2 node service
@@ -63,3 +66,14 @@
   retries: 30
   delay: 10
   until: rke2_join_node_ready.rc == 0
+
+- name: Label worker nodes for Cilium Gateway hostNetwork listeners
+  when: inventory_hostname in groups['workers']
+  delegate_to: "{{ groups['control_plane'][0] }}"
+  ansible.builtin.command: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ rke2_kubeconfig_path }}
+    label node {{ inventory_hostname }} {{ rke2_gateway_worker_label }} --overwrite
+  register: rke2_join_worker_label
+  changed_when: >-
+    ('labeled' in rke2_join_worker_label.stdout)
+    and ('not labeled' not in rke2_join_worker_label.stdout)

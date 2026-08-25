@@ -91,23 +91,23 @@ gitrepository.yaml
 kustomization-infrastructure-core.yaml
 kustomization-infrastructure-scheduling.yaml
 kustomization-infrastructure-data-ceph.yaml
+kustomization-infrastructure-gateway.yaml
 kustomization-infrastructure-security.yaml
 kustomization-infrastructure-data-postgres.yaml
 kustomization-infrastructure-data-kafka.yaml
 kustomization-infrastructure-observability.yaml
-kustomization-infrastructure-ingress.yaml
 apps/
 ```
 
-Each stage uses `wait: true` and `prune: true`. `infrastructure-core`, `infrastructure-data-kafka`, and the app stages also carry explicit health checks.
+Each stage uses `wait: true` and `prune: true`. `infrastructure-core`, `infrastructure-gateway`, `infrastructure-data-kafka`, and the app stages also carry explicit health checks.
 
 ## Why It Is Staged
 
 OpenBao cannot be fully bootstrapped by declarative manifests alone in this lab flow. It requires procedural init, unseal, auth, and seed steps.
 
-`infrastructure-data-postgres`, `infrastructure-observability` Loki bootstrap, and the visit workloads depend on the OpenBao-backed `ClusterSecretStore`, so they are verified only after OpenBao bootstrap completes.
+`infrastructure-data-postgres`, `infrastructure-observability` Loki bootstrap, the Gateway API routes, and the visit workloads depend on the OpenBao-backed `ClusterSecretStore`, so they are verified only after OpenBao bootstrap completes.
 
-Monitoring and ingress are staged separately because `ingress-nginx`, Loki, and Promtail can render `ServiceMonitor` resources that need Prometheus Operator CRDs from `kube-prometheus-stack`.
+Monitoring and the public gateway are staged separately because Loki, Promtail, and the monitoring routes can render `ServiceMonitor` resources that need Prometheus Operator CRDs from `kube-prometheus-stack`.
 
 ## Recovery
 
@@ -115,7 +115,7 @@ If a Helm release fails because a CRD is missing, reconcile the upstream stage a
 
 ```bash
 flux reconcile kustomization infrastructure-observability -n flux-system --timeout=20m
-flux reconcile kustomization infrastructure-ingress -n flux-system --timeout=15m
+flux reconcile kustomization infrastructure-gateway -n flux-system --timeout=15m
 ```
 
 If OpenBao gets stuck in a bad Raft state, reset the init material and re-run `task ansible:openbao`.

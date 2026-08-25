@@ -3,7 +3,6 @@ kind: Kustomization
 resources:
   - namespace-web.yaml
   - externalsecret-web.yaml
-  - ingress.yaml
   - helmrelease-visit-web.yaml
   - helmrelease-visit-gateway.yaml
   - imagerepository-visit-web.yaml

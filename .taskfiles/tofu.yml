@@ -33,11 +33,12 @@ tasks:
       - "tofu apply -auto-approve destroy.tfplan"
 
   get_public_host:
-    desc: "Print public ingress host from tofu outputs"
+    desc: "Print public gateway host from the cluster service"
     preconditions:
-      - sh: 'command -v tofu >/dev/null 2>&1'
-        msg: "tofu is required in PATH"
-      - sh: 'test -n "$(tofu -chdir=infra output -raw ingress_public_endpoint 2>/dev/null)"'
-        msg: "Missing ingress_public_endpoint output. Run task tofu:apply first and enable public ingress."
+      - sh: 'command -v kubectl >/dev/null 2>&1'
+        msg: "kubectl is required in PATH"
+      - sh: 'command -v jq >/dev/null 2>&1'
+        msg: "jq is required in PATH"
     cmds:
-      - 'tofu -chdir=infra output -raw ingress_public_endpoint'
+      - |
+        kubectl -n gateway get svc -o json | jq -r '.items[] | select(.spec.type == "LoadBalancer") | .status.loadBalancer.ingress[0].hostname // .status.loadBalancer.ingress[0].ip' | head -n1

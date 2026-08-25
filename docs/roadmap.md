@@ -9,6 +9,7 @@ This file tracks the remaining work after the current Phase 1-5 baseline.
 - Visit demo delivery, image automation, and the main platform baselines are implemented.
 - Loki distributed mode on Ceph object storage is implemented.
 - Phase 5 RKE2 migration is implemented.
+- Phase 6 Gateway API edge migration is implemented.
 
 ## Phase 3 - Remaining Hardening
 
@@ -23,11 +24,6 @@ This file tracks the remaining work after the current Phase 1-5 baseline.
 - `Velero` backups and restore drills.
 - Grafana dashboard coverage for the current platform and app path.
 - Network policy and policy/security expansion.
-
-## Phase 6 - Ingress Platform Migration
-
-- Migrate ingress from `ingress-nginx` to `Cilium` Gateway API.
-- Validate `/` and `/api` behavior for the visit app under the new ingress path.
 
 ## Notes
 

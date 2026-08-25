@@ -25,12 +25,12 @@ on:
         default: true
         type: boolean
       enable_public_ingress:
-        description: "Enable public ingress NLB"
+        description: "Enable legacy manual gateway NLB"
         required: true
-        default: true
+        default: false
         type: boolean
       ingress_allowed_cidrs:
-        description: "Ingress allowed CIDRs as comma-separated list"
+        description: "Gateway allowed CIDRs as comma-separated list"
         required: false
         default: "0.0.0.0/0"
 

@@ -11,8 +11,8 @@
       - infrastructure-core
       - infrastructure-scheduling
       - infrastructure-data-ceph
+      - infrastructure-gateway
       - infrastructure-observability
-      - infrastructure-ingress
       - infrastructure-security
       - infrastructure-data-postgres
       - infrastructure-data-kafka
@@ -190,6 +190,122 @@
           name: visit-web-visit-gateway
         - namespace: visit-processing
           name: visit-processing-visit-processor
+      changed_when: false
+
+    - name: Verify Gateway API CRDs are installed
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} get crd
+        gatewayclasses.gateway.networking.k8s.io
+        gateways.gateway.networking.k8s.io
+        httproutes.gateway.networking.k8s.io
+        grpcroutes.gateway.networking.k8s.io
+        referencegrants.gateway.networking.k8s.io
+      changed_when: false
+
+    - name: Verify Gateway is Accepted
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }}
+        wait --for=condition=Accepted gateway/dev-gateway -n gateway --timeout=10m
+      changed_when: false
+
+    # Chart-owned HTTPRoutes land with their Services; nudge only if Cilium sticks.
+    - name: Wait for HTTPRoute backends to resolve
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          kubectl=({{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }})
+
+          {% raw %}
+          expected_routes=(
+            "monitoring/monitoring-kube-prometheus-prometheus"
+            "monitoring/monitoring-kube-prometheus-stack-grafana"
+            "openbao/openbao"
+            "visit-web/visit-web-visit-gateway"
+            "visit-web/visit-web-visit-web"
+          )
+
+          for i in $(seq 1 60); do
+            unresolved=0
+            for route in "${expected_routes[@]}"; do
+              IFS='/' read -r ns name <<< "$route"
+              ref="$("${kubectl[@]}" -n "$ns" get httproute "$name" -o jsonpath='{.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}' 2>/dev/null || true)"
+              if [ "$ref" != "True" ]; then
+                unresolved=1
+                if "${kubectl[@]}" -n "$ns" get httproute "$name" >/dev/null 2>&1; then
+                  "${kubectl[@]}" -n "$ns" annotate httproute "$name" "reconcile.force=$(date +%s)" --overwrite >/dev/null 2>&1 || true
+                fi
+              fi
+            done
+            if [ "$unresolved" -eq 0 ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "HTTPRoutes still missing ResolvedRefs=True after wait:" >&2
+          for route in "${expected_routes[@]}"; do
+            IFS='/' read -r ns name <<< "$route"
+            msg="$("${kubectl[@]}" -n "$ns" get httproute "$name" -o jsonpath='{.status.parents[0].conditions[?(@.type=="ResolvedRefs")].message}' 2>/dev/null || true)"
+            status="$("${kubectl[@]}" -n "$ns" get httproute "$name" -o jsonpath='{.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}' 2>/dev/null || true)"
+            if [ -z "$status" ]; then
+              echo "  - ${route}: NOT FOUND" >&2
+            else
+              echo "  - ${route}: ResolvedRefs=${status} (${msg})" >&2
+            fi
+          done
+          exit 1
+          {% endraw %}
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Verify Gateway API host routing
+      ansible.builtin.shell: |
+        set -euo pipefail
+        listener_port="{{ gateway_listener_port | default(rke2_gateway_listener_port) | default(30080) }}"
+        public_endpoint="{{ ingress_public_endpoint | default('') }}"
+
+        worker_ip="$({{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} get nodes \
+          -l node-role.kubernetes.io/worker=true \
+          -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')"
+        if [ -z "$worker_ip" ]; then
+          echo "No worker node InternalIP found for gateway hostNetwork checks" >&2
+          exit 1
+        fi
+
+        curl_ok() {
+          local host="$1" url="$2" out="${3:-}"
+          local i code
+          for i in $(seq 1 30); do
+            if [ -n "$out" ]; then
+              code="$(curl -sS -o "$out" -w '%{http_code}' -H "Host: ${host}" "$url" || true)"
+            else
+              code="$(curl -sS -o /dev/null -w '%{http_code}' -H "Host: ${host}" "$url" || true)"
+            fi
+            case "$code" in
+              2*|3*) return 0 ;;
+            esac
+            sleep 2
+          done
+          echo "Host ${host} still failing after retries (last HTTP ${code:-none}) at ${url}" >&2
+          return 1
+        }
+
+        curl_ok gitops.local "http://${worker_ip}:${listener_port}/api/v1/visits/count" /tmp/visit-gateway.json
+        jq -e '.data.count | type == "number"' /tmp/visit-gateway.json >/dev/null
+        curl_ok grafana.gitops.local "http://${worker_ip}:${listener_port}/"
+        curl_ok prometheus.gitops.local "http://${worker_ip}:${listener_port}/"
+        curl_ok bao.gitops.local "http://${worker_ip}:${listener_port}/"
+
+        if [ -n "$public_endpoint" ]; then
+          curl_ok gitops.local "http://${public_endpoint}/api/v1/visits/count" /tmp/visit-gateway-public.json
+          jq -e '.data.count | type == "number"' /tmp/visit-gateway-public.json >/dev/null
+          curl_ok grafana.gitops.local "http://${public_endpoint}/"
+          curl_ok prometheus.gitops.local "http://${public_endpoint}/"
+          curl_ok bao.gitops.local "http://${public_endpoint}/"
+        fi
+      args:
+        executable: /bin/bash
       changed_when: false
 
     - name: Verify visit demo queue/count path

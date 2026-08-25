@@ -65,6 +65,8 @@ output "ansible_inventory" {
   value = {
     kube_api_internal_endpoint = "${aws_instance.control_plane["cp-1"].private_ip}:6443"
     kube_api_public_endpoint   = var.enable_public_k8s_api ? "${aws_lb.k8s_api[0].dns_name}:6443" : "${aws_instance.control_plane["cp-1"].private_ip}:6443"
+    ingress_public_endpoint    = var.enable_public_ingress ? aws_lb.ingress[0].dns_name : ""
+    gateway_listener_port      = var.ingress_nodeport_http
     control_plane = {
       for node, instance in aws_instance.control_plane : node => {
         private_ip  = instance.private_ip
@@ -93,6 +95,6 @@ output "kubernetes_api_internal_endpoint" {
 }
 
 output "ingress_public_endpoint" {
-  description = "Ingress NLB endpoint (validated for HTTP in current lab scope)"
+  description = "Public gateway NLB endpoint (validated for HTTP in current lab scope)"
   value       = var.enable_public_ingress ? aws_lb.ingress[0].dns_name : ""
 }

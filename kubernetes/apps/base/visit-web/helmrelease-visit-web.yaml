@@ -20,8 +20,15 @@ spec:
   values:
     imagePullSecrets:
       - name: ghcr-pull
+    httpRoute:
+      enabled: true
+      hostname: gitops.local
+      path: /
+      gateway:
+        name: dev-gateway
+        namespace: gateway
     env:
       visitGatewayUrl: http://visit-web-visit-gateway/api
     image:
       repository: ghcr.io/martin3398/visit-ui # {"$imagepolicy": "flux-system:visit-web:name"}
-      tag: 20260712181708-01901af3 # {"$imagepolicy": "flux-system:visit-web:tag"}
+      tag: 20260722190253-81d07f70 # {"$imagepolicy": "flux-system:visit-web:tag"}

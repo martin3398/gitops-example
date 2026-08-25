@@ -33,14 +33,6 @@ spec:
     ui:
       enabled: true
     server:
-      ingress:
-        enabled: true
-        ingressClassName: nginx
-        pathType: Prefix
-        hosts:
-          - host: bao.gitops.local
-            paths:
-              - /
       resources:
         requests:
           cpu: 25m

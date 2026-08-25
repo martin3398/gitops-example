@@ -5,10 +5,10 @@ resources:
   - kustomization-infrastructure-core.yaml
   - kustomization-infrastructure-scheduling.yaml
   - kustomization-infrastructure-data-ceph.yaml
+  - kustomization-infrastructure-gateway.yaml
   - kustomization-infrastructure-security.yaml
   - kustomization-infrastructure-data-postgres.yaml
   - kustomization-infrastructure-data-kafka.yaml
   - kustomization-infrastructure-observability.yaml
   - kustomization-infrastructure-observability-kafka.yaml
-  - kustomization-infrastructure-ingress.yaml
   - apps

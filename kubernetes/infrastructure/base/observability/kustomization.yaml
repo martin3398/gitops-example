@@ -9,8 +9,5 @@ resources:
   - loki-bootstrap
   - helmrelease-loki.yaml
   - helmrelease-promtail.yaml
-  - grafana-ingress.yaml
-  - prometheus-ingress.yaml
-  - dashboard-ingress-nginx.yaml
   - dashboard-gitops-flux.yaml
   - dashboard-visit-processing-overview.yaml

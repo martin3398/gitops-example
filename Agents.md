@@ -27,7 +27,7 @@ Implement a multi-phase learning platform with:
 - CNI: Cilium (fallback Calico if needed)
 - GitOps: Flux
 - CI/CD: GitHub Actions
-- Ingress: ingress-nginx
+- Edge: Cilium Gateway API
 - TLS/certificate management: out of scope for this AWS lab phase
 - Monitoring: kube-prometheus-stack + Loki + Grafana
 - Data platform baselines: Postgres (CloudNativePG) and Kafka (Strimzi)
@@ -57,7 +57,7 @@ Exit criteria:
 ### Phase 2 - GitOps + Platform Services + Sample Workloads
 1. Bootstrap Flux and connect to repository Git source
 2. Deploy platform services via Helm (through Flux):
-   - ingress-nginx
+   - Cilium Gateway API
    - cert-manager is deferred (HTTPS/certificates out of scope)
    - monitoring/logging stack
 3. Deploy sample application stack:
@@ -117,8 +117,8 @@ Exit criteria:
 - Cluster bootstrap is reproducible on RKE2.
 - Core add-ons and workloads still reconcile cleanly.
 
-### Phase 6 - Ingress Platform Migration
-1. Migrate ingress from ingress-nginx to Cilium Gateway API.
+### Phase 6 - Gateway Platform Migration (Implemented)
+1. Migrate edge exposure from ingress-nginx to Cilium Gateway API.
 2. Revalidate `/` and `/api` behavior for the visit app.
 
 Exit criteria:
@@ -152,7 +152,6 @@ Use `task pipeline:main` for the full ordered chain.
 - Keep docs aligned with the implemented stack; do not reintroduce Vault terminology unless a separate HashiCorp Vault lab is explicitly requested.
 - Maintain and extend post-deploy verification automation (`pipeline:verify`) before adding more platform components.
 - Execute Phase 4 hardening work: `Renovate`, failover drills, backup/restore, dashboards, and secret hardening.
-- Prepare the Gateway API ingress migration as a separate phase after cluster/runtime stability is proven.
 
 ## Suggested Repository Layout
 - `infra/` OpenTofu/Terraform infrastructure code

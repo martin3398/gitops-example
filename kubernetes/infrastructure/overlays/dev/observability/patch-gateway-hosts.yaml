@@ -1,0 +1,7 @@
+# Override gateway hostnames for this environment.
+- op: replace
+  path: /spec/values/gatewayAPI/hosts/prometheus
+  value: prometheus.gitops.local
+- op: replace
+  path: /spec/values/grafana/gatewayAPI/host
+  value: grafana.gitops.local
