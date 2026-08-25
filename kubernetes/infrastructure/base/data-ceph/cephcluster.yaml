@@ -16,6 +16,7 @@ spec:
     allowMultiplePerNode: false
   dashboard:
     enabled: true
+    port: 8443
   monitoring:
     enabled: true
   network:
@@ -52,7 +53,7 @@ spec:
     osd:
       requests:
         cpu: 50m
-        memory: 1Gi
+        memory: 512Mi
       limits:
         cpu: 500m
         memory: 2Gi
