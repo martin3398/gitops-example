@@ -29,4 +29,4 @@ spec:
         namespace: gateway
     image:
       repository: ghcr.io/martin3398/visit-gateway # {"$imagepolicy": "flux-system:visit-gateway:name"}
-      tag: 20260722190253-81d07f70 # {"$imagepolicy": "flux-system:visit-gateway:tag"}
+      tag: 20260825193250-3a80e0ee # {"$imagepolicy": "flux-system:visit-gateway:tag"}
