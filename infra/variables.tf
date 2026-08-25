@@ -111,13 +111,13 @@ variable "control_plane_instance_type" {
 variable "worker_instance_type" {
   description = "EC2 instance type for worker nodes"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.large"
 }
 
 variable "root_volume_size_gb" {
   description = "Root EBS volume size in GiB"
   type        = number
-  default     = 20
+  default     = 40
 }
 
 variable "ceph_osd_volume_size_gb" {
