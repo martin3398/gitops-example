@@ -80,7 +80,7 @@ Current state:
 2. Kafka baseline implemented with Strimzi in KRaft mode
 3. Ceph baseline implemented with `ceph-block` as default StorageClass
 Phase 3 hardening:
-- OpenBao hardening: snapshots, restore, auto-unseal, dynamic DB credentials, rotation
+- OpenBao hardening: snapshots, restore, dynamic DB credentials, rotation
 - credential management hardening: stronger OpenBao init material handling, GHCR pull secrets, and Flux Git write credentials
 - Ceph hardening: restore drills and stateful workload failure testing
 - Traffic validation: reproducible load scenarios and queue/throughput observations

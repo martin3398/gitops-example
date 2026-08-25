@@ -13,7 +13,7 @@ This file tracks the remaining work after the current Phase 1-5 baseline.
 
 ## Phase 3 - Remaining Hardening
 
-- OpenBao hardening: snapshots, restore, auto-unseal decision, raft peer validation.
+- OpenBao hardening: snapshots, restore, raft peer validation (auto-unseal dropped in favor of Ansible unseal automation).
 - Credential/password hardening: dynamic DB credentials, secret rotation, stronger init material handling, GHCR pull secrets, Flux Git write credentials.
 - Cluster authn/authz hardening.
 

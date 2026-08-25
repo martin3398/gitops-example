@@ -178,6 +178,6 @@ kubectl -n data-postgres get secret app-user
 - No TLS is configured in this phase; this is intentional for current lab scope.
 - Rotate dev credentials by changing `OPENBAO_DEV_SEED` and re-running the OpenBao Ansible bootstrap.
 - Kafka and Grafana are intentionally not seeded until manifests consume those secrets.
-- Auto-unseal is not implemented yet.
+- Auto-unseal is dropped / out of scope (unsealing is handled procedurally by the Ansible bootstrap role).
 - OpenBao snapshot backup/restore is not implemented yet.
 - Postgres uses deterministic static dev credentials; dynamic database credentials are not implemented yet.
