@@ -18,8 +18,7 @@ This runbook describes the current OpenTofu-based infrastructure workflow for Ph
 - IAM role + instance profile for EC2 nodes (SSM access)
 - 3 control-plane EC2 instances and 3 worker EC2 instances
 - Optional: internet-facing Kubernetes API NLB on `:6443` when `enable_public_k8s_api=true`
-- Optional: legacy internet-facing gateway NLB on `:80` when `enable_public_ingress=true`
-- With Cilium Gateway host-network mode enabled, the gateway listener itself binds to port `80`.
+- Optional: internet-facing gateway NLB on `:80` forwarding to worker listener on `:30080` when `enable_public_ingress=true`
 - HTTPS/certificate management is out of scope for this AWS lab phase
 
 ## Files
@@ -76,7 +75,7 @@ task pipeline:init_cluster
 - `tofu output -json ansible_inventory`
 - `tofu output kubernetes_api_endpoint`
 - `tofu output kubernetes_api_internal_endpoint`
-- `kubectl -n gateway get svc -o json | jq -r '.items[] | select(.spec.type == "LoadBalancer") | .status.loadBalancer.ingress[0].hostname // .status.loadBalancer.ingress[0].ip' | head -n1`
+- `tofu output ingress_public_endpoint`
 - `tofu plan` should be no-op after reconciliation
 
 If public API is enabled:
@@ -85,9 +84,9 @@ If public API is enabled:
 - ensure your current public IP is present in `allowed_admin_cidrs`
 - verify `nc -vz <nlb-dns-name> 6443` from your workstation
 
-If legacy public gateway is enabled:
+If public gateway is enabled:
 
-- ensure the gateway LoadBalancer endpoint resolves and responds
+- ensure `ingress_public_endpoint` resolves to NLB DNS
 - verify `nc -vz <ingress-nlb-dns-name> 80` from your workstation
 
 ## Destroy

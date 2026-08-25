@@ -34,6 +34,7 @@ AWS-based Kubernetes GitOps lab with infra, bootstrap, workloads, and operationa
 ## Key Docs
 
 - `docs/deployment-pipeline-runbook.md`
+- `docs/gateway-runbook.md`
 - `docs/github-actions-runbook.md`
 - `docs/phase1-infra-runbook.md`
 - `docs/roadmap.md`

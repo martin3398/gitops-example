@@ -22,10 +22,12 @@ This runbook describes the production-style OpenBao baseline for this repository
 OpenBao uses host-based gateway routing with the local-only hostname `bao.gitops.local`.
 The shared local host-entry convention is documented in the repository README and the `task ingress:hosts_entries` helper.
 
-1. Resolve the current gateway service endpoint:
+1. Generate the `/etc/hosts` entries using the Taskfile helper or OpenTofu output:
 
 ```bash
-kubectl -n gateway get svc -o json | jq -r '.items[] | select(.spec.type == "LoadBalancer") | .status.loadBalancer.ingress[0].hostname // .status.loadBalancer.ingress[0].ip' | head -n1
+task ingress:hosts_entries
+# or manually resolve:
+nslookup "$(tofu -chdir=infra output -raw ingress_public_endpoint)"
 ```
 
 2. Add each returned address to `/etc/hosts`:

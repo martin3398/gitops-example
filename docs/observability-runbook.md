@@ -10,11 +10,10 @@ This runbook covers the observability stack deployed by Flux.
 - Loki bootstrap: `kubernetes/infrastructure/base/observability/loki-bootstrap/`
 - Prometheus Adapter: `kubernetes/infrastructure/base/observability/prometheus-adapter/`
 - Kafka exporter: `kubernetes/infrastructure/base/observability/prometheus-kafka-exporter/`
-- Grafana HTTPRoute: `kubernetes/infrastructure/base/observability/httproute-grafana.yaml`
-- Prometheus HTTPRoute: `kubernetes/infrastructure/base/observability/httproute-prometheus.yaml`
+- Gateway HTTPRoutes: configured in `helmrelease-kube-prometheus-stack.yaml`
 - Dashboards:
   - `dashboard-gitops-flux.yaml`
-- `dashboard-visit-processing-overview.yaml`
+  - `dashboard-visit-processing-overview.yaml`
 
 ## Current Baseline
 

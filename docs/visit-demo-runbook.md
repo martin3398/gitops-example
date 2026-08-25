@@ -18,7 +18,7 @@ This runbook covers the current delivery and operations model for the visit demo
 - Count reads use `GET /api/v1/visits/count` through loader revalidation.
 - Count reads also expose Kafka consumer lag for the `visit-processor-v1` consumer group.
 
-## Ingress Routing Contract
+## Gateway API Routing Contract
 
 - `/api` -> `visit-web-visit-gateway`
 - `/` -> `visit-web-visit-web`

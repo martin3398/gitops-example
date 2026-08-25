@@ -30,7 +30,7 @@ Ceph is split across Flux Kustomizations to avoid CRD dry-run races:
 - `infrastructure-core` installs operators, including `rook-ceph`.
 - `infrastructure-data-ceph` applies Ceph CRs (`CephCluster`, `CephBlockPool`, `StorageClass`, `CephObjectStore`).
 - `infrastructure-observability` owns the Loki S3 credentials, RGW user, and bucket bootstrap resources.
-- Monitoring and ingress are applied after Ceph by Flux dependsOn chains.
+- Monitoring and the gateway are applied after Ceph by Flux dependsOn chains.
 - OpenBao, Postgres, Kafka, and apps are applied later by staged Ansible tasks.
 
 The stage 1 order is enforced by Flux `dependsOn` in:
