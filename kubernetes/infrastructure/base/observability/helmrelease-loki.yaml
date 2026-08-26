@@ -57,7 +57,7 @@ spec:
           ruler: loki-ruler
         type: s3
         s3:
-          endpoint: rook-ceph-rgw-loki.rook-ceph.svc:80
+          endpoint: rook-ceph-rgw-ceph-objectstore.rook-ceph.svc:80
           region: us-east-1
           s3ForcePathStyle: true
           insecure: true

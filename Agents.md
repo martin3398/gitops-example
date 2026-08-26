@@ -84,12 +84,14 @@ Current state:
 
 Phase 3 hardening backlog (see `docs/roadmap.md` for task specs):
 - `TASK-P3-02`: OpenBao scheduled Raft snapshots and S3 backup automation.
+- `TASK-P3-03`: OpenBao AWS KMS auto-unseal migration.
 - `TASK-P3-04`: OpenBao dynamic PostgreSQL secrets engine and rotation.
 - `TASK-P3-05`: Kafka listener authentication (mTLS/SASL) and KafkaUser ACLs.
 - `TASK-P3-06`: Dead Letter Queue (DLQ) for unprocessable visit events.
 - `TASK-P3-07`: Ceph OSD failure drills and Loki S3 retention lifecycle rules.
 
 Exit criteria per tool:
+
 - Install is reproducible from code.
 - Basic operations and failure scenarios validated.
 - Operational runbooks updated with disaster recovery steps.

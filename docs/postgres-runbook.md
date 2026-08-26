@@ -16,8 +16,9 @@ This runbook covers the Postgres baseline deployed by Flux.
 - application bootstrap secret: `app-user` from OpenBao via External Secrets
 - app database: `app`
 - app user: `app`
-- S3 Barman Object Store: continuous WAL archiving and base backups to Ceph RGW `s3://postgres-backups/` (`http://rook-ceph-rgw-loki.rook-ceph.svc:80`)
+- S3 Barman Object Store: continuous WAL archiving and base backups to Ceph RGW `s3://postgres-backups/` (`http://rook-ceph-rgw-ceph-objectstore.rook-ceph.svc:80`)
 - ScheduledBackup: daily base backup `postgres-daily-backup` running at `00:00 UTC`
+
 
 The visit processor writes through the read-write service endpoint:
 
@@ -61,9 +62,10 @@ kubectl -n data-postgres get backups -o wide
 
 3. Inspect backup files in Ceph RGW via toolbox:
 ```bash
-kubectl -n rook-ceph exec deploy/rook-ceph-tools -- radosgw-admin bucket list
-kubectl -n rook-ceph exec deploy/rook-ceph-tools -- radosgw-admin bucket stats --bucket=postgres-backups
+kubectl -n rook-ceph exec deploy/rook-ceph-tools -- radosgw-admin --rgw-zone=ceph-objectstore bucket list
+kubectl -n rook-ceph exec deploy/rook-ceph-tools -- radosgw-admin --rgw-zone=ceph-objectstore bucket stats --bucket=postgres-backups
 ```
+
 
 ## Point-in-Time Recovery (PITR) & Restore Procedure
 
@@ -91,7 +93,8 @@ spec:
     - name: postgres
       barmanObjectStore:
         destinationPath: s3://postgres-backups/
-        endpointURL: http://rook-ceph-rgw-loki.rook-ceph.svc:80
+        endpointURL: http://rook-ceph-rgw-ceph-objectstore.rook-ceph.svc:80
+
         s3Credentials:
           accessKeyId:
             name: postgres-backups
