@@ -43,3 +43,7 @@ task pipeline:verify
 - If metrics are missing, confirm `kube-prometheus-stack` and `prometheus-adapter` are both Ready.
 - If application logs are missing, confirm Promtail is running on all nodes, Loki has healthy pods, and the Loki bootstrap resources have created the RGW user and buckets.
 - If gateway request visibility is missing, confirm the Cilium gateway pods are healthy and query Hubble Relay for HTTP flows.
+
+## Roadmap & Next Steps
+
+- **Platform Dashboard Expansion (`TASK-P4-05`)**: Add Grafana dashboards for Ceph storage & OSD health, CloudNativePG cluster metrics, Strimzi Kafka throughput/lag, and Cilium Gateway API request traffic.

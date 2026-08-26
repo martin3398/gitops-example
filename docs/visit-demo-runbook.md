@@ -98,7 +98,7 @@ burst=17:22:1
 
 One `visit-processor` pod is intentionally rate-limited to `1 msg/s`, and the default load bands are chosen so `capacity` can settle at a mid-range replica count while `overload` and `burst` still push it up.
 
-The `visit-processor` HPA now targets a stepped metric that is effectively `ceil(lag / 100)`, so lag `0-100` maps to `1` pod, `100-200` maps to `2`, and so on.
+The `visit-processor` HPA targets the external metric `kafka_consumergroup_lag_sum` (topic `visits.requested`, consumer group `visit-processor-v1`) exported by Prometheus Adapter, targeting an `AverageValue` of `30` lag units per replica with a scale-up limit of 10 pods/10s and min/max replicas of 1..20.
 
 The default phase duration is `180-300s` so the HPA has time to react and settle during each band.
 
@@ -154,8 +154,10 @@ curl http://gitops.local/api/v1/visits/count
 - Layout jump during refresh:
   - spinner should use fixed-size icon slot (no conditional text row)
 
-## Current Limitations
-
-- The visit app now exposes `/` and `/api` through Cilium Gateway API.
-- Cluster-level authentication hardening is not yet implemented.
-- Renovate-based dependency/update automation is not yet implemented.
+## Current Limitations & Roadmap
+ 
+- The visit app exposes `/` and `/api` through Cilium Gateway API over HTTP; TLS/HTTPS is tracked in `TASK-P6-01`.
+- Unprocessable/poison messages are dropped without DLQ routing; tracked in `TASK-P3-06`.
+- Kafka client authentication (mTLS/SASL) is tracked in `TASK-P3-05`.
+- Dynamic Postgres database credentials from OpenBao are tracked in `TASK-P3-04`.
+- Network policy isolation for tenant namespaces is tracked in `TASK-P4-02`.

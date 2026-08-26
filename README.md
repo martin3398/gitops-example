@@ -22,7 +22,7 @@ AWS-based Kubernetes GitOps lab with infra, bootstrap, workloads, and operationa
 
 ## Open
 
-- See `docs/roadmap.md` for the detailed remaining phase work.
+- See `docs/roadmap.md` for the modular task backlog across Phase 3 (stateful hardening) and Phase 4 (resilience, backup, policy, security).
 
 ## Start Here
 

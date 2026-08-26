@@ -52,6 +52,8 @@ The Flux `infrastructure-data-kafka` stage has an explicit health check for the 
 
 If Kafka stays `NotReady`, verify that `spec.kafka.version` is supported by the pinned Strimzi operator chart version.
 
-## Notes
+## Notes & Roadmap Hardening Tasks
 
-- KafkaTopic/KafkaUser templates, per-team boundaries, and lag alerting are not implemented yet.
+- **Listener Security & ACLs (`TASK-P3-05`)**: Enable client mTLS/SASL authentication and define `KafkaUser` resources with least-privilege ACLs for producer/consumer roles.
+- **Dead Letter Queue (`TASK-P3-06`)**: Deploy `visits.dead-letter` topic to capture poisoned or malformed visit event payloads.
+- **Network Policy Isolation (`TASK-P4-02`)**: Restrict Kafka ports 9092/9093 access strictly to `visit-gateway`, `visit-processor`, and `prometheus-kafka-exporter`.

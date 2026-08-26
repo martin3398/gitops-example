@@ -173,11 +173,10 @@ kubectl get clustersecretstore openbao
 kubectl -n data-postgres get secret app-user
 ```
 
-## Notes
+## Notes & Roadmap Hardening Tasks
 
-- No TLS is configured in this phase; this is intentional for current lab scope.
-- Rotate dev credentials by changing `OPENBAO_DEV_SEED` and re-running the OpenBao Ansible bootstrap.
-- Kafka and Grafana are intentionally not seeded until manifests consume those secrets.
-- Auto-unseal is dropped / out of scope (unsealing is handled procedurally by the Ansible bootstrap role).
-- OpenBao snapshot backup/restore is not implemented yet.
-- Postgres uses deterministic static dev credentials; dynamic database credentials are not implemented yet.
+- **Unsealing Model**: Auto-unseal is dropped / out of scope for this lab; unsealing and Raft joining are fully automated by the Ansible bootstrap role (`task ansible:openbao`).
+- **TLS / HTTPS**: Currently plaintext HTTP; TLS certificate automation is tracked in `TASK-P6-01`.
+- **Raft Snapshots & Disaster Recovery (`TASK-P3-02`)**: Automated CronJob snapshots to S3/Ceph RGW and recovery testing.
+- **Dynamic Database Credentials (`TASK-P3-04`)**: Replace deterministic dev seeding with OpenBao's PostgreSQL secrets engine.
+- **Network Policy Isolation (`TASK-P4-02`)**: Restrict OpenBao port 8200 access strictly to External Secrets Operator and gateway routes.

@@ -166,3 +166,7 @@ kubectl -n data-postgres get pvc -o wide
 - If no OSDs appear, verify worker disk visibility (`lsblk`) and confirm `/dev/nvme1n1` exists on every worker.
 - If CephCluster is not ready, inspect operator and Ceph pod logs in `rook-ceph`.
 - If PVC stays pending, inspect CSI pods and StorageClass parameters.
+
+## Roadmap & Hardening Tasks
+
+- **OSD Failure Drills & RGW Retention (`TASK-P3-07`)**: Document and test worker disk replacement workflows, and configure object expiration lifecycle rules on the `loki` S3 bucket.

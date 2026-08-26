@@ -74,52 +74,54 @@ Exit criteria:
 - End-to-end app path is reachable through ingress
 - Observability dashboards show app and cluster metrics
 
-### Phase 3 - Advanced Tooling
+### Phase 3 - Stateful & Secrets Hardening
 Current state:
-1. OpenBao baseline implemented for platform/app secrets
-2. Kafka baseline implemented with Strimzi in KRaft mode
-3. Ceph baseline implemented with `ceph-block` as default StorageClass
-Phase 3 hardening:
-- OpenBao hardening: snapshots, restore, dynamic DB credentials, rotation
-- credential management hardening: stronger OpenBao init material handling, GHCR pull secrets, and Flux Git write credentials
-- Ceph hardening: restore drills and stateful workload failure testing
-- Traffic validation: reproducible load scenarios and queue/throughput observations
-- Alerting and dashboards: queue depth and lag visibility for the visit path
+1. OpenBao baseline implemented (3 pods, Raft on Ceph, ESO synced; unsealing automated via Ansible).
+2. Kafka baseline implemented with Strimzi in KRaft mode (3 brokers on Ceph).
+3. Ceph baseline implemented with `ceph-block` as default StorageClass.
+4. Postgres implemented with CloudNativePG (3 instances on Ceph) + continuous WAL archiving and daily base backups to Ceph RGW (`TASK-P3-01` completed).
+5. Distributed Loki on Ceph S3 RGW and custom metric autoscaling on Kafka lag.
+
+Phase 3 hardening backlog (see `docs/roadmap.md` for task specs):
+- `TASK-P3-02`: OpenBao scheduled Raft snapshots and S3 backup automation.
+- `TASK-P3-04`: OpenBao dynamic PostgreSQL secrets engine and rotation.
+- `TASK-P3-05`: Kafka listener authentication (mTLS/SASL) and KafkaUser ACLs.
+- `TASK-P3-06`: Dead Letter Queue (DLQ) for unprocessable visit events.
+- `TASK-P3-07`: Ceph OSD failure drills and Loki S3 retention lifecycle rules.
 
 Exit criteria per tool:
-- Install is reproducible
-- Basic operations validated
-- Troubleshooting notes captured
+- Install is reproducible from code.
+- Basic operations and failure scenarios validated.
+- Operational runbooks updated with disaster recovery steps.
 
 ### Phase 4 - Resilience, Backup, Policy & Security
-1. Backups:
-    - Velero for cluster resource backup/restore
-    - Database-specific backup and restore tests
-2. Policy/Security:
-   - Kyverno (or OPA Gatekeeper)
-   - Trivy image scanning in CI
-   - baseline network policies
-   - Pod security standards/admission configuration
-3. Observability:
-   - Grafana dashboard coverage for the current platform and app path
-4. Update hygiene:
-     - Renovate automation for dependency and workflow updates
+Phase 4 backlog (see `docs/roadmap.md` for task specs):
+1. **Backups & DR**:
+   - `TASK-P4-01`: Velero for cluster resource and volume snapshot backup/restore.
+   - `TASK-P4-06`: Automated RKE2 etcd snapshots to AWS S3.
+2. **Policy & Security**:
+   - `TASK-P4-02`: CiliumNetworkPolicy least-privilege east-west isolation.
+   - `TASK-P4-03`: Pod Security Standards (`baseline`/`restricted`) & Kyverno `Enforce` mode.
+3. **Observability & Maintenance**:
+   - `TASK-P4-04`: Renovate automation for automated dependency and chart updates.
+   - `TASK-P4-05`: Grafana dashboard expansion (Ceph, Postgres, Kafka, Gateway API).
 
 Exit criteria:
-- Restore drill passes
-- Policy violations are detectable and actionable
+- Restore drill passes from Velero and S3.
+- Policy violations are blocked in admission.
+- East-west network policies isolate data platform components without breaking app flow.
 
-### Phase 5 - RKE2 Migration / Regulatory Hardening (Implemented)
-1. Migrate the cluster runtime to RKE2.
-2. Revalidate bootstrap, CNI, observability, storage, and workloads on the new runtime.
+### Phase 5 - RKE2 Migration (Implemented)
+1. Migrated the cluster runtime and control plane to RKE2.
+2. Revalidated bootstrap, CNI, observability, storage, and workloads on RKE2.
 
 Exit criteria:
 - Cluster bootstrap is reproducible on RKE2.
-- Core add-ons and workloads still reconcile cleanly.
+- Core add-ons and workloads reconcile cleanly.
 
 ### Phase 6 - Gateway Platform Migration (Implemented)
-1. Migrate edge exposure from ingress-nginx to Cilium Gateway API.
-2. Revalidate `/` and `/api` behavior for the visit app.
+1. Migrated edge exposure from ingress-nginx to Cilium Gateway API on port 30080.
+2. Revalidated `/` and `/api` behavior for the visit app.
 
 Exit criteria:
 - App exposure works through the new Gateway API path.
@@ -149,9 +151,9 @@ Use `task pipeline:main` for the full ordered chain.
 
 ## Active Follow-ups
 
-- Keep docs aligned with the implemented stack; do not reintroduce Vault terminology unless a separate HashiCorp Vault lab is explicitly requested.
+- Keep docs aligned with the implemented stack; see `docs/roadmap.md` for the prioritized task backlog.
 - Maintain and extend post-deploy verification automation (`pipeline:verify`) before adding more platform components.
-- Execute Phase 4 hardening work: `Renovate`, failover drills, backup/restore, dashboards, and secret hardening.
+- Execute Phase 3 and Phase 4 tasks from `docs/roadmap.md` sequentially.
 
 ## Suggested Repository Layout
 - `infra/` OpenTofu/Terraform infrastructure code

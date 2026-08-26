@@ -91,6 +91,9 @@ In the deployment spec, confirm `spec.template.spec.affinity.nodeAffinity.prefer
 ## Troubleshooting
 
 - If Kyverno pods are not ready, inspect events and deployment status in `kyverno` namespace.
-- If policies are missing, confirm `kubernetes/clusters/dev/apps/kustomization-app-policies.yaml` is Ready and Flux app kustomizations are ready.
-- If policies are missing, confirm `kubernetes/clusters/dev/apps/kustomization-app-policies.yaml` is Ready and Flux app stages are ready.
+- If policies are missing, confirm `kubernetes/clusters/dev/apps/kustomization-app-policies.yaml` is Ready in `flux-system`.
 - If mutation is not visible on a workload, check policy exclusions (namespace or opt-out label).
+
+## Roadmap & Next Hardening Steps
+
+- **Pod Security Standards & Enforce Mode (`TASK-P4-03`)**: Label namespaces with `pod-security.kubernetes.io/enforce` and transition Kyverno policies from `Audit` mode to `Enforce` mode.
