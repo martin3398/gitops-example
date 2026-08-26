@@ -18,7 +18,9 @@ This runbook covers the Ceph baseline deployed by Flux with Rook.
 - `kubernetes/infrastructure/base/data-ceph/cephblockpool.yaml`
 - `kubernetes/infrastructure/base/data-ceph/cephobjectstore-loki.yaml`
 - `kubernetes/infrastructure/base/data-ceph/storageclass-ceph-block.yaml`
+- `kubernetes/infrastructure/base/data-ceph/storageclass-ceph-bucket.yaml`
 - `kubernetes/infrastructure/base/data-ceph/toolbox.yaml`
+
 - `kubernetes/infrastructure/base/observability/loki-bootstrap/cephobjectstoreuser-loki.yaml`
 - `kubernetes/infrastructure/base/observability/loki-bootstrap/externalsecret-loki-s3-credentials.yaml`
 - `kubernetes/infrastructure/base/observability/loki-bootstrap/job-loki-create-buckets.yaml`

@@ -27,10 +27,9 @@ postgres-rw.data-postgres.svc:5432
 
 ## Backup & WAL Archiving Architecture
 
-1. **Credentials Lifecycle**: OpenBao seeds `dev/platform/postgres/s3` with deterministic access and secret keys during cluster bootstrap. External Secrets Operator synchronizes these into Secret `postgres-s3-credentials` in `data-postgres` and `rook-ceph`.
-2. **Ceph Object Store User & Bucket**: `CephObjectStoreUser` `postgres` is created in `rook-ceph` bound to RGW store `loki`. Job `postgres-create-bucket` in `data-postgres` idempotently ensures bucket `postgres-backups` exists on Ceph RGW.
-3. **WAL Archiving**: PostgreSQL continuously archives WAL segments using `spec.backup.barmanObjectStore` with gzip compression.
-4. **Base Backups**: `ScheduledBackup` `postgres-daily-backup` executes daily base backups (with `immediate: true` for initial bootstrap).
+1. **Declarative Bucket Provisioning (Ceph Best Practice)**: The platform uses Rook-Ceph's native `StorageClass/ceph-bucket` and `ObjectBucketClaim/postgres-backups` in `data-postgres`. The Rook operator automatically provisions the bucket in Ceph RGW and generates the Secret `postgres-backups` (containing `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) in the `data-postgres` namespace without any custom scripts or jobs.
+2. **WAL Archiving**: PostgreSQL continuously archives WAL segments using `spec.backup.barmanObjectStore` with gzip compression pointing to the OBC-generated `postgres-backups` secret.
+3. **Base Backups**: `ScheduledBackup` `postgres-daily-backup` executes daily base backups (`0 0 * * *`) with `immediate: true` for initial backup upon creation.
 
 ## Validation
 
@@ -40,11 +39,12 @@ Use a workstation with cluster access:
 kubectl -n flux-system get kustomizations,helmreleases
 kubectl -n data-postgres get pods
 kubectl -n data-postgres get cluster
-kubectl -n data-postgres get secret app-user postgres-s3-credentials
+kubectl -n data-postgres get obc,secret,cm
 kubectl -n data-postgres get scheduledbackups,backups
 kubectl -n data-postgres get svc
 task pipeline:verify
 ```
+
 
 ### Inspecting Backup and WAL Status
 
@@ -94,10 +94,10 @@ spec:
         endpointURL: http://rook-ceph-rgw-loki.rook-ceph.svc:80
         s3Credentials:
           accessKeyId:
-            name: postgres-s3-credentials
+            name: postgres-backups
             key: AWS_ACCESS_KEY_ID
           secretAccessKey:
-            name: postgres-s3-credentials
+            name: postgres-backups
             key: AWS_SECRET_ACCESS_KEY
         wal:
           compression: gzip
@@ -124,9 +124,10 @@ kubectl -n data-postgres wait cluster/postgres-restored --for=condition=Ready --
 
 ## Troubleshooting
 
-- If WAL archiving reports failures, verify the RGW endpoint (`http://rook-ceph-rgw-loki.rook-ceph.svc:80`) is reachable and Secret `postgres-s3-credentials` contains valid keys.
-- If `ScheduledBackup` fails to start, verify the Job `postgres-create-bucket` succeeded and the `postgres-backups` bucket exists.
+- If WAL archiving reports failures, verify the RGW endpoint (`http://rook-ceph-rgw-loki.rook-ceph.svc:80`) is reachable and Secret `postgres-backups` exists (`kubectl -n data-postgres get secret postgres-backups`).
+- If `ObjectBucketClaim` stays pending, verify the `ceph-bucket` StorageClass is installed and CephObjectStore `loki` is healthy in `rook-ceph`.
 - If the application secret is missing, verify OpenBao and the External Secrets `ClusterSecretStore` are Ready.
+
 - If PVCs stay pending, verify `ceph-block` is the active StorageClass and Ceph is healthy.
 
 ## Roadmap & Next Hardening Steps

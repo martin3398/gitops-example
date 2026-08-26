@@ -149,6 +149,19 @@
         --for=condition=Ready --timeout=10m
       changed_when: false
 
+    - name: Wait for Postgres ObjectBucketClaim to be bound
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-postgres wait
+        objectbucketclaims.objectbucket.io/postgres-backups
+        --for=condition=bound --timeout=5m
+      changed_when: false
+
+    - name: Verify Postgres ScheduledBackup exists
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-postgres get
+        scheduledbackup postgres-daily-backup
+      changed_when: false
+
     - name: Wait for Kafka cluster readiness
       ansible.builtin.command: >-
         {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-kafka wait

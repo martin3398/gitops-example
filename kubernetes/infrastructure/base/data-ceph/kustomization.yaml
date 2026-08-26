@@ -5,4 +5,5 @@ resources:
   - cephblockpool.yaml
   - cephobjectstore-loki.yaml
   - storageclass-ceph-block.yaml
+  - storageclass-ceph-bucket.yaml
   - toolbox.yaml

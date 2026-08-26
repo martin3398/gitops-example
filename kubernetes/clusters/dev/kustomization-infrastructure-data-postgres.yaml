@@ -7,6 +7,7 @@ spec:
   interval: 1m
   dependsOn:
     - name: infrastructure-data-ceph
+    - name: infrastructure-security
   sourceRef:
     kind: GitRepository
     name: dev-repo
@@ -21,5 +22,13 @@ spec:
     - apiVersion: external-secrets.io/v1
       kind: ExternalSecret
       name: app-user
+      namespace: data-postgres
+    - apiVersion: objectbucket.io/v1alpha1
+      kind: ObjectBucketClaim
+      name: postgres-backups
+      namespace: data-postgres
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: ScheduledBackup
+      name: postgres-daily-backup
       namespace: data-postgres
   timeout: 15m
