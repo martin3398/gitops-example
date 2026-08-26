@@ -83,8 +83,7 @@ Current state:
 5. Distributed Loki on Ceph S3 RGW and custom metric autoscaling on Kafka lag.
 
 Phase 3 hardening backlog (see `docs/roadmap.md` for task specs):
-- `TASK-P3-02`: OpenBao scheduled Raft snapshots and S3 backup automation.
-- `TASK-P3-03`: OpenBao AWS KMS auto-unseal migration.
+- `TASK-P3-02`: OpenBao scheduled Raft snapshots to Ceph RGW S3.
 - `TASK-P3-04`: OpenBao dynamic PostgreSQL secrets engine and rotation.
 - `TASK-P3-05`: Kafka listener authentication (mTLS/SASL) and KafkaUser ACLs.
 - `TASK-P3-06`: Dead Letter Queue (DLQ) for unprocessable visit events.
@@ -96,11 +95,10 @@ Exit criteria per tool:
 - Basic operations and failure scenarios validated.
 - Operational runbooks updated with disaster recovery steps.
 
-### Phase 4 - Resilience, Backup, Policy & Security
+### Phase 4 - Resilience, Policy & Security
 Phase 4 backlog (see `docs/roadmap.md` for task specs):
-1. **Backups & DR**:
-   - `TASK-P4-01`: Velero for cluster resource and volume snapshot backup/restore.
-   - `TASK-P4-06`: Automated RKE2 etcd snapshots to AWS S3.
+1. **Backups & DR (Ceph-Centric)**:
+   - `TASK-P4-06`: RKE2 etcd automated snapshots retention and Ceph/local rotation.
 2. **Policy & Security**:
    - `TASK-P4-02`: CiliumNetworkPolicy least-privilege east-west isolation.
    - `TASK-P4-03`: Pod Security Standards (`baseline`/`restricted`) & Kyverno `Enforce` mode.
@@ -109,9 +107,9 @@ Phase 4 backlog (see `docs/roadmap.md` for task specs):
    - `TASK-P4-05`: Grafana dashboard expansion (Ceph, Postgres, Kafka, Gateway API).
 
 Exit criteria:
-- Restore drill passes from Velero and S3.
 - Policy violations are blocked in admission.
 - East-west network policies isolate data platform components without breaking app flow.
+- Backup and recovery procedures validated for Ceph-backed stateful services.
 
 ### Phase 5 - RKE2 Migration (Implemented)
 1. Migrated the cluster runtime and control plane to RKE2.

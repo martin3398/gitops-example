@@ -47,6 +47,38 @@ Each future task is structured with explicit objectives, affected files, impleme
 
 ---
 
+## On-Premise Two-Tier Backup & Disaster Recovery Architecture (Concept)
+
+This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup Architecture**. Generic volume backup tools (like Velero) are intentionally omitted in favor of GitOps manifest reconciliation paired with application-consistent object store backups.
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                               TIER 1: LOCAL CLUSTER BACKUPS                            │
+├──────────────────────┬────────────────────────────┬────────────────────────────────────┤
+│ Component            │ Storage Target             │ Backup Mechanism                   │
+├──────────────────────┼────────────────────────────┼────────────────────────────────────┤
+│ Cluster Manifests    │ Git Repository             │ Flux v2 GitOps Reconciliation      │
+│ PostgreSQL           │ Ceph RGW s3://postgres/    │ CloudNativePG / Barman (WAL + Base)│
+│ OpenBao (Vault)      │ Ceph RGW s3://openbao/     │ CronJob Raft Snapshot (.snap)      │
+│ Kafka Topics / Events│ Ceph RGW s3://kafka/       │ S3 Connector / Topic Archiving     │
+│ RKE2 Control Plane   │ Host / Ceph RGW s3://etcd/ │ Native RKE2 etcd Automated Snapshot│
+└──────────────────────┴────────────────────────────┴────────────────────────────────────┘
+                                        │
+                                        ▼
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        TIER 2: OFF-CLUSTER DISASTER RECOVERY (CONCEPT)                 │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1. Ceph RGW Multi-Site Sync: Native active-passive S3 bucket replication to secondary  │
+│    datacenter or off-site MinIO / object storage cluster.                              │
+│ 2. Off-Site Storage Sync: Automated rclone / rsync cron from secure backup bastion to  │
+│    remote NAS, tape archive, or cold offsite target.                                   │
+│ 3. Ceph RBD Mirroring: Asynchronous block-level pool replication for raw persistent   │
+│    volumes via rbd-mirror daemon.                                                      │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 # Phase 3 - Stateful & Secrets Hardening Backlog
 
 ```
@@ -55,7 +87,7 @@ Each future task is structured with explicit objectives, affected files, impleme
 ├──────────────┬─────────────────────────────────────────────┬────────────────┤
 │ ID           │ Task Title                                  │ Priority       │
 ├──────────────┼─────────────────────────────────────────────┼────────────────┤
-│ TASK-P3-02   │ OpenBao Scheduled Raft Snapshots & S3 Backup│ High           │
+│ TASK-P3-02   │ OpenBao Scheduled Raft Snapshots to Ceph RGW│ High           │
 │ TASK-P3-04   │ OpenBao Dynamic Postgres Secrets Engine     │ Medium         │
 │ TASK-P3-05   │ Kafka Listener Security (mTLS/SASL) & ACLs  │ Medium         │
 │ TASK-P3-06   │ Dead Letter Queue (DLQ) for Visit Events    │ Medium         │
@@ -65,20 +97,21 @@ Each future task is structured with explicit objectives, affected files, impleme
 
 ---
 
-### `TASK-P3-02`: OpenBao Scheduled Raft Snapshots & S3 Backup
+### `TASK-P3-02`: OpenBao Scheduled Raft Snapshots to Ceph RGW
 
-- **Objective**: Implement automated periodic Raft snapshots of OpenBao state with off-cluster storage in S3/Ceph RGW.
+- **Objective**: Implement automated periodic Raft snapshots of OpenBao state with local on-prem object storage in Ceph RGW (`s3://openbao-backups/`).
 - **Affected Files**:
+  - `kubernetes/infrastructure/base/security/openbao/objectbucketclaim.yaml` (new)
   - `kubernetes/infrastructure/base/security/openbao/cronjob-snapshot.yaml` (new)
   - `kubernetes/infrastructure/base/security/openbao/kustomization.yaml`
   - `ansible/playbooks/openbao-restore.yml` (new)
   - `docs/openbao-runbook.md`
 - **Implementation Steps**:
-  1. Create a `CronJob` in the `openbao` namespace that runs `bao operator raft snapshot save` using a dedicated service account and OpenBao role.
-  2. Stream or upload the snapshot to an S3 bucket with timestamped keys.
-  3. Create an Ansible restore playbook or runbook procedure to restore snapshots into a fresh OpenBao Raft cluster.
+  1. Create an `ObjectBucketClaim` in the `openbao` namespace for `openbao-backups` using the local Ceph RGW StorageClass.
+  2. Create a `CronJob` in `openbao` that executes `bao operator raft snapshot save`, using S3 credentials from the OBC Secret to stream the `.snap` file to `http://rook-ceph-rgw-ceph-objectstore.rook-ceph.svc:80`.
+  3. Create an Ansible restore playbook / runbook procedure to restore snapshots into a fresh OpenBao Raft cluster (`bao operator raft snapshot restore`).
 - **Acceptance Criteria**:
-  - Snapshot CronJob runs and successfully saves `.snap` files to object storage.
+  - Snapshot CronJob runs and successfully saves `.snap` files to Ceph RGW `s3://openbao-backups/`.
   - Restore procedure tested and documented in `docs/openbao-runbook.md`.
 
 ---
@@ -153,7 +186,7 @@ Each future task is structured with explicit objectives, affected files, impleme
 
 ---
 
-# Phase 4 - Resilience, Backup, Policy & Security Backlog
+# Phase 4 - Resilience, Policy & Security Backlog
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -161,33 +194,13 @@ Each future task is structured with explicit objectives, affected files, impleme
 ├──────────────┬─────────────────────────────────────────────┬────────────────┤
 │ ID           │ Task Title                                  │ Priority       │
 ├──────────────┼─────────────────────────────────────────────┼────────────────┤
-│ TASK-P4-01   │ Velero Cluster Resource & Volume Backup     │ High           │
 │ TASK-P4-02   │ Cilium Network Policies (East-West Isolation│ High           │
 │ TASK-P4-03   │ Pod Security Standards & Kyverno Enforce    │ High           │
 │ TASK-P4-04   │ Renovate Dependency Automation Setup        │ Medium         │
 │ TASK-P4-05   │ Grafana Platform Dashboards Coverage        │ Medium         │
-│ TASK-P4-06   │ RKE2 etcd Automated S3 Snapshots            │ Medium         │
+│ TASK-P4-06   │ RKE2 etcd Automated Snapshots Retention     │ Medium         │
 └──────────────┴─────────────────────────────────────────────┴────────────────┘
 ```
-
----
-
-### `TASK-P4-01`: Velero Cluster Resource & Volume Backup
-
-- **Objective**: Deploy Velero via Flux to automate cluster resource backups and volume snapshots to AWS S3.
-- **Affected Files**:
-  - `kubernetes/infrastructure/base/core-services/velero/` (new HelmRelease & Kustomization)
-  - `kubernetes/clusters/dev/kustomization-infrastructure-core.yaml`
-  - `docs/deployment-pipeline-runbook.md`
-  - `docs/roadmap.md`
-- **Implementation Steps**:
-  1. Create S3 bucket and IAM permissions for Velero via OpenTofu (`infra/`).
-  2. Deploy Velero Helm chart using Flux with the AWS plugin and CSI snapshot plugin.
-  3. Define daily backup schedules for all platform and application namespaces.
-  4. Test a disaster recovery restore drill into a clean namespace.
-- **Acceptance Criteria**:
-  - `velero backup get` shows completed daily backups without errors.
-  - Restore drill successfully recreates custom resources and workloads from backup.
 
 ---
 
@@ -267,19 +280,19 @@ Each future task is structured with explicit objectives, affected files, impleme
 
 ---
 
-### `TASK-P4-06`: RKE2 etcd Automated S3 Snapshots
+### `TASK-P4-06`: RKE2 etcd Automated Snapshots Retention
 
-- **Objective**: Configure automated hourly etcd snapshots to AWS S3 directly in RKE2 server configuration.
+- **Objective**: Configure automated scheduled etcd snapshots with retention policy directly in RKE2 server configuration.
 - **Affected Files**:
   - `ansible/roles/rke2_control_plane/templates/config.yaml.j2`
   - `ansible/roles/rke2_control_plane/tasks/main.yml`
   - `docs/phase1-infra-runbook.md`
 - **Implementation Steps**:
-  1. Add `etcd-s3: true`, `etcd-s3-bucket`, `etcd-s3-region`, and `etcd-snapshot-schedule-cron` to RKE2 server configuration template.
+  1. Configure `etcd-snapshot-schedule-cron: "0 * * * *"` and `etcd-snapshot-retention: 24` in RKE2 server configuration template (optional `etcd-s3` target pointed to Ceph RGW).
   2. Update Ansible control-plane role to apply the configuration.
 - **Acceptance Criteria**:
-  - RKE2 control plane automatically uploads etcd snapshots to the designated S3 bucket.
-  - `rke2 etcd-snapshot list --etcd-s3` displays available remote snapshots.
+  - RKE2 control plane automatically creates hourly snapshots and prunes snapshots beyond the retention window.
+  - `rke2 etcd-snapshot list` displays available local snapshots.
 
 ---
 
