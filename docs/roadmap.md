@@ -12,7 +12,7 @@ Each future task is structured with explicit objectives, affected files, impleme
 │                            STATUS SUMMARY BY PHASE                               │
 ├──────────────────────────┬──────────────────────────┬────────────────────────────┤
 │ Phase 1: Infra & RKE2    │ Phase 2: GitOps & Edge   │ Phase 3: Stateful Services │
-│ Status: COMPLETE (Done)  │ Status: COMPLETE (Done)  │ Status: BASELINE + WAL DONE│
+│ Status: COMPLETE (Done)  │ Status: COMPLETE (Done)  │ Status: BASELINE+WAL+DLQ OK│
 ├──────────────────────────┼──────────────────────────┼────────────────────────────┤
 │ Phase 4: Resilience & Sec│ Phase 5: RKE2 Migration  │ Phase 6: Gateway API Edge  │
 │ Status: PENDING / OPEN   │ Status: COMPLETE (Done)  │ Status: COMPLETE (Done)    │
@@ -36,7 +36,7 @@ Each future task is structured with explicit objectives, affected files, impleme
 - **Phase 3 Baselines & Hardening (Stateful Services & Observability)**:
   - Ceph / Rook: 3 worker NVMe OSDs (`/dev/nvme1n1`), `ceph-block` default StorageClass, and Loki RGW S3 object store.
   - Postgres (`TASK-P3-01`): CloudNativePG 3-instance HA cluster on `ceph-block` with continuous WAL archiving and daily base backups (`ScheduledBackup`) to Ceph RGW `s3://postgres-backups/`.
-  - Kafka: Strimzi KRaft 3-node HA cluster on `ceph-block` with `visits.requested` topic (30 partitions).
+  - Kafka & Transactional DLQ (`TASK-P3-06`): Strimzi KRaft 3-node HA cluster on `ceph-block` with `visits.requested` topic (30 partitions), `visits.dead-letter` DLQ topic (30 partitions, 14-day retention), fast-path poison pill isolation, 3 explicit retries (4 total attempts) with linear stepped backoff, and isolated PostgreSQL database transactions (`sql.Tx`).
   - OpenBao & External Secrets: HA 3-pod Raft cluster on `ceph-block`, External Secrets Operator syncing to K8s Secrets (auto-unseal dropped in favor of procedural Ansible unseal automation).
   - Observability: `kube-prometheus-stack`, Promtail, distributed Loki on Ceph S3, Prometheus Kafka Exporter, Prometheus Adapter with HPA on `kafka_consumergroup_lag_sum`.
 
@@ -93,7 +93,7 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 │ TASK-P3-02   │ OpenBao Scheduled Raft Snapshots to Ceph RGW│ High           │
 │ TASK-P3-04   │ OpenBao Dynamic Postgres Secrets Engine     │ Medium         │
 │ TASK-P3-05   │ Kafka Listener Security (mTLS/SASL) & ACLs  │ Medium         │
-│ TASK-P3-06   │ Dead Letter Queue (DLQ) for Visit Events    │ Medium         │
+│ TASK-P3-06   │ Dead Letter Queue (DLQ) for Visit Events    │ COMPLETE (Done)│
 │ TASK-P3-07   │ Ceph OSD Failure Drill & S3 Retention Policy│ Low            │
 │ TASK-P3-08   │ Kafka Event Stream Archiving to Ceph RGW S3 │ Medium         │
 └──────────────┴─────────────────────────────────────────────┴────────────────┘
@@ -159,19 +159,31 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 
 ---
 
-### `TASK-P3-06`: Dead Letter Queue (DLQ) for Visit Event Processing
+### `TASK-P3-06`: Dead Letter Queue (DLQ) for Visit Event Processing (Complete)
 
-- **Objective**: Implement dead letter queueing in Kafka and `visit-processor` so unprocessable/poison messages are preserved for inspection rather than silently dropped.
+- **Objective**: Implement dead letter queueing in Kafka and transactional error handling in `visit-processor` so unprocessable/poison messages and exhausted database failures are preserved in a dedicated `visits.dead-letter` topic without stalling the consumer group lag.
 - **Affected Files**:
   - `kubernetes/infrastructure/base/data-kafka/topic-visits-dlq.yaml` (new)
+  - `kubernetes/infrastructure/base/data-kafka/kustomization.yaml`
   - `apps/visit-demo/visit-processor/main.go`
+  - `apps/visit-demo/visit-processor/main_test.go` (new)
+  - `charts/visit-processor/values.yaml`
+  - `charts/visit-processor/templates/deployment.yaml`
+  - `ansible/playbooks/verify.yml`
   - `docs/kafka-runbook.md`
   - `docs/visit-demo-runbook.md`
-- **Implementation Steps**:
-  1. Define `KafkaTopic` for `visits.dead-letter`.
-  2. In `visit-processor/main.go`, add error routing: if JSON decoding or database insertion fails after max retries, produce the payload and error metadata to `visits.dead-letter` before committing offset.
+- **Implementation & Architecture Details**:
+  1. **Topic Definition**: Strimzi `KafkaTopic` `visits.dead-letter` in `data-kafka` namespace configured with 30 partitions, 3 replicas, `min.insync.replicas: 2`, and 14 days retention (`retention.ms: 1209600000`).
+  2. **Database Transactions (`sql.Tx`)**: Every PostgreSQL insertion executes inside an explicit database transaction (`db.BeginTx`) with `sql.LevelReadCommitted` isolation and automatic rollback on error.
+  3. **3-Retry Schedule (4 Total Attempts)**: Transient database errors execute 1 initial attempt + 3 retries (4 total attempts) with linear stepped backoff (`RETRY_BACKOFF_MS * attempt`). If all 4 attempts fail, the event is routed to `visits.dead-letter` with `attempt_count: 4` and category `database_failure`.
+  4. **Poison Pill Fast-Path**: Corrupt or malformed non-JSON payloads are intercepted during validation and immediately routed to `visits.dead-letter` with `attempt_count: 1` and category `corrupt_payload` without wasting database retries.
+  5. **Forensic DLQ Envelope**: Failed events are wrapped in a structured JSON payload containing original topic, partition, offset, key, raw payload, error message, error category, failure timestamp, and attempt count.
+  6. **Synchronous Delivery Guarantee**: Offsets on `visits.requested` are committed only after the DLQ producer receives full replica acknowledgment (`RequiredAcks: RequireAll`).
 - **Acceptance Criteria**:
-  - Invalid messages posted to `visits.requested` are safely routed to `visits.dead-letter` without stalling the processor consumer group.
+  - Malformed non-JSON payloads and exhausted database retry messages are safely published to `visits.dead-letter`.
+  - Consumer group offset on `visits.requested` commits cleanly, preventing lag stalls or infinite retry loops.
+  - Strimzi validates `visits.dead-letter` topic health in `ansible/playbooks/verify.yml`.
+
 
 ---
 

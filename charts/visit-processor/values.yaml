@@ -10,12 +10,14 @@ imagePullSecrets: []
 env:
   KAFKA_BROKERS: kafka-kafka-bootstrap.data-kafka.svc:9092
   KAFKA_TOPIC: visits.requested
+  KAFKA_DLQ_TOPIC: visits.dead-letter
   KAFKA_GROUP_ID: visit-processor-v1
   DB_HOST: postgres-rw.data-postgres.svc
   DB_PORT: "5432"
   DB_NAME: app
   DB_USER: app
   RATE_LIMIT_PER_SEC: "1"
+  MAX_RETRIES: "3"
 
 secretName: visit-demo-db
 

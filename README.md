@@ -17,7 +17,7 @@ AWS-based Kubernetes GitOps lab with infra, bootstrap, workloads, and operationa
 - Phase 5 RKE2 migration is implemented.
 - Phase 6 Gateway API edge migration is implemented.
 - Visit demo delivery and image automation are implemented.
-- OpenBao, Postgres (with Ceph RGW WAL archiving and scheduled backups), Kafka, Ceph, observability, load generation, and autoscaling are implemented baselines.
+- OpenBao, Postgres (with Ceph RGW WAL archiving and scheduled backups), Kafka (with Dead Letter Queueing), Ceph, observability, load generation, and autoscaling are implemented baselines.
 - Loki distributed mode on Ceph object storage is implemented.
 
 ## Open
