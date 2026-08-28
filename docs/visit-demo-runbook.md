@@ -138,26 +138,36 @@ kubectl -n visit-processing logs deploy/visit-processing-visit-processor -f
 curl http://gitops.local/api/v1/visits/count
 ```
 
+## Dead Letter Queue (DLQ) & Transactional Error Routing
+
+`visit-processor` implements transactional persistence and automated DLQ routing:
+- **Transactional Database Writes (`sql.Tx`)**: Every visit record insertion executes inside an explicit PostgreSQL transaction (`db.BeginTx`) with automatic rollback on error or timeout, preventing partial state.
+- **Corrupt / Non-JSON Payloads**: If a malformed message is published to `visits.requested`, `visit-processor` detects the invalid payload, packages it into a structured `deadLetterEnvelope` with error category `corrupt_payload` (attempt count = 1), produces it to `visits.dead-letter`, and commits the offset on `visits.requested` to avoid stalling the consumer group.
+- **Database Failures with 3 Retries (4 Total Attempts)**: If database insertion fails (e.g. transient DB unavailability), `visit-processor` executes 1 initial attempt + 3 retries (4 total attempts) with stepped linear backoff (`RETRY_BACKOFF_MS * attempt`). If all 4 attempts fail, the event is routed to `visits.dead-letter` with category `database_failure` and `attempt_count: 4` before committing the offset.
+- **Synchronous Kafka Delivery**: The offset on `visits.requested` is only committed after the DLQ produce operation has succeeded (`RequiredAcks: RequireAll`).
+
 ## Troubleshooting
 
 - `react/jsx-runtime` browser error:
   - stale or wrong client artifact is being served
   - ensure app serves `client.bundle.js`, then hard refresh browser
 - Queue request fails:
-- verify gateway `/api` route and gateway pod health
+  - verify gateway `/api` route and gateway pod health
 - Count stuck at old value:
   - check route revalidation and gateway count endpoint
 - Queued count unavailable:
   - verify Kafka is ready and the `visit-processor-v1` consumer group has committed offsets
 - Load generator sends no traffic:
   - check `config.mode`; the default is `paused`
+- Poison messages in queue:
+  - inspect `visits.dead-letter` topic to review rejected events
 - Layout jump during refresh:
   - spinner should use fixed-size icon slot (no conditional text row)
 
 ## Current Limitations & Roadmap
  
+- Dead Letter Queue (`TASK-P3-06`): Implemented.
 - The visit app exposes `/` and `/api` through Cilium Gateway API over HTTP; TLS/HTTPS is tracked in `TASK-P6-01`.
-- Unprocessable/poison messages are dropped without DLQ routing; tracked in `TASK-P3-06`.
 - Kafka client authentication (mTLS/SASL) is tracked in `TASK-P3-05`.
 - Dynamic Postgres database credentials from OpenBao are tracked in `TASK-P3-04`.
 - Network policy isolation for tenant namespaces is tracked in `TASK-P4-02`.

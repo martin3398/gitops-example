@@ -31,6 +31,8 @@ spec:
               value: {{ .Values.env.KAFKA_BROKERS | quote }}
             - name: KAFKA_TOPIC
               value: {{ .Values.env.KAFKA_TOPIC | quote }}
+            - name: KAFKA_DLQ_TOPIC
+              value: {{ .Values.env.KAFKA_DLQ_TOPIC | quote }}
             - name: KAFKA_GROUP_ID
               value: {{ .Values.env.KAFKA_GROUP_ID | quote }}
             - name: DB_HOST
@@ -43,6 +45,8 @@ spec:
               value: {{ .Values.env.DB_USER | quote }}
             - name: RATE_LIMIT_PER_SEC
               value: {{ .Values.env.RATE_LIMIT_PER_SEC | quote }}
+            - name: MAX_RETRIES
+              value: {{ .Values.env.MAX_RETRIES | quote }}
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:

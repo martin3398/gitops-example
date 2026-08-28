@@ -174,11 +174,14 @@
         --for=condition=Ready --timeout=10m
       changed_when: false
 
-    - name: Wait for Kafka topic readiness
+    - name: Wait for Kafka topics readiness
       ansible.builtin.command: >-
         {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-kafka wait
-        kafkatopic.kafka.strimzi.io/visits.requested
+        kafkatopic.kafka.strimzi.io/{{ item }}
         --for=condition=Ready --timeout=5m
+      loop:
+        - visits.requested
+        - visits.dead-letter
       changed_when: false
 
     - name: Verify expected Kafka brokers are running

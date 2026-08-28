@@ -23,6 +23,43 @@ This repository deploys a platform-owned Kafka baseline with Flux using Strimzi 
 
 - Persistent volume claims use `ceph-block` in this dev baseline.
 
+## Topics & Dead Letter Queue (DLQ)
+
+- `visits.requested`: main ingress topic for raw visit requests (30 partitions, 3 replicas).
+- `visits.dead-letter`: dead letter queue topic for poison pills, malformed payloads, and failed database retries (30 partitions, 3 replicas, 14-day retention).
+
+### Inspecting DLQ Messages
+
+To read and inspect poison or failed messages diverted to `visits.dead-letter`:
+
+```bash
+# Using a temporary debug container with kcat:
+kubectl -n data-kafka run kcat-dlq --rm -it --image=edenhill/kcat:1.7.1 -- \
+  -b kafka-kafka-bootstrap.data-kafka.svc:9092 -t visits.dead-letter -C -e -o beginning -u
+
+# Using Strimzi kafka-console-consumer:
+kubectl -n data-kafka exec kafka-brokers-0 -c kafka -- \
+  bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic visits.dead-letter \
+  --from-beginning
+```
+
+DLQ messages contain a structured JSON envelope:
+```json
+{
+  "original_topic": "visits.requested",
+  "original_partition": 0,
+  "original_offset": 123,
+  "original_key": "visit-12345",
+  "original_payload": "...",
+  "error_message": "invalid JSON payload: ...",
+  "error_category": "corrupt_payload",
+  "failed_at": "2026-08-28T13:45:00Z",
+  "attempt_count": 1
+}
+```
+
 ## Validation
 
 The standard post-deploy verification path is:
@@ -31,13 +68,14 @@ The standard post-deploy verification path is:
 task pipeline:verify
 ```
 
-It checks the Kafka custom resource, broker pods, `visits.requested` topic readiness, and the visit demo queue/count flow.
+It checks the Kafka custom resource, broker pods, `visits.requested` and `visits.dead-letter` topic readiness, and the visit demo queue/count flow.
 
 Use a workstation with cluster access:
 
 ```bash
 kubectl -n data-kafka get pods
 kubectl -n data-kafka get kafka
+kubectl -n data-kafka get kafkatopics
 kubectl -n data-kafka get kafkanodepools
 kubectl -n data-kafka get pvc -o wide
 ```
@@ -54,6 +92,6 @@ If Kafka stays `NotReady`, verify that `spec.kafka.version` is supported by the 
 
 ## Notes & Roadmap Hardening Tasks
 
+- **Dead Letter Queue (`TASK-P3-06`)**: Implemented (Dedicated `visits.dead-letter` topic and `visit-processor` poison message routing).
 - **Listener Security & ACLs (`TASK-P3-05`)**: Enable client mTLS/SASL authentication and define `KafkaUser` resources with least-privilege ACLs for producer/consumer roles.
-- **Dead Letter Queue (`TASK-P3-06`)**: Deploy `visits.dead-letter` topic to capture poisoned or malformed visit event payloads.
 - **Network Policy Isolation (`TASK-P4-02`)**: Restrict Kafka ports 9092/9093 access strictly to `visit-gateway`, `visit-processor`, and `prometheus-kafka-exporter`.
