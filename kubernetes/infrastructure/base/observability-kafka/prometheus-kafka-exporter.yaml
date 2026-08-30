@@ -18,7 +18,29 @@ spec:
     replicaCount: 2
 
     kafkaServer:
-      - kafka-kafka-bootstrap.data-kafka.svc.cluster.local:9092
+      - kafka-kafka-bootstrap.data-kafka.svc.cluster.local:9093
+
+    extraVolumes:
+      - name: kafka-cluster-ca
+        secret:
+          secretName: kafka-cluster-ca-cert
+      - name: kafka-exporter-tls
+        secret:
+          secretName: kafka-exporter
+    extraVolumeMounts:
+      - name: kafka-cluster-ca
+        mountPath: /etc/tls/ca
+        readOnly: true
+      - name: kafka-exporter-tls
+        mountPath: /etc/tls/user
+        readOnly: true
+
+    tls:
+      enabled: true
+      insecureSkipVerify: false
+      caFile: /etc/tls/ca/ca.crt
+      certFile: /etc/tls/user/user.crt
+      keyFile: /etc/tls/user/user.key
 
     startup:
       enabled: true

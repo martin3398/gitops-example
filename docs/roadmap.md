@@ -92,7 +92,7 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 ├──────────────┼─────────────────────────────────────────────┼────────────────┤
 │ TASK-P3-02   │ OpenBao Scheduled Raft Snapshots to Ceph RGW│ High           │
 │ TASK-P3-04   │ OpenBao Dynamic Postgres Secrets Engine     │ Medium         │
-│ TASK-P3-05   │ Kafka Listener Security (mTLS/SASL) & ACLs  │ Medium         │
+│ TASK-P3-05   │ Kafka Listener Security (mTLS) & ACLs       │ COMPLETE (Done)│
 │ TASK-P3-06   │ Dead Letter Queue (DLQ) for Visit Events    │ COMPLETE (Done)│
 │ TASK-P3-07   │ Ceph OSD Failure Drill & S3 Retention Policy│ Low            │
 │ TASK-P3-08   │ Kafka Event Stream Archiving to Ceph RGW S3 │ Medium         │
@@ -139,23 +139,41 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 
 ---
 
-### `TASK-P3-05`: Kafka Listener Security (mTLS/SASL) & ACLs
+### `TASK-P3-05`: Kafka Listener Security (mTLS) & ACLs (Complete)
 
-- **Objective**: Secure Strimzi Kafka cluster communications by enabling authentication on internal listeners and restricting topics via `KafkaUser` ACLs.
+- **Objective**: Secure Strimzi Kafka cluster communications by enabling Mutual TLS (mTLS) client authentication on internal listener port 9093, disabling unauthenticated plaintext traffic, and establishing least-privilege topic and group access via `KafkaUser` ACLs.
 - **Affected Files**:
   - `kubernetes/infrastructure/base/data-kafka/kafka.yaml`
   - `kubernetes/infrastructure/base/data-kafka/kafkauser-visit-apps.yaml` (new)
+  - `kubernetes/infrastructure/base/data-kafka/clustersecretstore-k8s-kafka.yaml` (new)
+  - `kubernetes/infrastructure/base/data-kafka/kustomization.yaml`
+  - `kubernetes/infrastructure/base/observability-kafka/prometheus-kafka-exporter.yaml`
+  - `apps/visit-demo/visit-gateway/main.go`
+  - `apps/visit-demo/visit-gateway/main_test.go` (new)
+  - `apps/visit-demo/visit-processor/main.go`
+  - `apps/visit-demo/visit-processor/main_test.go`
   - `charts/visit-gateway/templates/deployment.yaml`
+  - `charts/visit-gateway/values.yaml`
   - `charts/visit-processor/templates/deployment.yaml`
+  - `charts/visit-processor/values.yaml`
+  - `kubernetes/apps/base/visit-web/externalsecret-kafka.yaml` (new)
+  - `kubernetes/apps/base/visit-processing/externalsecret-kafka.yaml` (new)
+  - `ansible/playbooks/verify.yml`
   - `docs/kafka-runbook.md`
-- **Implementation Steps**:
-  1. Configure TLS listener with TLS client authentication (mTLS) or SASL SCRAM-SHA-512 in `kafka.yaml`.
-  2. Create `KafkaUser` custom resources for `visit-gateway` (producer only on `visits.requested`) and `visit-processor` (consumer only on `visits.requested`).
-  3. Mount client certificates or SASL secrets in the application deployments.
+- **Implementation & Architecture Details**:
+  1. **Listener & Authorization**: Internal listener on port 9093 configured with `authentication.type: tls` and `authorization.type: simple` (`allow.everyone.if.no.acl.found: false`). Unauthenticated port 9092 removed.
+  2. **Least-Privilege `KafkaUser` ACLs**:
+     - `visit-gateway`: `Write`, `Describe` on topic `visits.requested`; `Describe` on consumer group `visit-processor-v1` (for queue lag reporting).
+     - `visit-processor`: `Read`, `Describe` on topic `visits.requested`; `Write`, `Describe` on topic `visits.dead-letter`; `Read`, `Describe` on consumer group `visit-processor-v1`.
+     - `kafka-exporter`: `Describe` on topics (`*`), consumer groups (`*`), and cluster (`kafka-cluster`).
+  3. **Automated Cross-Namespace Secret Projection**: ESO `ClusterSecretStore` (`k8s-data-kafka`) projects Strimzi client TLS secrets into `visit-web` and `visit-processing`.
+  4. **Dynamic In-Memory Cert Reload**: Go microservices utilize `crypto/tls.Config.GetClientCertificate` to dynamically reload updated certificates from disk on handshake/reconnect without requiring pod restarts.
 - **Acceptance Criteria**:
-  - Unauthenticated clients cannot produce or consume messages.
-  - `visit-gateway` can produce to `visits.requested` but cannot read.
-  - `visit-processor` can consume with consumer group `visit-processor-v1`.
+  - Unauthenticated connections to Kafka are rejected.
+  - `visit-gateway` produces to `visits.requested` under mTLS and is denied unauthorized topics/reads.
+  - `visit-processor` consumes with group `visit-processor-v1` and routes failures to `visits.dead-letter` under mTLS.
+  - Automated verification passes in `ansible/playbooks/verify.yml`.
+
 
 ---
 

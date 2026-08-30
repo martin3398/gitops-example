@@ -8,10 +8,15 @@ image:
 imagePullSecrets: []
 
 env:
-  KAFKA_BROKERS: kafka-kafka-bootstrap.data-kafka.svc:9092
+  KAFKA_BROKERS: kafka-kafka-bootstrap.data-kafka.svc:9093
   KAFKA_TOPIC: visits.requested
   KAFKA_DLQ_TOPIC: visits.dead-letter
   KAFKA_GROUP_ID: visit-processor-v1
+  KAFKA_TLS_ENABLED: "true"
+  KAFKA_TLS_CA_FILE: /etc/kafka/tls/ca.crt
+  KAFKA_TLS_CERT_FILE: /etc/kafka/tls/user.crt
+  KAFKA_TLS_KEY_FILE: /etc/kafka/tls/user.key
+  KAFKA_TLS_INSECURE_SKIP_VERIFY: "false"
   DB_HOST: postgres-rw.data-postgres.svc
   DB_PORT: "5432"
   DB_NAME: app
@@ -20,6 +25,8 @@ env:
   MAX_RETRIES: "3"
 
 secretName: visit-demo-db
+kafkaTlsSecretName: visit-processor-kafka-tls
+
 
 resources:
   requests:

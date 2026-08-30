@@ -200,6 +200,28 @@
         --for=condition=Ready --timeout=5m
       changed_when: false
 
+    - name: Wait for Kafka users readiness
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-kafka wait
+        kafkauser.kafka.strimzi.io/{{ item }}
+        --for=condition=Ready --timeout=5m
+      loop:
+        - visit-gateway
+        - visit-processor
+        - kafka-exporter
+      changed_when: false
+
+    - name: Verify Kafka user TLS Secrets exist
+      ansible.builtin.shell: |
+        set -euo pipefail
+        for user in visit-gateway visit-processor kafka-exporter; do
+          {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-kafka get secret "$user" -o json \
+            | jq -e '.data["user.crt"] != null and .data["user.key"] != null and .data["ca.crt"] != null' >/dev/null
+        done
+      args:
+        executable: /bin/bash
+      changed_when: false
+
     - name: Wait for visit demo deployments availability
       ansible.builtin.command: >-
         {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n {{ item.namespace }} wait

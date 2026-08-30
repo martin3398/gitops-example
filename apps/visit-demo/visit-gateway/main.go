@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -18,16 +20,21 @@ import (
 )
 
 type config struct {
-	listenAddr      string
-	kafkaBrokers    []string
-	kafkaTopic      string
-	kafkaGroupID    string
-	dbHost          string
-	dbPort          string
-	dbName          string
-	dbUser          string
-	dbPassword      string
-	requestTimeoutS time.Duration
+	listenAddr             string
+	kafkaBrokers           []string
+	kafkaTopic             string
+	kafkaGroupID           string
+	kafkaTLSEnabled        bool
+	kafkaTLSCAFile         string
+	kafkaTLSCertFile       string
+	kafkaTLSKeyFile        string
+	kafkaInsecureSkipVerify bool
+	dbHost                 string
+	dbPort                 string
+	dbName                 string
+	dbUser                 string
+	dbPassword             string
+	requestTimeoutS        time.Duration
 }
 
 type visitEvent struct {
@@ -75,6 +82,18 @@ func main() {
 		log.Fatalf("db init error: %v", err)
 	}
 
+	tlsConfig, err := createTLSConfig(cfg)
+	if err != nil {
+		log.Fatalf("kafka tls config error: %v", err)
+	}
+
+	var transport *kafka.Transport
+	if tlsConfig != nil {
+		transport = &kafka.Transport{
+			TLS: tlsConfig,
+		}
+	}
+
 	writer := &kafka.Writer{
 		Addr:         kafka.TCP(cfg.kafkaBrokers...),
 		Topic:        cfg.kafkaTopic,
@@ -82,6 +101,7 @@ func main() {
 		Balancer:     &kafka.LeastBytes{},
 		BatchSize:    1,
 		BatchTimeout: 50 * time.Millisecond,
+		Transport:    transport,
 	}
 	defer writer.Close()
 
@@ -136,7 +156,7 @@ func main() {
 		response := visitCountResponse{}
 		response.Data.Count = count
 		response.Data.Queue = queueState{Topic: cfg.kafkaTopic, GroupID: cfg.kafkaGroupID, Status: "ok"}
-		queued, err := readQueueLag(ctx, cfg)
+		queued, err := readQueueLag(ctx, cfg, transport)
 		if err != nil {
 			response.Data.Queue.Status = "unavailable"
 			response.Data.Queue.Error = err.Error()
@@ -154,7 +174,7 @@ func main() {
 	mux.HandleFunc("/api/visits/count", handleVisitCount)
 
 	server := &http.Server{Addr: cfg.listenAddr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
-	log.Printf("visit-gateway listening on %s", cfg.listenAddr)
+	log.Printf("visit-gateway listening on %s (kafka_tls=%v)", cfg.listenAddr, tlsConfig != nil)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("server error: %v", err)
 	}
@@ -162,15 +182,20 @@ func main() {
 
 func loadConfig() (config, error) {
 	cfg := config{
-		listenAddr:      envOrDefault("LISTEN_ADDR", ":8080"),
-		kafkaTopic:      envOrDefault("KAFKA_TOPIC", "visits.requested"),
-		kafkaGroupID:    envOrDefault("KAFKA_GROUP_ID", "visit-processor-v1"),
-		dbHost:          envOrDefault("DB_HOST", "postgres-rw.data-postgres.svc"),
-		dbPort:          envOrDefault("DB_PORT", "5432"),
-		dbName:          envOrDefault("DB_NAME", "app"),
-		dbUser:          envOrDefault("DB_USER", "app"),
-		dbPassword:      os.Getenv("DB_PASSWORD"),
-		requestTimeoutS: 5,
+		listenAddr:              envOrDefault("LISTEN_ADDR", ":8080"),
+		kafkaTopic:              envOrDefault("KAFKA_TOPIC", "visits.requested"),
+		kafkaGroupID:            envOrDefault("KAFKA_GROUP_ID", "visit-processor-v1"),
+		kafkaTLSEnabled:         envOrDefault("KAFKA_TLS_ENABLED", "false") == "true",
+		kafkaTLSCAFile:          envOrDefault("KAFKA_TLS_CA_FILE", ""),
+		kafkaTLSCertFile:        envOrDefault("KAFKA_TLS_CERT_FILE", ""),
+		kafkaTLSKeyFile:         envOrDefault("KAFKA_TLS_KEY_FILE", ""),
+		kafkaInsecureSkipVerify: envOrDefault("KAFKA_TLS_INSECURE_SKIP_VERIFY", "false") == "true",
+		dbHost:                  envOrDefault("DB_HOST", "postgres-rw.data-postgres.svc"),
+		dbPort:                  envOrDefault("DB_PORT", "5432"),
+		dbName:                  envOrDefault("DB_NAME", "app"),
+		dbUser:                  envOrDefault("DB_USER", "app"),
+		dbPassword:              os.Getenv("DB_PASSWORD"),
+		requestTimeoutS:         5,
 	}
 
 	cfg.kafkaBrokers = splitCSV(envOrDefault("KAFKA_BROKERS", "kafka-kafka-bootstrap.data-kafka.svc:9092"))
@@ -183,8 +208,52 @@ func loadConfig() (config, error) {
 	return cfg, nil
 }
 
-func readQueueLag(ctx context.Context, cfg config) (int64, error) {
-	client := &kafka.Client{Addr: kafka.TCP(cfg.kafkaBrokers...), Timeout: cfg.requestTimeoutS * time.Second}
+func createTLSConfig(cfg config) (*tls.Config, error) {
+	if !cfg.kafkaTLSEnabled && cfg.kafkaTLSCAFile == "" && cfg.kafkaTLSCertFile == "" {
+		return nil, nil
+	}
+
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: cfg.kafkaInsecureSkipVerify,
+	}
+
+	if cfg.kafkaTLSCAFile != "" {
+		caCert, err := os.ReadFile(cfg.kafkaTLSCAFile)
+		if err != nil {
+			return nil, fmt.Errorf("read ca cert failed: %w", err)
+		}
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("failed to parse ca cert from %s", cfg.kafkaTLSCAFile)
+		}
+		tlsConfig.RootCAs = caCertPool
+	}
+
+	if cfg.kafkaTLSCertFile != "" && cfg.kafkaTLSKeyFile != "" {
+		// Verify initial cert can be loaded
+		if _, err := tls.LoadX509KeyPair(cfg.kafkaTLSCertFile, cfg.kafkaTLSKeyFile); err != nil {
+			return nil, fmt.Errorf("load initial x509 key pair failed: %w", err)
+		}
+
+		// Dynamic client certificate loader for zero-downtime rotation
+		tlsConfig.GetClientCertificate = func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			cert, err := tls.LoadX509KeyPair(cfg.kafkaTLSCertFile, cfg.kafkaTLSKeyFile)
+			if err != nil {
+				return nil, fmt.Errorf("dynamic load x509 key pair failed: %w", err)
+			}
+			return &cert, nil
+		}
+	}
+
+	return tlsConfig, nil
+}
+
+func readQueueLag(ctx context.Context, cfg config, transport *kafka.Transport) (int64, error) {
+	client := &kafka.Client{
+		Addr:      kafka.TCP(cfg.kafkaBrokers...),
+		Timeout:   cfg.requestTimeoutS * time.Second,
+		Transport: transport,
+	}
 	metadata, err := client.Metadata(ctx, &kafka.MetadataRequest{Topics: []string{cfg.kafkaTopic}})
 	if err != nil {
 		return 0, err
