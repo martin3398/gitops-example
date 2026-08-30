@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -18,20 +20,25 @@ import (
 )
 
 type config struct {
-	listenAddr      string
-	kafkaBrokers    []string
-	kafkaTopic      string
-	kafkaDLQTopic   string
-	kafkaGroupID    string
-	dbHost          string
-	dbPort          string
-	dbName          string
-	dbUser          string
-	dbPassword      string
-	ratePerSecond   int
-	maxRetries      int
-	retryBackoffMs  int
-	requestTimeoutS time.Duration
+	listenAddr              string
+	kafkaBrokers            []string
+	kafkaTopic              string
+	kafkaDLQTopic           string
+	kafkaGroupID            string
+	kafkaTLSEnabled         bool
+	kafkaTLSCAFile          string
+	kafkaTLSCertFile        string
+	kafkaTLSKeyFile         string
+	kafkaInsecureSkipVerify bool
+	dbHost                  string
+	dbPort                  string
+	dbName                  string
+	dbUser                  string
+	dbPassword              string
+	ratePerSecond           int
+	maxRetries              int
+	retryBackoffMs          int
+	requestTimeoutS         time.Duration
 }
 
 type deadLetterEnvelope struct {
@@ -59,6 +66,24 @@ func main() {
 		log.Fatalf("db init error: %v", err)
 	}
 
+	tlsConfig, err := createTLSConfig(cfg)
+	if err != nil {
+		log.Fatalf("kafka tls config error: %v", err)
+	}
+
+	var dialer *kafka.Dialer
+	var transport *kafka.Transport
+	if tlsConfig != nil {
+		dialer = &kafka.Dialer{
+			Timeout:   10 * time.Second,
+			DualStack: true,
+			TLS:       tlsConfig,
+		}
+		transport = &kafka.Transport{
+			TLS: tlsConfig,
+		}
+	}
+
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     cfg.kafkaBrokers,
 		GroupID:     cfg.kafkaGroupID,
@@ -66,6 +91,7 @@ func main() {
 		MinBytes:    1,
 		MaxBytes:    10e6,
 		StartOffset: kafka.FirstOffset,
+		Dialer:      dialer,
 	})
 	defer reader.Close()
 
@@ -76,6 +102,7 @@ func main() {
 		Balancer:     &kafka.LeastBytes{},
 		BatchSize:    1,
 		BatchTimeout: 50 * time.Millisecond,
+		Transport:    transport,
 	}
 	defer dlqWriter.Close()
 
@@ -85,8 +112,8 @@ func main() {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	log.Printf("visit-processor started; topic=%s dlq=%s per-pod rate limit=%d op/sec retries=%d (total attempts=%d)",
-		cfg.kafkaTopic, cfg.kafkaDLQTopic, cfg.ratePerSecond, cfg.maxRetries, 1+cfg.maxRetries)
+	log.Printf("visit-processor started; topic=%s dlq=%s per-pod rate limit=%d op/sec retries=%d (total attempts=%d) kafka_tls=%v",
+		cfg.kafkaTopic, cfg.kafkaDLQTopic, cfg.ratePerSecond, cfg.maxRetries, 1+cfg.maxRetries, tlsConfig != nil)
 
 	for range ticker.C {
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.requestTimeoutS*time.Second)
@@ -176,19 +203,24 @@ func loadConfig() (config, error) {
 	}
 
 	cfg := config{
-		listenAddr:      envOrDefault("LISTEN_ADDR", ":8080"),
-		kafkaTopic:      envOrDefault("KAFKA_TOPIC", "visits.requested"),
-		kafkaDLQTopic:   envOrDefault("KAFKA_DLQ_TOPIC", "visits.dead-letter"),
-		kafkaGroupID:    envOrDefault("KAFKA_GROUP_ID", "visit-processor-v1"),
-		dbHost:          envOrDefault("DB_HOST", "postgres-rw.data-postgres.svc"),
-		dbPort:          envOrDefault("DB_PORT", "5432"),
-		dbName:          envOrDefault("DB_NAME", "app"),
-		dbUser:          envOrDefault("DB_USER", "app"),
-		dbPassword:      os.Getenv("DB_PASSWORD"),
-		ratePerSecond:   rate,
-		maxRetries:      maxRetries,
-		retryBackoffMs:  retryBackoffMs,
-		requestTimeoutS: 5,
+		listenAddr:              envOrDefault("LISTEN_ADDR", ":8080"),
+		kafkaTopic:              envOrDefault("KAFKA_TOPIC", "visits.requested"),
+		kafkaDLQTopic:           envOrDefault("KAFKA_DLQ_TOPIC", "visits.dead-letter"),
+		kafkaGroupID:            envOrDefault("KAFKA_GROUP_ID", "visit-processor-v1"),
+		kafkaTLSEnabled:         envOrDefault("KAFKA_TLS_ENABLED", "false") == "true",
+		kafkaTLSCAFile:          envOrDefault("KAFKA_TLS_CA_FILE", ""),
+		kafkaTLSCertFile:        envOrDefault("KAFKA_TLS_CERT_FILE", ""),
+		kafkaTLSKeyFile:         envOrDefault("KAFKA_TLS_KEY_FILE", ""),
+		kafkaInsecureSkipVerify: envOrDefault("KAFKA_TLS_INSECURE_SKIP_VERIFY", "false") == "true",
+		dbHost:                  envOrDefault("DB_HOST", "postgres-rw.data-postgres.svc"),
+		dbPort:                  envOrDefault("DB_PORT", "5432"),
+		dbName:                  envOrDefault("DB_NAME", "app"),
+		dbUser:                  envOrDefault("DB_USER", "app"),
+		dbPassword:              os.Getenv("DB_PASSWORD"),
+		ratePerSecond:           rate,
+		maxRetries:              maxRetries,
+		retryBackoffMs:          retryBackoffMs,
+		requestTimeoutS:         5,
 	}
 
 	cfg.kafkaBrokers = splitCSV(envOrDefault("KAFKA_BROKERS", "kafka-kafka-bootstrap.data-kafka.svc:9092"))
@@ -199,6 +231,46 @@ func loadConfig() (config, error) {
 		return cfg, fmt.Errorf("DB_PASSWORD is required")
 	}
 	return cfg, nil
+}
+
+func createTLSConfig(cfg config) (*tls.Config, error) {
+	if !cfg.kafkaTLSEnabled && cfg.kafkaTLSCAFile == "" && cfg.kafkaTLSCertFile == "" {
+		return nil, nil
+	}
+
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: cfg.kafkaInsecureSkipVerify,
+	}
+
+	if cfg.kafkaTLSCAFile != "" {
+		caCert, err := os.ReadFile(cfg.kafkaTLSCAFile)
+		if err != nil {
+			return nil, fmt.Errorf("read ca cert failed: %w", err)
+		}
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("failed to parse ca cert from %s", cfg.kafkaTLSCAFile)
+		}
+		tlsConfig.RootCAs = caCertPool
+	}
+
+	if cfg.kafkaTLSCertFile != "" && cfg.kafkaTLSKeyFile != "" {
+		// Verify initial cert can be loaded
+		if _, err := tls.LoadX509KeyPair(cfg.kafkaTLSCertFile, cfg.kafkaTLSKeyFile); err != nil {
+			return nil, fmt.Errorf("load initial x509 key pair failed: %w", err)
+		}
+
+		// Dynamic client certificate loader for zero-downtime rotation
+		tlsConfig.GetClientCertificate = func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			cert, err := tls.LoadX509KeyPair(cfg.kafkaTLSCertFile, cfg.kafkaTLSKeyFile)
+			if err != nil {
+				return nil, fmt.Errorf("dynamic load x509 key pair failed: %w", err)
+			}
+			return &cert, nil
+		}
+	}
+
+	return tlsConfig, nil
 }
 
 func validatePayload(payload []byte) error {

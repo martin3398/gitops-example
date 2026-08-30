@@ -35,6 +35,16 @@ spec:
               value: {{ .Values.env.KAFKA_DLQ_TOPIC | quote }}
             - name: KAFKA_GROUP_ID
               value: {{ .Values.env.KAFKA_GROUP_ID | quote }}
+            - name: KAFKA_TLS_ENABLED
+              value: {{ .Values.env.KAFKA_TLS_ENABLED | default "false" | quote }}
+            - name: KAFKA_TLS_CA_FILE
+              value: {{ .Values.env.KAFKA_TLS_CA_FILE | default "" | quote }}
+            - name: KAFKA_TLS_CERT_FILE
+              value: {{ .Values.env.KAFKA_TLS_CERT_FILE | default "" | quote }}
+            - name: KAFKA_TLS_KEY_FILE
+              value: {{ .Values.env.KAFKA_TLS_KEY_FILE | default "" | quote }}
+            - name: KAFKA_TLS_INSECURE_SKIP_VERIFY
+              value: {{ .Values.env.KAFKA_TLS_INSECURE_SKIP_VERIFY | default "false" | quote }}
             - name: DB_HOST
               value: {{ .Values.env.DB_HOST | quote }}
             - name: DB_PORT
@@ -52,6 +62,12 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.secretName }}
                   key: DB_PASSWORD
+{{- if .Values.kafkaTlsSecretName }}
+          volumeMounts:
+            - name: kafka-tls
+              mountPath: /etc/kafka/tls
+              readOnly: true
+{{- end }}
           readinessProbe:
             httpGet:
               path: /healthz
@@ -66,3 +82,10 @@ spec:
             periodSeconds: 10
           resources:
 {{ toYaml .Values.resources | indent 12 }}
+{{- if .Values.kafkaTlsSecretName }}
+      volumes:
+        - name: kafka-tls
+          secret:
+            secretName: {{ .Values.kafkaTlsSecretName }}
+{{- end }}
+

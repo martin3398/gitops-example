@@ -167,7 +167,7 @@ curl http://gitops.local/api/v1/visits/count
 ## Current Limitations & Roadmap
  
 - Dead Letter Queue (`TASK-P3-06`): Implemented.
+- Kafka mTLS client authentication (`TASK-P3-05`): Implemented.
 - The visit app exposes `/` and `/api` through Cilium Gateway API over HTTP; TLS/HTTPS is tracked in `TASK-P6-01`.
-- Kafka client authentication (mTLS/SASL) is tracked in `TASK-P3-05`.
 - Dynamic Postgres database credentials from OpenBao are tracked in `TASK-P3-04`.
 - Network policy isolation for tenant namespaces is tracked in `TASK-P4-02`.

@@ -5,8 +5,8 @@ Event-driven visit counter demo.
 ## Layout
 
 - `visit-ui/`: frontend with SSR + hydration
-- `visit-gateway/`: HTTP API service
-- `visit-processor/`: Kafka consumer / Postgres writer
+- `visit-gateway/`: HTTP API service with Kafka mTLS publisher
+- `visit-processor/`: Kafka consumer (mTLS) with transactional PostgreSQL writes and Dead Letter Queueing (DLQ)
 - `visit-loadgen/`: load generator
 
 ## Deployment

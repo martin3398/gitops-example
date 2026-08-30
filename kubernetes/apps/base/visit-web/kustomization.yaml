@@ -3,7 +3,9 @@ kind: Kustomization
 resources:
   - namespace-web.yaml
   - externalsecret-web.yaml
+  - externalsecret-kafka.yaml
   - helmrelease-visit-web.yaml
+
   - helmrelease-visit-gateway.yaml
   - imagerepository-visit-web.yaml
   - imagepolicy-visit-web.yaml

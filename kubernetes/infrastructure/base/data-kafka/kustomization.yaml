@@ -3,5 +3,8 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - kafka.yaml
+  - kafkauser-visit-apps.yaml
+  - clustersecretstore-k8s-kafka.yaml
   - topic-visits-requested.yaml
   - topic-visits-dlq.yaml
+

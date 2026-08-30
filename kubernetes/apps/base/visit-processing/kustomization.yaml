@@ -3,7 +3,9 @@ kind: Kustomization
 resources:
   - namespace-processing.yaml
   - externalsecret-processing.yaml
+  - externalsecret-kafka.yaml
   - helmrelease-visit-processor.yaml
+
   - imagerepository-visit-processor.yaml
   - imagepolicy-visit-processor.yaml
   - imageupdateautomation.yaml

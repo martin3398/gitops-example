@@ -128,3 +128,28 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("expected default ratePerSecond 1, got %d", cfg.ratePerSecond)
 	}
 }
+
+func TestCreateTLSConfig(t *testing.T) {
+	cfg := config{
+		kafkaTLSEnabled: false,
+	}
+	tlsConfig, err := createTLSConfig(cfg)
+	if err != nil {
+		t.Fatalf("createTLSConfig(disabled) error: %v", err)
+	}
+	if tlsConfig != nil {
+		t.Errorf("expected nil tlsConfig when disabled, got %+v", tlsConfig)
+	}
+
+	cfgErr := config{
+		kafkaTLSEnabled:  true,
+		kafkaTLSCAFile:   "/nonexistent/ca.crt",
+		kafkaTLSCertFile: "/nonexistent/user.crt",
+		kafkaTLSKeyFile:  "/nonexistent/user.key",
+	}
+	_, err = createTLSConfig(cfgErr)
+	if err == nil {
+		t.Errorf("expected error for nonexistent cert files, got nil")
+	}
+}
+
