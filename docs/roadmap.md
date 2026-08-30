@@ -51,6 +51,9 @@ Each future task is structured with explicit objectives, affected files, impleme
 
 This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup Architecture**. Generic volume backup tools (like Velero) are intentionally omitted in favor of GitOps manifest reconciliation paired with application-consistent object store backups.
 
+> [!NOTE]
+> **Lab Architecture Boundary**: For this dev/showcase platform, the in-cluster Rook-Ceph RGW (`s3://`) serves as the central Tier 1 backup destination for all components (PostgreSQL WAL/Base, OpenBao Raft snapshots, Kafka archives, and etcd snapshots). In a multi-site production environment, Tier 2 off-cluster replication (RGW multi-site sync or off-site rclone/rsync to remote MinIO / cloud S3) is layered on top to prevent in-cluster storage single points of failure.
+
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                               TIER 1: LOCAL CLUSTER BACKUPS                            │
@@ -60,7 +63,7 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 │ Cluster Manifests    │ Git Repository             │ Flux v2 GitOps Reconciliation      │
 │ PostgreSQL           │ Ceph RGW s3://postgres/    │ CloudNativePG / Barman (WAL + Base)│
 │ OpenBao (Vault)      │ Ceph RGW s3://openbao/     │ CronJob Raft Snapshot (.snap)      │
-│ Kafka Topics / Events│ Ceph RGW s3://kafka/       │ S3 Connector / Topic Archiving     │
+│ Kafka Topics / Events│ Ceph RGW s3://kafka/       │ S3 Archiving Connector / CronJob   │
 │ RKE2 Control Plane   │ Host / Ceph RGW s3://etcd/ │ Native RKE2 etcd Automated Snapshot│
 └──────────────────────┴────────────────────────────┴────────────────────────────────────┘
                                         │
@@ -92,6 +95,7 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 │ TASK-P3-05   │ Kafka Listener Security (mTLS/SASL) & ACLs  │ Medium         │
 │ TASK-P3-06   │ Dead Letter Queue (DLQ) for Visit Events    │ Medium         │
 │ TASK-P3-07   │ Ceph OSD Failure Drill & S3 Retention Policy│ Low            │
+│ TASK-P3-08   │ Kafka Event Stream Archiving to Ceph RGW S3 │ Medium         │
 └──────────────┴─────────────────────────────────────────────┴────────────────┘
 ```
 
@@ -186,6 +190,24 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 
 ---
 
+### `TASK-P3-08`: Kafka Event Stream Archiving to Ceph RGW S3
+
+- **Objective**: Establish long-term event archiving by exporting committed Kafka topic records (`visits.requested`, `visits.dead-letter`) into Ceph RGW object storage (`s3://kafka-archive/`) to decouple retention from local NVMe OSD disk capacity.
+- **Affected Files**:
+  - `kubernetes/infrastructure/base/data-kafka/objectbucketclaim.yaml` (new)
+  - `kubernetes/infrastructure/base/data-kafka/cronjob-topic-archive.yaml` (new)
+  - `kubernetes/infrastructure/base/data-kafka/kustomization.yaml`
+  - `docs/kafka-runbook.md`
+- **Implementation Steps**:
+  1. Define an `ObjectBucketClaim` `kafka-archive` in the `data-kafka` namespace to dynamically provision an S3 bucket in Ceph RGW.
+  2. Deploy a lightweight batch consumer CronJob / archiver container connecting to Kafka under mTLS and streaming batch topic segments to `s3://kafka-archive/`.
+  3. Document topic replay / recovery procedures from S3 archives in `docs/kafka-runbook.md`.
+- **Acceptance Criteria**:
+  * Topic messages are periodically archived to Ceph RGW `s3://kafka-archive/`.
+  * Archival process operates cleanly without degrading real-time consumer group lag.
+
+---
+
 # Phase 4 - Resilience, Policy & Security Backlog
 
 ```
@@ -198,7 +220,8 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 │ TASK-P4-03   │ Pod Security Standards & Kyverno Enforce    │ High           │
 │ TASK-P4-04   │ Renovate Dependency Automation Setup        │ Medium         │
 │ TASK-P4-05   │ Grafana Platform Dashboards Coverage        │ Medium         │
-│ TASK-P4-06   │ RKE2 etcd Automated Snapshots Retention     │ Medium         │
+│ TASK-P4-06   │ RKE2 etcd Automated Snapshots & Retention   │ Medium         │
+│ TASK-P4-07   │ Automated Backup & PITR Restore Drill       │ Medium         │
 └──────────────┴─────────────────────────────────────────────┴────────────────┘
 ```
 
@@ -280,12 +303,12 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 
 ---
 
-### `TASK-P4-06`: RKE2 etcd Automated Snapshots Retention
+### `TASK-P4-06`: RKE2 etcd Automated Snapshots & Retention
 
 - **Objective**: Configure automated scheduled etcd snapshots with retention policy directly in RKE2 server configuration.
 - **Affected Files**:
-  - `ansible/roles/rke2_control_plane/templates/config.yaml.j2`
   - `ansible/roles/rke2_control_plane/tasks/main.yml`
+  - `ansible/roles/rke2_control_plane/defaults/main.yml`
   - `docs/phase1-infra-runbook.md`
 - **Implementation Steps**:
   1. Configure `etcd-snapshot-schedule-cron: "0 * * * *"` and `etcd-snapshot-retention: 24` in RKE2 server configuration template (optional `etcd-s3` target pointed to Ceph RGW).
@@ -293,6 +316,25 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 - **Acceptance Criteria**:
   - RKE2 control plane automatically creates hourly snapshots and prunes snapshots beyond the retention window.
   - `rke2 etcd-snapshot list` displays available local snapshots.
+
+---
+
+### `TASK-P4-07`: Automated Backup & PITR Restore Verification Drill
+
+- **Objective**: Automate disaster recovery validation by providing a non-destructive restore drill that tests Point-In-Time Recovery (PITR) against the S3 Barman object store.
+- **Affected Files**:
+  - `ansible/playbooks/restore-drill.yml` (new)
+  - `kubernetes/infrastructure/base/data-postgres/cluster-restore-test.yaml` (new template)
+  - `Taskfile.yml`
+  - `docs/postgres-runbook.md`
+- **Implementation Steps**:
+  1. Write an Ansible playbook / Taskfile helper that reads the latest base backup metadata from Ceph RGW `s3://postgres-backups/`.
+  2. Deploy a transient `postgres-restored` `Cluster` custom resource in `data-postgres` with `spec.bootstrap.recovery`.
+  3. Wait for `postgres-restored` to reach `Ready` and execute SQL assertions comparing record counts in the `visits` table against the live cluster.
+  4. Tear down the test restore cluster cleanly.
+- **Acceptance Criteria**:
+  - Restore drill executes end-to-end without manual intervention.
+  - Asserts database consistency and logs backup age and recovery time.
 
 ---
 
