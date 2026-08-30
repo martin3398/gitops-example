@@ -22,4 +22,4 @@ spec:
       - name: ghcr-pull
     image:
       repository: ghcr.io/martin3398/visit-processor # {"$imagepolicy": "flux-system:visit-processor:name"}
-      tag: 20260828141134-f41c8649 # {"$imagepolicy": "flux-system:visit-processor:tag"}
+      tag: 20260830175903-8526b29a # {"$imagepolicy": "flux-system:visit-processor:tag"}
