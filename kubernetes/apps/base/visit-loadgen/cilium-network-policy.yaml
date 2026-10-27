@@ -1,0 +1,23 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: visit-loadgen-isolation
+  namespace: visit-loadgen
+spec:
+  description: "Tier 2: Egress isolation for visit-loadgen in visit-loadgen"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: visit-loadgen
+  egress:
+    # Allow sending synthetic HTTP traffic to visit-gateway in visit-web namespace
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: visit-web
+            app.kubernetes.io/name: visit-gateway
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "8080"
+              protocol: TCP

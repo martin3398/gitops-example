@@ -402,3 +402,41 @@
       args:
         executable: /bin/bash
       changed_when: false
+
+    - name: Verify Cilium network policies exist and are active
+      ansible.builtin.shell: |
+        set -euo pipefail
+        kubectl=({{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }})
+
+        # Verify Tier 1 platform guardrail CCNP
+        "${kubectl[@]}" get ccnp platform-guardrails >/dev/null
+
+        # Verify Tier 2 service CNPs
+        "${kubectl[@]}" -n data-postgres get cnp postgres-isolation >/dev/null
+        "${kubectl[@]}" -n data-kafka get cnp kafka-broker-isolation >/dev/null
+        "${kubectl[@]}" -n data-kafka get cnp kafka-internal-clients-isolation >/dev/null
+        "${kubectl[@]}" -n openbao get cnp openbao-server-isolation >/dev/null
+        "${kubectl[@]}" -n openbao get cnp openbao-snapshot-isolation >/dev/null
+        "${kubectl[@]}" -n visit-web get cnp visit-ui-isolation >/dev/null
+        "${kubectl[@]}" -n visit-web get cnp visit-gateway-isolation >/dev/null
+        "${kubectl[@]}" -n visit-processing get cnp visit-processor-isolation >/dev/null
+        "${kubectl[@]}" -n visit-loadgen get cnp visit-loadgen-isolation >/dev/null
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Verify unauthorized cross-namespace traffic is dropped by Cilium
+      ansible.builtin.shell: |
+        set -euo pipefail
+        kubectl=({{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }})
+
+        # Test from rook-ceph-tools: attempting to connect to postgres:5432 must fail/time out
+        if "${kubectl[@]}" -n rook-ceph exec deploy/rook-ceph-tools -- timeout 3 bash -c '</dev/tcp/postgres-rw.data-postgres.svc/5432' 2>/dev/null; then
+          echo "ERROR: Unauthorized traffic from rook-ceph to postgres:5432 succeeded!" >&2
+          exit 1
+        fi
+        echo "Unauthorized cross-namespace traffic correctly dropped by Cilium eBPF"
+      args:
+        executable: /bin/bash
+      changed_when: false
+

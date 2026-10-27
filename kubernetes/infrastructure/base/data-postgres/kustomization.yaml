@@ -6,3 +6,4 @@ resources:
   - objectbucketclaim.yaml
   - cluster.yaml
   - scheduledbackup.yaml
+  - cilium-network-policy.yaml

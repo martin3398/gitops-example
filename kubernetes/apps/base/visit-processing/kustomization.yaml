@@ -9,3 +9,4 @@ resources:
   - imagerepository-visit-processor.yaml
   - imagepolicy-visit-processor.yaml
   - imageupdateautomation.yaml
+  - cilium-network-policy.yaml

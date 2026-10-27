@@ -1,0 +1,84 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: visit-ui-isolation
+  namespace: visit-web
+spec:
+  description: "Tier 2: Ingress and egress isolation for visit-ui in visit-web"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: visit-ui
+  ingress:
+    # Allow incoming HTTP traffic from Cilium Gateway proxy (Envoy)
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+            - port: "80"
+              protocol: TCP
+  egress:
+    # Allow calling visit-gateway service within visit-web namespace
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: visit-web
+            app.kubernetes.io/name: visit-gateway
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "8080"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: visit-gateway-isolation
+  namespace: visit-web
+spec:
+  description: "Tier 2: Ingress and egress isolation for visit-gateway in visit-web"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: visit-gateway
+  ingress:
+    # 1. Allow incoming API requests from Envoy Gateway proxy
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "8080"
+              protocol: TCP
+    # 2. Allow API requests from visit-ui (same namespace) and visit-loadgen (cross-namespace)
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: visit-web
+            app.kubernetes.io/name: visit-ui
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: visit-loadgen
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "8080"
+              protocol: TCP
+  egress:
+    # 1. Allow PostgreSQL queries on port 5432 to data-postgres
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-postgres
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    # 2. Allow Kafka producer connections on mTLS port 9093 to data-kafka
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-kafka
+      toPorts:
+        - ports:
+            - port: "9093"
+              protocol: TCP

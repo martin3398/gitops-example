@@ -1,0 +1,51 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: postgres-isolation
+  namespace: data-postgres
+spec:
+  description: "Tier 2: East-West isolation for CloudNativePG cluster in data-postgres"
+  endpointSelector:
+    matchLabels:
+      cnpg.io/cluster: postgres
+  ingress:
+    # 1. Allow PostgreSQL connections on port 5432 from authorized consumers and peers
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: visit-web
+            app.kubernetes.io/name: visit-gateway
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: visit-processing
+            app.kubernetes.io/name: visit-processor
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-postgres
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    # 2. Allow CloudNativePG operator communication on instance-manager status port 8000
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: flux-system
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+  egress:
+    # 1. Allow peer PostgreSQL pod communication for streaming replication
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-postgres
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    # 2. Allow continuous WAL archiving and Barman base backups to Ceph RGW (S3) in rook-ceph
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: rook-ceph
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP

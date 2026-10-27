@@ -125,3 +125,102 @@ Note: In Cilium `hostNetwork` mode without a cloud controller LoadBalancer integ
    cilium hubble observe --http-status 200
    cilium hubble observe --namespace visit-web
    ```
+
+---
+
+## Cilium Network Policies & East-West Traffic Isolation
+
+The platform enforces least-privilege east-west network segmentation across tenant namespaces using a **2-Tier Defense-in-Depth Architecture**.
+
+### 1. Two-Tier Policy Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 TIER 1: PLATFORM GUARDRAILS                             │
+│                  CiliumClusterwideNetworkPolicy (infrastructure-security)               │
+├───────────────────────────────┬───────────────────────────────┬─────────────────────────┤
+│ CoreDNS Egress (:53)          │ Kubelet Health Probes (host)  │ Block AWS IMDSv1        │
+│ monitoring Prometheus Ingress │ KubeAPI TokenReview (:443)    │ 169.254.169.254/32 Drop │
+└───────────────────────────────┴───────────────────────────────┴─────────────────────────┘
+                                             │
+                                             ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                           TIER 2: SERVICE-OWNED EAST-WEST ISOLATION                     │
+│                             Namespaced CiliumNetworkPolicy (CNP)                        │
+├───────────────────────────────┬───────────────────────────────┬─────────────────────────┤
+│ data-postgres/                │ data-kafka/                   │ openbao/                │
+│ Ingress :5432 (web/proc)      │ Ingress :9093 mTLS (web/proc) │ Ingress :8200 (GW, ESO) │
+│ Egress Barman :80 (Ceph RGW)  │ KRaft peer ports :9090/:9091  │ Raft peer port :8201    │
+├───────────────────────────────┴───────────────────────────────┴─────────────────────────┤
+│ visit-web/ & visit-processing/ & visit-loadgen/                                         │
+│ Envoy Gateway ingress, inter-service API routing, least-privilege DB/Kafka egress       │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Tier 1 (Global Platform Guardrails - `CiliumClusterwideNetworkPolicy`)**:
+   - Location: `kubernetes/infrastructure/base/security/policies/cluster-guardrails.yaml`
+   - Governs all tenant namespaces (`data-postgres`, `data-kafka`, `openbao`, `visit-web`, `visit-processing`, `visit-loadgen`).
+   - Globally enables CoreDNS egress (port 53), Kubelet health checks (`reserved:host`), Prometheus scraping from `monitoring`, and Kubernetes API egress (`:443`).
+   - Globally blocks access to AWS EC2 instance metadata (`169.254.169.254/32` IMDSv1) via `egressDeny`.
+
+2. **Tier 2 (Service-Owned Micro-Segmentation - `CiliumNetworkPolicy`)**:
+   - Co-located with each subsystem in its respective directory:
+     - `kubernetes/infrastructure/base/data-postgres/cilium-network-policy.yaml`: Port 5432 ingress restricted to `visit-gateway`, `visit-processor`, and peer replication; egress restricted to Ceph RGW (`rook-ceph:80`) for Barman WAL/base archiving.
+     - `kubernetes/infrastructure/base/data-kafka/cilium-network-policy.yaml`: Port 9093 mTLS ingress restricted to `visit-gateway`, `visit-processor`, and `kafka-exporter`; KRaft peer ports 9090/9091 restricted to internal brokers.
+     - `kubernetes/infrastructure/base/security/openbao/cilium-network-policy.yaml`: Port 8200 API ingress allowed from Envoy Gateway (`reserved:ingress`) and ESO; port 8201 Raft restricted to peers; snapshot job egress to Ceph RGW (`rook-ceph:80`).
+     - `kubernetes/apps/base/visit-web/cilium-network-policy.yaml`: Port 3000/80 ingress from Envoy (`reserved:ingress`); port 8080 API ingress from Envoy, `visit-ui`, and `visit-loadgen`; egress to Postgres (`5432`) and Kafka (`9093`).
+     - `kubernetes/apps/base/visit-processing/cilium-network-policy.yaml`: Consumer-only service; egress restricted to Kafka (`9093`) and Postgres (`5432`).
+     - `kubernetes/apps/base/visit-loadgen/cilium-network-policy.yaml`: Egress restricted to `visit-gateway` (`8080`).
+
+### 2. Inspecting Network Policies
+
+```bash
+# Check cluster-wide guardrails
+kubectl get ccnp
+
+# Check namespaced policies
+kubectl get cnp -A
+```
+
+Expected output:
+```text
+NAME                  AGE
+platform-guardrails   ...
+
+NAMESPACE          NAME                               AGE
+data-kafka         kafka-broker-isolation             ...
+data-kafka         kafka-internal-clients-isolation   ...
+data-postgres      postgres-isolation                 ...
+openbao            openbao-server-isolation           ...
+openbao            openbao-snapshot-isolation         ...
+visit-loadgen      visit-loadgen-isolation            ...
+visit-processing   visit-processor-isolation          ...
+visit-web          visit-gateway-isolation            ...
+visit-web          visit-ui-isolation                 ...
+```
+
+### 3. Traffic Flow & Drop Debugging with Hubble
+
+```bash
+# Follow dropped flows in real time
+cilium hubble observe --verdict DROPPED -f
+
+# Follow traffic between visit microservices
+cilium hubble observe --from-namespace visit-web --to-namespace data-postgres
+cilium hubble observe --from-namespace visit-processing --to-namespace data-kafka
+
+# Filter by drop reason
+cilium hubble observe --type drop
+```
+
+### 4. Testing Unauthorized Cross-Namespace Drops
+
+Run a transient pod in an unauthorized namespace (e.g. `default` or `visit-loadgen`) attempting to reach PostgreSQL on port 5432 or OpenBao on port 8200:
+
+```bash
+# Attempt to reach postgres from default namespace (should time out / drop)
+kubectl run -it --rm --restart=Never test-probe -n default \
+  --image=curlimages/curl -- curl -m 3 http://postgres-rw.data-postgres.svc:5432 || echo "Dropped as expected"
+```
+Cilium eBPF drops the SYN packet immediately and Hubble registers a `Policy denied (ingress)` drop.
+

@@ -8,4 +8,5 @@ resources:
   - httproute.yaml
   - objectbucketclaim.yaml
   - cronjob-snapshot.yaml
+  - cilium-network-policy.yaml
 

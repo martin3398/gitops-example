@@ -6,3 +6,4 @@ resources:
   - imagerepository-visit-loadgen.yaml
   - imagepolicy-visit-loadgen.yaml
   - imageupdateautomation.yaml
+  - cilium-network-policy.yaml

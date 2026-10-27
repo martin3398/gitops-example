@@ -7,4 +7,5 @@ resources:
   - clustersecretstore-k8s-kafka.yaml
   - topic-visits-requested.yaml
   - topic-visits-dlq.yaml
+  - cilium-network-policy.yaml
 

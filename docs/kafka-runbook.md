@@ -136,5 +136,5 @@ If Kafka stays `NotReady`, verify that `spec.kafka.version` is supported by the 
 
 - **Dead Letter Queue (`TASK-P3-06`)**: Implemented (Dedicated `visits.dead-letter` topic and `visit-processor` poison message routing).
 - **Listener Security & ACLs (`TASK-P3-05`)**: Implemented (Enforced mTLS client certificate authentication on port 9093, least-privilege `KafkaUser` ACLs, and ESO automated secret projection).
-- **Network Policy Isolation (`TASK-P4-02`)**: Restrict Kafka port 9093 access strictly to `visit-gateway`, `visit-processor`, and `prometheus-kafka-exporter`.
+- **Network Policy Isolation (`TASK-P4-02`)**: Complete. Enforced via `kafka-broker-isolation` and `kafka-internal-clients-isolation` (`CiliumNetworkPolicy`) restricting port 9093 mTLS ingress strictly to `visit-gateway`, `visit-processor`, and `prometheus-kafka-exporter`; KRaft peer controller and replication ports 9090/9091 restricted to broker pods and Strimzi operator.
 

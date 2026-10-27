@@ -1,0 +1,73 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: kafka-broker-isolation
+  namespace: data-kafka
+spec:
+  description: "Tier 2: East-West isolation for Strimzi Kafka cluster brokers in data-kafka"
+  endpointSelector:
+    matchLabels:
+      strimzi.io/cluster: kafka
+  ingress:
+    # 1. Allow internal mTLS traffic on port 9093 from authorized microservices and internal exporters
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: visit-web
+            app.kubernetes.io/name: visit-gateway
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: visit-processing
+            app.kubernetes.io/name: visit-processor
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-kafka
+      toPorts:
+        - ports:
+            - port: "9093"
+              protocol: TCP
+    # 2. Allow KRaft controller, internal replication, and operator control
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-kafka
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: flux-system
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+            - port: "9091"
+              protocol: TCP
+  egress:
+    # Allow peer broker communication and replication
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-kafka
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+            - port: "9091"
+              protocol: TCP
+            - port: "9093"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: kafka-internal-clients-isolation
+  namespace: data-kafka
+spec:
+  description: "Tier 2: Egress isolation for internal Kafka clients (exporter, entity-operator) in data-kafka"
+  endpointSelector:
+    matchExpressions:
+      - key: "strimzi.io/cluster"
+        operator: DoesNotExist
+  egress:
+    # Allow connecting to Kafka brokers on mTLS port 9093
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-kafka
+            strimzi.io/cluster: kafka
+      toPorts:
+        - ports:
+            - port: "9093"
+              protocol: TCP

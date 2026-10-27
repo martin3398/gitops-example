@@ -137,5 +137,5 @@ kubectl -n data-postgres wait cluster/postgres-restored --for=condition=Ready --
 
 - **S3 / RGW WAL Archiving (`TASK-P3-01`)**: Implemented (Continuous WAL archiving and daily scheduled base backups to Ceph RGW).
 - **Dynamic Database Credentials (`TASK-P3-04`)**: Integrate with OpenBao PostgreSQL secrets engine to replace static `app-user` credentials with rotating short-lived roles.
-- **Network Isolation (`TASK-P4-02`)**: Restrict port 5432 ingress to authorized application pods (`visit-gateway`, `visit-processor`) via `CiliumNetworkPolicy`.
+- **Network Isolation (`TASK-P4-02`)**: Complete. Enforced via `postgres-isolation` (`CiliumNetworkPolicy`) restricting port 5432 ingress strictly to `visit-gateway`, `visit-processor`, and peer streaming replication; port 8000 to CNPG operator; egress strictly to peer replicas and Ceph RGW (`rook-ceph:80`) for Barman backups.
 

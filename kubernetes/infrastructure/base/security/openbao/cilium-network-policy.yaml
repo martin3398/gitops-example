@@ -1,0 +1,76 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: openbao-server-isolation
+  namespace: openbao
+spec:
+  description: "Tier 2: Ingress and egress isolation for OpenBao server cluster in openbao"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: openbao
+  ingress:
+    # 1. Allow OpenBao API port 8200 from Envoy Gateway, External Secrets Operator, and local snapshot jobs
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: external-secrets
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: openbao
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP
+    # 2. Allow Raft clustering protocol port 8201 between OpenBao peers
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: openbao
+      toPorts:
+        - ports:
+            - port: "8201"
+              protocol: TCP
+  egress:
+    # Allow OpenBao peer communication on API and Raft ports
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: openbao
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP
+            - port: "8201"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: openbao-snapshot-isolation
+  namespace: openbao
+spec:
+  description: "Tier 2: Egress isolation for OpenBao scheduled snapshot CronJob in openbao"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: openbao-snapshot
+  egress:
+    # 1. Allow connecting to OpenBao server on port 8200
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: openbao
+            app.kubernetes.io/name: openbao
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP
+    # 2. Allow uploading snapshots to Ceph RGW (S3) on port 80 in rook-ceph
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: rook-ceph
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP

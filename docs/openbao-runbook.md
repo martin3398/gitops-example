@@ -232,4 +232,4 @@ The restore procedure automatically:
 - **TLS / HTTPS**: Currently plaintext HTTP; TLS certificate automation is tracked in `TASK-P6-01`.
 - **Raft Snapshots & Disaster Recovery (`TASK-P3-02`)**: Complete. Automated CronJob snapshots to S3/Ceph RGW and recovery playbook (`ansible/playbooks/openbao-restore.yml`).
 - **Dynamic Database Credentials (`TASK-P3-04`)**: Replace deterministic dev seeding with OpenBao's PostgreSQL secrets engine.
-- **Network Policy Isolation (`TASK-P4-02`)**: Restrict OpenBao port 8200 access strictly to External Secrets Operator and gateway routes.
+- **Network Policy Isolation (`TASK-P4-02`)**: Complete. Enforced via `openbao-server-isolation` and `openbao-snapshot-isolation` (`CiliumNetworkPolicy`) restricting port 8200 API access strictly to Envoy Gateway proxy (`reserved:ingress`), External Secrets Operator, and snapshot CronJob; port 8201 restricted to Raft peers; egress restricted to Ceph RGW (`rook-ceph:80`) and Kubernetes API server.

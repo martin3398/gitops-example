@@ -15,7 +15,7 @@ Each future task is structured with explicit objectives, affected files, impleme
 │ Status: COMPLETE (Done)  │ Status: COMPLETE (Done)  │ Status: BASELINE+WAL+DLQ OK│
 ├──────────────────────────┼──────────────────────────┼────────────────────────────┤
 │ Phase 4: Resilience & Sec│ Phase 5: RKE2 Migration  │ Phase 6: Gateway API Edge  │
-│ Status: PENDING / OPEN   │ Status: COMPLETE (Done)  │ Status: COMPLETE (Done)    │
+│ Status: ACTIVE (P4-02 OK)│ Status: COMPLETE (Done)  │ Status: COMPLETE (Done)    │
 └──────────────────────────┴──────────────────────────┴────────────────────────────┘
 ```
 
@@ -39,6 +39,9 @@ Each future task is structured with explicit objectives, affected files, impleme
   - OpenBao & External Secrets (`TASK-P3-02`): HA 3-pod Raft cluster on `ceph-block`, External Secrets Operator syncing to K8s Secrets, and automated scheduled Raft snapshots to Ceph RGW `s3://openbao-backups/` with Ansible restore automation (auto-unseal dropped in favor of procedural Ansible unseal automation).
   - Kafka & Transactional DLQ (`TASK-P3-06`): Strimzi KRaft 3-node HA cluster on `ceph-block` with `visits.requested` topic (30 partitions), `visits.dead-letter` DLQ topic (30 partitions, 14-day retention), fast-path poison pill isolation, 3 explicit retries (4 total attempts) with linear stepped backoff, and isolated PostgreSQL database transactions (`sql.Tx`).
   - Observability: `kube-prometheus-stack`, Promtail, distributed Loki on Ceph S3, Prometheus Kafka Exporter, Prometheus Adapter with HPA on `kafka_consumergroup_lag_sum`.
+
+- **Phase 4 (Resilience, Policy & Security)**:
+  - Cilium East-West Network Isolation (`TASK-P4-02`): 2-Tier Defense-in-Depth network policies combining global platform guardrails (`CiliumClusterwideNetworkPolicy`) for CoreDNS, kubelet health probes, and AWS IMDSv1 protection with service-owned least-privilege micro-segmentation (`CiliumNetworkPolicy`) for Postgres, Kafka mTLS, OpenBao API/Raft, and visit microservices.
 
 - **Phase 5 (RKE2 Migration)**:
   - Migrated cluster bootstrap and runtime from kubeadm to RKE2.
@@ -255,7 +258,7 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 ├──────────────┬─────────────────────────────────────────────┬────────────────┤
 │ ID           │ Task Title                                  │ Priority       │
 ├──────────────┼─────────────────────────────────────────────┼────────────────┤
-│ TASK-P4-02   │ Cilium Network Policies (East-West Isolation│ High           │
+│ TASK-P4-02   │ Cilium Network Policies (East-West Isolation│ COMPLETE (Done)│
 │ TASK-P4-03   │ Pod Security Standards & Kyverno Enforce    │ High           │
 │ TASK-P4-05   │ Grafana Platform Dashboards Coverage        │ Medium         │
 │ TASK-P4-06   │ RKE2 etcd Automated Snapshots & Retention   │ Medium         │
@@ -265,24 +268,40 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 
 ---
 
-### `TASK-P4-02`: Cilium Network Policies (East-West Isolation)
+### `TASK-P4-02`: Cilium Network Policies (East-West Isolation) (Complete)
 
-- **Objective**: Implement least-privilege network segmentation across all namespaces using `CiliumNetworkPolicy`.
+- **Objective**: Implement least-privilege network segmentation across all namespaces using a 2-Tier Defense-in-Depth model with `CiliumClusterwideNetworkPolicy` and namespaced `CiliumNetworkPolicy`.
 - **Affected Files**:
-  - `kubernetes/infrastructure/base/security/policies/cilium-network-policies.yaml` (new)
+  - `kubernetes/infrastructure/base/security/policies/cluster-guardrails.yaml` (new)
   - `kubernetes/infrastructure/base/security/kustomization.yaml`
+  - `kubernetes/infrastructure/base/data-postgres/cilium-network-policy.yaml` (new)
+  - `kubernetes/infrastructure/base/data-postgres/kustomization.yaml`
+  - `kubernetes/infrastructure/base/data-kafka/cilium-network-policy.yaml` (new)
+  - `kubernetes/infrastructure/base/data-kafka/kustomization.yaml`
+  - `kubernetes/infrastructure/base/security/openbao/cilium-network-policy.yaml` (new)
+  - `kubernetes/infrastructure/base/security/openbao/kustomization.yaml`
+  - `kubernetes/apps/base/visit-web/cilium-network-policy.yaml` (new)
+  - `kubernetes/apps/base/visit-web/kustomization.yaml`
+  - `kubernetes/apps/base/visit-processing/cilium-network-policy.yaml` (new)
+  - `kubernetes/apps/base/visit-processing/kustomization.yaml`
+  - `kubernetes/apps/base/visit-loadgen/cilium-network-policy.yaml` (new)
+  - `kubernetes/apps/base/visit-loadgen/kustomization.yaml`
+  - `ansible/playbooks/verify.yml`
   - `docs/gateway-runbook.md`
-- **Implementation Steps**:
-  1. Define default-deny ingress/egress policies for tenant namespaces (`data-postgres`, `data-kafka`, `openbao`, `visit-web`, `visit-processing`).
-  2. Allow explicit ingress:
-     - `data-postgres`: port 5432 only from `visit-gateway` and `visit-processor` pods.
-     - `data-kafka`: port 9092/9093 only from `visit-gateway`, `visit-processor`, and `prometheus-kafka-exporter`.
-     - `openbao`: port 8200 only from `external-secrets` operator and gateway route.
-     - `visit-web`: HTTP only from Cilium Gateway proxy.
-  3. Validate traffic flows with `cilium hubble observe`.
+- **Implementation & Architecture Details**:
+  1. **Tier 1 (Global Platform Guardrails - CCNP)**: Centralized `platform-guardrails` in `infrastructure-security` applies cluster-wide to all tenant namespaces (`data-postgres`, `data-kafka`, `openbao`, `visit-web`, `visit-processing`, `visit-loadgen`). Enables CoreDNS egress (UDP/TCP 53), Kubelet health/readiness probes and port-forwarding (`reserved:host`), Prometheus scraping from `monitoring`, and Kubernetes API server token reviews/leases (`toEntities: [kube-apiserver]`). Blocks cloud provider instance metadata (`169.254.169.254/32` IMDSv1) via `egressDeny`.
+  2. **Tier 2 (Service-Owned East-West Isolation - CNP)**:
+     - `data-postgres`: Port 5432 ingress restricted to `visit-gateway` and `visit-processor` pods + peer replication; egress restricted to Ceph RGW (`rook-ceph:80`) for Barman WAL and daily base backups.
+     - `data-kafka`: Port 9093 mTLS ingress restricted to `visit-gateway`, `visit-processor`, and `prometheus-kafka-exporter`; KRaft peer ports 9090/9091 restricted to internal brokers and Strimzi operator.
+     - `openbao`: Port 8200 API ingress allowed from Envoy Gateway (`reserved:ingress`), ESO (`external-secrets`), snapshot CronJob, and host unseal automation; port 8201 Raft restricted to peers; snapshot job egress to Ceph RGW (`rook-ceph:80`).
+     - `visit-web`: Port 3000/80 ingress to `visit-ui` from Envoy; port 8080 API ingress to `visit-gateway` from Envoy, `visit-ui`, and `visit-loadgen`; egress strictly limited to Postgres (5432) and Kafka (9093).
+     - `visit-processing`: Consumer-only service; egress restricted strictly to Kafka (9093) and Postgres (5432).
+     - `visit-loadgen`: Synthetic traffic generator; egress restricted strictly to `visit-gateway` (8080).
+  3. **Automated Verification**: `ansible/playbooks/verify.yml` verifies that all CCNP and CNP resources are active, asserts that unauthorized cross-namespace connection attempts (e.g. from `rook-ceph` to `postgres:5432`) are dropped by Cilium eBPF, and validates that end-to-end visit demo event processing and counting operate cleanly.
 - **Acceptance Criteria**:
-  - Unauthorized cross-namespace traffic is dropped by Cilium.
+  - Unauthorized cross-namespace traffic is dropped by Cilium eBPF.
   - End-to-end visit demo path (`visit-ui` -> `visit-gateway` -> Kafka -> `visit-processor` -> Postgres) continues to operate cleanly.
+  - Automated verification passes in `ansible/playbooks/verify.yml`.
 
 ---
 

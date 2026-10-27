@@ -1,0 +1,59 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: platform-guardrails
+spec:
+  description: "Tier 1: Global platform guardrails for tenant namespaces (CoreDNS, API server, health probes, Prometheus, and IMDS protection)"
+  endpointSelector:
+    matchExpressions:
+      - key: "k8s:io.kubernetes.pod.namespace"
+        operator: In
+        values:
+          - data-postgres
+          - data-kafka
+          - openbao
+          - visit-web
+          - visit-processing
+          - visit-loadgen
+  ingress:
+    # 1. Allow Kubelet health/readiness probes and port-forwarding from the node host
+    - fromEntities:
+        - host
+        - remote-node
+    # 2. Allow Prometheus scraping from monitoring namespace on telemetry ports
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+            - port: "9090"
+              protocol: TCP
+            - port: "9187"
+              protocol: TCP
+            - port: "9308"
+              protocol: TCP
+  egress:
+    # 1. Allow CoreDNS egress for name resolution in kube-system
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    # 2. Allow egress to Kubernetes API Server for token reviews, leader election, and status reporting
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "6443"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP
+  egressDeny:
+    # 3. Block access to cloud provider instance metadata endpoint (AWS IMDSv1)
+    - toCIDR:
+        - "169.254.169.254/32"

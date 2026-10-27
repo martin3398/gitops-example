@@ -12,3 +12,4 @@ resources:
   - imagerepository-visit-gateway.yaml
   - imagepolicy-visit-gateway.yaml
   - imageupdateautomation.yaml
+  - cilium-network-policy.yaml

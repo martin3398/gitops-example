@@ -1,0 +1,28 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: visit-processor-isolation
+  namespace: visit-processing
+spec:
+  description: "Tier 2: Egress isolation for visit-processor in visit-processing"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: visit-processor
+  egress:
+    # 1. Allow Kafka consumer connections on mTLS port 9093 to data-kafka
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-kafka
+      toPorts:
+        - ports:
+            - port: "9093"
+              protocol: TCP
+    # 2. Allow PostgreSQL insertions and transactions on port 5432 to data-postgres
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-postgres
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
