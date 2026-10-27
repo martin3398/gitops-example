@@ -36,8 +36,8 @@ Each future task is structured with explicit objectives, affected files, impleme
 - **Phase 3 Baselines & Hardening (Stateful Services & Observability)**:
   - Ceph / Rook: 3 worker NVMe OSDs (`/dev/nvme1n1`), `ceph-block` default StorageClass, and Loki RGW S3 object store.
   - Postgres (`TASK-P3-01`): CloudNativePG 3-instance HA cluster on `ceph-block` with continuous WAL archiving and daily base backups (`ScheduledBackup`) to Ceph RGW `s3://postgres-backups/`.
+  - OpenBao & External Secrets (`TASK-P3-02`): HA 3-pod Raft cluster on `ceph-block`, External Secrets Operator syncing to K8s Secrets, and automated scheduled Raft snapshots to Ceph RGW `s3://openbao-backups/` with Ansible restore automation (auto-unseal dropped in favor of procedural Ansible unseal automation).
   - Kafka & Transactional DLQ (`TASK-P3-06`): Strimzi KRaft 3-node HA cluster on `ceph-block` with `visits.requested` topic (30 partitions), `visits.dead-letter` DLQ topic (30 partitions, 14-day retention), fast-path poison pill isolation, 3 explicit retries (4 total attempts) with linear stepped backoff, and isolated PostgreSQL database transactions (`sql.Tx`).
-  - OpenBao & External Secrets: HA 3-pod Raft cluster on `ceph-block`, External Secrets Operator syncing to K8s Secrets (auto-unseal dropped in favor of procedural Ansible unseal automation).
   - Observability: `kube-prometheus-stack`, Promtail, distributed Loki on Ceph S3, Prometheus Kafka Exporter, Prometheus Adapter with HPA on `kafka_consumergroup_lag_sum`.
 
 - **Phase 5 (RKE2 Migration)**:
@@ -61,8 +61,8 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 │ Component            │ Storage Target             │ Backup Mechanism                   │
 ├──────────────────────┼────────────────────────────┼────────────────────────────────────┤
 │ Cluster Manifests    │ Git Repository             │ Flux v2 GitOps Reconciliation      │
-│ PostgreSQL           │ Ceph RGW s3://postgres/    │ CloudNativePG / Barman (WAL + Base)│
-│ OpenBao (Vault)      │ Ceph RGW s3://openbao/     │ CronJob Raft Snapshot (.snap)      │
+│ PostgreSQL           │ Ceph RGW s3://postgres-backups/ │ CloudNativePG / Barman (WAL + Base)│
+│ OpenBao (Vault)      │ Ceph RGW s3://openbao-backups/  │ CronJob Raft Snapshot (.snap)      │
 │ Kafka Topics / Events│ Ceph RGW s3://kafka/       │ S3 Archiving Connector / CronJob   │
 │ RKE2 Control Plane   │ Host / Ceph RGW s3://etcd/ │ Native RKE2 etcd Automated Snapshot│
 └──────────────────────┴────────────────────────────┴────────────────────────────────────┘

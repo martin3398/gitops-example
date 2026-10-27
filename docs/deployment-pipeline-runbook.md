@@ -62,7 +62,7 @@ Expanded sequence:
 - initializes OpenBao if needed
 - saves init material remotely and fetches it locally to `.secrets/openbao-init.dev.json`
 - unseals leader and followers
-- configures Kubernetes auth for External Secrets Operator
+- configures Kubernetes auth for External Secrets Operator and Raft snapshot automation
 - seeds deterministic dev secrets, including Loki S3 credentials
 - waits for `ClusterSecretStore/openbao`
 
@@ -72,7 +72,7 @@ Expanded sequence:
 - verifies Flux source, Kustomizations, and HelmReleases are Ready
 - verifies Ceph health, block pool readiness, and PVC binding
 - verifies monitoring/logging workload readiness
-- verifies OpenBao is initialized and unsealed
+- verifies OpenBao is initialized, unsealed, and has bound backup storage with snapshot CronJob
 - verifies Postgres and Kafka custom resources and pods are Ready
 - verifies visit demo deployments and the gateway queue/count path
 

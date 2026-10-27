@@ -8,7 +8,7 @@ This runbook covers the Ceph baseline deployed by Flux with Rook.
 - Worker data disks from OpenTofu are consumed as OSD devices.
 - Storage class `ceph-block` is created for dynamic PVC provisioning.
 - `ceph-block` is the default StorageClass for platform workloads.
-- The `ceph-objectstore` RGW provides S3-compatible storage for Loki, Postgres backups, and platform state.
+- The `ceph-objectstore` RGW provides S3-compatible storage for Loki, Postgres backups (`s3://postgres-backups/`), OpenBao Raft snapshots (`s3://openbao-backups/`), and platform state.
 - Local-path provisioner is not part of the platform baseline.
 
 ## Manifests
