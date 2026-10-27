@@ -12,10 +12,10 @@ Each future task is structured with explicit objectives, affected files, impleme
 │                            STATUS SUMMARY BY PHASE                               │
 ├──────────────────────────┬──────────────────────────┬────────────────────────────┤
 │ Phase 1: Infra & RKE2    │ Phase 2: GitOps & Edge   │ Phase 3: Stateful Services │
-│ Status: COMPLETE (Done)  │ Status: COMPLETE (Done)  │ Status: BASELINE+WAL+DLQ OK│
+│ Status: COMPLETE (Done)  │ Status: COMPLETE (Done)  │ Status: IN PROGRESS        │
 ├──────────────────────────┼──────────────────────────┼────────────────────────────┤
 │ Phase 4: Resilience & Sec│ Phase 5: RKE2 Migration  │ Phase 6: Gateway API Edge  │
-│ Status: ACTIVE (P4-02 OK)│ Status: COMPLETE (Done)  │ Status: COMPLETE (Done)    │
+│ Status: IN PROGRESS      │ Status: COMPLETE (Done)  │ Status: COMPLETE (Done)    │
 └──────────────────────────┴──────────────────────────┴────────────────────────────┘
 ```
 
@@ -380,19 +380,10 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 
 ---
 
-# Future Platform Expansion (Phase 6+)
+# Out of Scope / Dropped Tasks
 
-### `TASK-P6-01`: TLS & Edge Certificate Automation (`cert-manager`)
+### `TASK-P6-01`: TLS & Edge Certificate Automation (`cert-manager`) (Dropped)
 
-- **Objective**: Introduce `cert-manager` to automate Let's Encrypt certificates and configure HTTPS listeners on the Cilium Gateway.
-- **Affected Files**:
-  - `kubernetes/infrastructure/base/core-services/cert-manager/` (new)
-  - `kubernetes/infrastructure/base/gateway/gateway.yaml`
-  - `docs/gateway-runbook.md`
-- **Implementation Steps**:
-  1. Deploy `cert-manager` HelmRelease via Flux in `infrastructure-core`.
-  2. Configure `ClusterIssuer` for Let's Encrypt (DNS-01 route53 or HTTP-01).
-  3. Add HTTPS listener (`port: 443`, `protocol: HTTPS`) to `dev-gateway` referencing the TLS Secret.
-- **Acceptance Criteria**:
-  - Gateways serve valid TLS certificates; HTTP routes automatically redirect to HTTPS.
+- **Status**: DROPPED / OUT OF SCOPE
+- **Rationale**: Per [Agents.md](file:///home/martin/Dokumente/git/gitops-example/Agents.md), TLS and certificate management are explicitly out of scope for this AWS lab phase (`cert-manager` is deferred; ingress exposure is provided over HTTP via Cilium Gateway API on host port 30080 mapped to the AWS NLB). Implementing public ACME automation against internal `.gitops.local` / `nip.io` domains introduces external DNS delegation overhead with no architectural benefit for the demo workloads.
 

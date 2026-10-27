@@ -168,6 +168,6 @@ curl http://gitops.local/api/v1/visits/count
  
 - Dead Letter Queue (`TASK-P3-06`): Implemented.
 - Kafka mTLS client authentication (`TASK-P3-05`): Implemented.
-- The visit app exposes `/` and `/api` through Cilium Gateway API over HTTP; TLS/HTTPS is tracked in `TASK-P6-01`.
+- The visit app exposes `/` and `/api` through Cilium Gateway API over HTTP; TLS/HTTPS certificate automation (`TASK-P6-01`) is dropped / out of scope per Agents.md.
 - Dynamic Postgres database credentials from OpenBao are tracked in `TASK-P3-04`.
 - Network policy isolation for tenant namespaces (`TASK-P4-02`): Complete. Enforced via 2-tier Cilium network policies (`platform-guardrails` CCNP + `visit-ui-isolation`, `visit-gateway-isolation`, `visit-processor-isolation`, and `visit-loadgen-isolation` CNPs).
