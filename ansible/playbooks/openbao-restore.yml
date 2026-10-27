@@ -1,0 +1,166 @@
+---
+- name: Restore OpenBao Raft snapshot from Ceph RGW
+  hosts: control_plane[0]
+  become: true
+  gather_facts: false
+  vars:
+    rke2_kubeconfig_path: /etc/rancher/rke2/rke2.yaml
+    rke2_kubectl_path: /var/lib/rancher/rke2/bin/kubectl
+    openbao_kubeconfig: "{{ rke2_kubeconfig_path }}"
+    openbao_namespace: openbao
+    openbao_leader_pod: openbao-0
+    openbao_follower_pods:
+      - openbao-1
+      - openbao-2
+    openbao_init_file: /root/.secrets/openbao-init.dev.json
+    openbao_key_threshold: 3
+    snapshot_key: "{{ lookup('env', 'SNAPSHOT') | default('raft-snapshot-latest.snap', true) }}"
+    restore_tmp_file: "/tmp/openbao-restore.snap"
+    restore_pod_tmp_file: "/tmp/restore.snap"
+
+  tasks:
+    - name: Check OpenBao init file exists
+      ansible.builtin.stat:
+        path: "{{ openbao_init_file }}"
+      register: openbao_init_file_stat
+
+    - name: Fail if OpenBao init file is missing
+      ansible.builtin.fail:
+        msg: "OpenBao init file {{ openbao_init_file }} is missing. Root token and unseal keys are required to restore."
+      when: not openbao_init_file_stat.stat.exists
+
+    - name: Read OpenBao init JSON
+      ansible.builtin.slurp:
+        src: "{{ openbao_init_file }}"
+      register: openbao_init_file_slurp
+      no_log: true
+
+    - name: Parse OpenBao credentials
+      ansible.builtin.set_fact:
+        openbao_root_token: "{{ (openbao_init_file_slurp.content | b64decode | from_json).root_token }}"
+        openbao_unseal_keys: "{{ ((openbao_init_file_slurp.content | b64decode | from_json).unseal_keys_b64 | default((openbao_init_file_slurp.content | b64decode | from_json).unseal_keys_hex)) }}"
+      no_log: true
+
+    - name: Get openbao-backups S3 credentials secret
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+        get secret openbao-backups -o json
+      register: openbao_backups_secret_json
+      changed_when: false
+
+    - name: Get openbao-backups S3 configmap
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+        get configmap openbao-backups -o json
+      register: openbao_backups_cm_json
+      changed_when: false
+
+    - name: Parse S3 endpoint and credentials
+      ansible.builtin.set_fact:
+        s3_access_key: "{{ (openbao_backups_secret_json.stdout | from_json).data.AWS_ACCESS_KEY_ID | b64decode }}"
+        s3_secret_key: "{{ (openbao_backups_secret_json.stdout | from_json).data.AWS_SECRET_ACCESS_KEY | b64decode }}"
+        s3_bucket: "{{ (openbao_backups_cm_json.stdout | from_json).data.BUCKET_NAME }}"
+        s3_host: "{{ (openbao_backups_cm_json.stdout | from_json).data.BUCKET_HOST }}"
+        s3_port: "{{ (openbao_backups_cm_json.stdout | from_json).data.BUCKET_PORT }}"
+      no_log: true
+
+    - name: Build S3 endpoint URL
+      ansible.builtin.set_fact:
+        s3_endpoint: "http://{{ s3_host }}:{{ s3_port }}"
+
+    - name: Download snapshot {{ snapshot_key }} from Ceph RGW
+      ansible.builtin.shell: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+        run openbao-snap-dl-{{ 999999 | random }} --rm -i --restart=Never
+        --image=public.ecr.aws/aws-cli/aws-cli:2.17.53
+        --env="AWS_ACCESS_KEY_ID={{ s3_access_key }}"
+        --env="AWS_SECRET_ACCESS_KEY={{ s3_secret_key }}"
+        --env="AWS_DEFAULT_REGION=us-east-1"
+        --env="AWS_EC2_METADATA_DISABLED=true"
+        --command -- aws --endpoint-url "{{ s3_endpoint }}" s3 cp "s3://{{ s3_bucket }}/{{ snapshot_key }}" - > {{ restore_tmp_file }}
+      args:
+        executable: /bin/bash
+      changed_when: true
+      no_log: true
+
+    - name: Check downloaded snapshot file
+      ansible.builtin.stat:
+        path: "{{ restore_tmp_file }}"
+      register: restore_file_stat
+
+    - name: Fail if snapshot is missing or empty
+      ansible.builtin.fail:
+        msg: "Failed to download snapshot s3://{{ s3_bucket }}/{{ snapshot_key }} or file is empty."
+      when: not restore_file_stat.stat.exists or restore_file_stat.stat.size == 0
+
+    - name: Log snapshot download info
+      ansible.builtin.debug:
+        msg: "Successfully downloaded s3://{{ s3_bucket }}/{{ snapshot_key }} ({{ restore_file_stat.stat.size }} bytes)"
+
+    - name: Copy snapshot into leader pod {{ openbao_leader_pod }}
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+        cp {{ restore_tmp_file }} {{ openbao_leader_pod }}:{{ restore_pod_tmp_file }}
+      changed_when: true
+
+    - name: Restore Raft snapshot on {{ openbao_leader_pod }}
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+        exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+        bao operator raft snapshot restore -force {{ restore_pod_tmp_file }}
+      changed_when: true
+      no_log: true
+
+    - name: Clean up local snapshot file
+      ansible.builtin.file:
+        path: "{{ restore_tmp_file }}"
+        state: absent
+
+    - name: Clean up pod snapshot file
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+        exec {{ openbao_leader_pod }} -- rm -f {{ restore_pod_tmp_file }}
+      changed_when: true
+
+    - name: Pause 10 seconds for Raft consensus sync after restore
+      ansible.builtin.pause:
+        seconds: 10
+
+    - name: Unseal leader pod if sealed
+      ansible.builtin.include_tasks: ../roles/openbao_bootstrap/tasks/unseal_pod.yml
+      vars:
+        openbao_target_pod: "{{ openbao_leader_pod }}"
+
+    - name: Unseal follower pods if sealed
+      ansible.builtin.include_tasks: ../roles/openbao_bootstrap/tasks/unseal_pod.yml
+      vars:
+        openbao_target_pod: "{{ item }}"
+      loop: "{{ openbao_follower_pods }}"
+
+    - name: Check OpenBao leader status after restore
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+        exec {{ openbao_leader_pod }} -- bao status -format=json
+      register: openbao_post_restore_status
+      changed_when: false
+
+    - name: Verify Raft peers
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+        exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+        bao operator raft list-peers -format=json
+      register: openbao_post_restore_peers
+      changed_when: false
+      no_log: true
+
+    - name: Verify dev secret readability
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+        exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+        bao kv get -mount=secret dev/platform/postgres/app-user
+      changed_when: false
+      no_log: true
+
+    - name: Report restore success
+      ansible.builtin.debug:
+        msg: "OpenBao Raft restore of {{ snapshot_key }} succeeded. Cluster is unsealed, peers are synced, and secrets are accessible."

@@ -76,14 +76,13 @@ Exit criteria:
 
 ### Phase 3 - Stateful & Secrets Hardening
 Current state:
-1. OpenBao baseline implemented (3 pods, Raft on Ceph, ESO synced; unsealing automated via Ansible).
+1. OpenBao baseline implemented (3 pods, Raft on Ceph, ESO synced; unsealing automated via Ansible; `TASK-P3-02` completed with scheduled Raft snapshots to Ceph RGW `s3://openbao-backups/` and restore automation).
 2. Kafka baseline implemented with Strimzi in KRaft mode (3 brokers on Ceph), Transactional Dead Letter Queue (`TASK-P3-06` completed with `visits.dead-letter`, fast-path poison isolation, `sql.Tx` DB transactions, and 3-retry schedule), and Mutual TLS Listener Security & ACLs (`TASK-P3-05` completed with X.509 mTLS on port 9093, least-privilege `KafkaUser` ACLs, and ESO automated secret projection).
 3. Ceph baseline implemented with `ceph-block` as default StorageClass.
 4. Postgres implemented with CloudNativePG (3 instances on Ceph) + continuous WAL archiving and daily base backups to Ceph RGW (`TASK-P3-01` completed).
 5. Distributed Loki on Ceph S3 RGW and custom metric autoscaling on Kafka lag.
 
 Phase 3 hardening backlog (see `docs/roadmap.md` for task specs):
-- `TASK-P3-02`: OpenBao scheduled Raft snapshots to Ceph RGW S3.
 - `TASK-P3-04`: OpenBao dynamic PostgreSQL secrets engine and rotation.
 - `TASK-P3-07`: Ceph OSD failure drills and Loki S3 retention lifecycle rules.
 

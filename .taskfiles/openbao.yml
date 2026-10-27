@@ -15,3 +15,45 @@ tasks:
         if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
           exit "$status"
         fi
+
+  snapshot:
+    desc: "Trigger an immediate on-demand OpenBao Raft snapshot Job"
+    preconditions:
+      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
+        msg: "Missing {{.KUBECONFIG_FILE}}. Run task ansible:get_kubeconfig_public first."
+    cmds:
+      - |
+        JOB_NAME="openbao-snapshot-manual-$(date +%s)"
+        KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao create job --from=cronjob/openbao-snapshot "$JOB_NAME"
+        echo "Waiting for snapshot job $JOB_NAME to complete..."
+        KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao wait --for=condition=complete --timeout=5m "job/$JOB_NAME"
+        KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao logs "job/$JOB_NAME" -c upload-s3
+
+  restore:
+    desc: "Restore OpenBao Raft snapshot from Ceph RGW (optional SNAPSHOT=<file.snap>)"
+    deps:
+      - ":venv:check"
+    env:
+      ANSIBLE_CONFIG: "{{.ANSIBLE_CONFIG_FILE}}"
+    preconditions:
+      - sh: 'test -f "{{.INVENTORY}}"'
+        msg: "Missing ansible inventory file. Run task ansible:inventory first."
+    cmds:
+      - '{{.VENV_ANSIBLE_PLAYBOOK}} -i "{{.INVENTORY}}" ansible/playbooks/openbao-restore.yml'
+
+  list_snapshots:
+    desc: "List OpenBao snapshots stored in Ceph RGW S3"
+    preconditions:
+      - sh: 'test -f "{{.KUBECONFIG_FILE}}"'
+        msg: "Missing {{.KUBECONFIG_FILE}}. Run task ansible:get_kubeconfig_public first."
+    cmds:
+      - |
+        KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao run openbao-s3-ls-$$ --rm -i --restart=Never \
+          --image=public.ecr.aws/aws-cli/aws-cli:2.17.53 \
+          --env="AWS_ACCESS_KEY_ID=$(KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao get secret openbao-backups -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)" \
+          --env="AWS_SECRET_ACCESS_KEY=$(KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao get secret openbao-backups -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)" \
+          --env="AWS_DEFAULT_REGION=us-east-1" \
+          --env="AWS_EC2_METADATA_DISABLED=true" \
+          --command -- aws --endpoint-url="http://$(KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao get cm openbao-backups -o jsonpath='{.data.BUCKET_HOST}'):$(KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao get cm openbao-backups -o jsonpath='{.data.BUCKET_PORT}')" \
+          s3 ls "s3://$(KUBECONFIG="{{.KUBECONFIG_FILE}}" kubectl -n openbao get cm openbao-backups -o jsonpath='{.data.BUCKET_NAME}')/"
+

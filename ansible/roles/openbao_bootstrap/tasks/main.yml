@@ -183,6 +183,30 @@
   changed_when: true
   no_log: true
 
+- name: Write OpenBao Raft snapshot policy
+  ansible.builtin.shell: |
+    set -o pipefail
+    cat <<'EOF' | {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }} exec -i {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }} bao policy write raft-snapshot -
+    path "sys/storage/raft/snapshot" {
+      capabilities = ["read"]
+    }
+    EOF
+  args:
+    executable: /bin/bash
+  changed_when: true
+  no_log: true
+
+- name: Configure OpenBao Raft snapshot Kubernetes role
+  ansible.builtin.command: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+    bao write auth/kubernetes/role/openbao-snapshot
+    bound_service_account_names={{ openbao_snapshot_service_account_name }}
+    bound_service_account_namespaces={{ openbao_snapshot_service_account_namespace }}
+    policies=raft-snapshot ttl=1h
+  changed_when: true
+  no_log: true
+
 - name: Ensure OpenBao secret KV v2 engine exists
   ansible.builtin.shell: >-
     {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}

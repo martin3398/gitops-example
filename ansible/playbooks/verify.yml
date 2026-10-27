@@ -122,6 +122,23 @@
         executable: /bin/bash
       changed_when: false
 
+    - name: Wait for OpenBao ObjectBucketClaim to be bound
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n openbao get
+        objectbucketclaims.objectbucket.io/openbao-backups
+        -o jsonpath='{.status.phase}'
+      register: openbao_obc_phase
+      changed_when: false
+      retries: 30
+      delay: 5
+      until: openbao_obc_phase.stdout == "Bound"
+
+    - name: Verify OpenBao snapshot CronJob exists
+      ansible.builtin.command: >-
+        {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n openbao get
+        cronjobs.batch/openbao-snapshot
+      changed_when: false
+
     - name: Wait for OpenBao ClusterSecretStore readiness
       ansible.builtin.command: >-
         {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} wait

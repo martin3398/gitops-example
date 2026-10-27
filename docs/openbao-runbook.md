@@ -173,10 +173,63 @@ kubectl get clustersecretstore openbao
 kubectl -n data-postgres get secret app-user
 ```
 
+## Raft Snapshots & Disaster Recovery (TASK-P3-02)
+
+OpenBao state is backed up continuously to local on-prem object storage in Ceph RGW (`s3://openbao-backups/`) using an automated `CronJob` and native Kubernetes authentication.
+
+### Architecture
+
+1. **Storage Provisioning**: An `ObjectBucketClaim` (`openbao-backups`) in `openbao` requests an S3 bucket from Rook-Ceph via the `ceph-bucket` StorageClass.
+2. **Least-Privilege Auth**: The `openbao-snapshot` ServiceAccount authenticates to OpenBao using the Kubernetes auth engine (`auth/kubernetes/role/openbao-snapshot`). It is mapped to the `raft-snapshot` policy (`path "sys/storage/raft/snapshot" { capabilities = ["read"] }`) and cannot read any secret data.
+3. **Automated Scheduled Snapshots**: `CronJob/openbao-snapshot` runs every 6 hours (`0 */6 * * *`):
+   - **Init Container** (`quay.io/openbao/openbao:2.5.5`): Obtains an OpenBao token via Kubernetes auth and dumps the binary snapshot to a shared `emptyDir` volume using `bao operator raft snapshot save`.
+   - **Upload Container** (`public.ecr.aws/aws-cli/aws-cli:2.17.53`): Streams the snapshot to Ceph RGW S3, publishing both a timestamped snapshot (`raft-snapshot-<timestamp>.snap`) and updating `raft-snapshot-latest.snap`.
+
+### Operational Commands
+
+Trigger an immediate on-demand snapshot:
+
+```bash
+task openbao:snapshot
+```
+
+List snapshots stored in Ceph RGW S3:
+
+```bash
+task openbao:list_snapshots
+```
+
+Restore from the latest snapshot:
+
+```bash
+task openbao:restore
+```
+
+Restore a specific historical snapshot:
+
+```bash
+SNAPSHOT=raft-snapshot-20261027_210000.snap task openbao:restore
+```
+
+Or execute the restore playbook directly:
+
+```bash
+ANSIBLE_CONFIG=ansible/ansible.cfg \
+  .venv/bin/ansible-playbook -i ansible/inventories/dev/hosts.yml ansible/playbooks/openbao-restore.yml \
+  -e snapshot_key=raft-snapshot-latest.snap
+```
+
+The restore procedure automatically:
+1. Downloads the target `.snap` file from Ceph RGW to the control plane.
+2. Copies it into `openbao-0` and executes `bao operator raft snapshot restore -force`.
+3. Cleans up temporary artifacts.
+4. Allows Raft consensus to sync and re-unseals the leader and follower pods if needed.
+5. Verifies Raft peer membership and asserts that stored secrets remain intact.
+
 ## Notes & Roadmap Hardening Tasks
 
 - **Unsealing Model**: Auto-unseal is dropped / out of scope for this lab; unsealing and Raft joining are fully automated by the Ansible bootstrap role (`task ansible:openbao`).
 - **TLS / HTTPS**: Currently plaintext HTTP; TLS certificate automation is tracked in `TASK-P6-01`.
-- **Raft Snapshots & Disaster Recovery (`TASK-P3-02`)**: Automated CronJob snapshots to S3/Ceph RGW and recovery testing.
+- **Raft Snapshots & Disaster Recovery (`TASK-P3-02`)**: Complete. Automated CronJob snapshots to S3/Ceph RGW and recovery playbook (`ansible/playbooks/openbao-restore.yml`).
 - **Dynamic Database Credentials (`TASK-P3-04`)**: Replace deterministic dev seeding with OpenBao's PostgreSQL secrets engine.
 - **Network Policy Isolation (`TASK-P4-02`)**: Restrict OpenBao port 8200 access strictly to External Secrets Operator and gateway routes.

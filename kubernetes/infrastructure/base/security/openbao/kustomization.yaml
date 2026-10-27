@@ -6,3 +6,6 @@ resources:
   - helmrelease.yaml
   - clustersecretstore.yaml
   - httproute.yaml
+  - objectbucketclaim.yaml
+  - cronjob-snapshot.yaml
+

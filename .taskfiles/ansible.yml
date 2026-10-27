@@ -14,6 +14,7 @@ tasks:
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/cluster-bootstrap.yml"
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/flux-bootstrap.yml"
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/openbao-bootstrap.yml"
+      - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/openbao-restore.yml"
       - "{{.VENV_ANSIBLE_PLAYBOOK}} -i 'localhost,' --syntax-check ansible/playbooks/verify.yml"
 
   inventory:

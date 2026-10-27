@@ -90,7 +90,7 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 ├──────────────┬─────────────────────────────────────────────┬────────────────┤
 │ ID           │ Task Title                                  │ Priority       │
 ├──────────────┼─────────────────────────────────────────────┼────────────────┤
-│ TASK-P3-02   │ OpenBao Scheduled Raft Snapshots to Ceph RGW│ High           │
+│ TASK-P3-02   │ OpenBao Scheduled Raft Snapshots to Ceph RGW│ COMPLETE (Done)│
 │ TASK-P3-04   │ OpenBao Dynamic Postgres Secrets Engine     │ Medium         │
 │ TASK-P3-05   │ Kafka Listener Security (mTLS) & ACLs       │ COMPLETE (Done)│
 │ TASK-P3-06   │ Dead Letter Queue (DLQ) for Visit Events    │ COMPLETE (Done)│
@@ -101,22 +101,31 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 
 ---
 
-### `TASK-P3-02`: OpenBao Scheduled Raft Snapshots to Ceph RGW
+### `TASK-P3-02`: OpenBao Scheduled Raft Snapshots to Ceph RGW (Complete)
 
 - **Objective**: Implement automated periodic Raft snapshots of OpenBao state with local on-prem object storage in Ceph RGW (`s3://openbao-backups/`).
 - **Affected Files**:
   - `kubernetes/infrastructure/base/security/openbao/objectbucketclaim.yaml` (new)
   - `kubernetes/infrastructure/base/security/openbao/cronjob-snapshot.yaml` (new)
   - `kubernetes/infrastructure/base/security/openbao/kustomization.yaml`
+  - `ansible/roles/openbao_bootstrap/tasks/main.yml`
+  - `ansible/roles/openbao_bootstrap/defaults/main.yml`
   - `ansible/playbooks/openbao-restore.yml` (new)
+  - `ansible/playbooks/verify.yml`
+  - `.taskfiles/openbao.yml`
+  - `.taskfiles/ansible.yml`
   - `docs/openbao-runbook.md`
-- **Implementation Steps**:
-  1. Create an `ObjectBucketClaim` in the `openbao` namespace for `openbao-backups` using the local Ceph RGW StorageClass.
-  2. Create a `CronJob` in `openbao` that executes `bao operator raft snapshot save`, using S3 credentials from the OBC Secret to stream the `.snap` file to `http://rook-ceph-rgw-ceph-objectstore.rook-ceph.svc:80`.
-  3. Create an Ansible restore playbook / runbook procedure to restore snapshots into a fresh OpenBao Raft cluster (`bao operator raft snapshot restore`).
+- **Implementation & Architecture Details**:
+  1. **Local Object Storage**: `ObjectBucketClaim` `openbao-backups` dynamically provisions an on-prem S3 bucket in Ceph RGW via `storageClassName: ceph-bucket`, automatically injecting S3 access keys and endpoint details into the `openbao` namespace.
+  2. **Least-Privilege Auth**: Configured OpenBao Kubernetes auth role `openbao-snapshot` bound to `ServiceAccount/openbao-snapshot` with dedicated policy `raft-snapshot` (`path "sys/storage/raft/snapshot" { capabilities = ["read"] }`), isolating snapshotting privileges from KV secrets data.
+  3. **Two-Stage Snapshot CronJob**: `CronJob/openbao-snapshot` runs every 6 hours (`0 */6 * * *`):
+     - *Init Container* (`quay.io/openbao/openbao:2.5.5`): Authenticates via Kubernetes ServiceAccount and writes `bao operator raft snapshot save` to a shared `emptyDir`.
+     - *Upload Container* (`public.ecr.aws/aws-cli/aws-cli:2.17.53`): Streams the snapshot to Ceph RGW S3 (`s3://openbao-backups/raft-snapshot-<timestamp>.snap` and `raft-snapshot-latest.snap`).
+  4. **Automated Restore Automation**: Playbook `ansible/playbooks/openbao-restore.yml` and `task openbao:restore` downloads specified/latest snapshot from S3, copies to `openbao-0`, executes `bao operator raft snapshot restore -force`, handles unsealing across all cluster pods, and verifies Raft peer health and secret readability.
 - **Acceptance Criteria**:
   - Snapshot CronJob runs and successfully saves `.snap` files to Ceph RGW `s3://openbao-backups/`.
   - Restore procedure tested and documented in `docs/openbao-runbook.md`.
+  - OBC binding and CronJob verified in `ansible/playbooks/verify.yml`.
 
 ---
 
