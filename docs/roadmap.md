@@ -257,7 +257,6 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 ├──────────────┼─────────────────────────────────────────────┼────────────────┤
 │ TASK-P4-02   │ Cilium Network Policies (East-West Isolation│ High           │
 │ TASK-P4-03   │ Pod Security Standards & Kyverno Enforce    │ High           │
-│ TASK-P4-04   │ Renovate Dependency Automation Setup        │ Medium         │
 │ TASK-P4-05   │ Grafana Platform Dashboards Coverage        │ Medium         │
 │ TASK-P4-06   │ RKE2 etcd Automated Snapshots & Retention   │ Medium         │
 │ TASK-P4-07   │ Automated Backup & PITR Restore Drill       │ Medium         │
@@ -305,21 +304,6 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 - **Acceptance Criteria**:
   - Non-compliant pods violating PSS or Kyverno policies are rejected by the admission webhook.
   - All existing platform and application workloads remain healthy.
-
----
-
-### `TASK-P4-04`: Renovate Automated Dependency Updates
-
-- **Objective**: Automate dependency updates across Helm charts, Docker base images, Go modules, npm packages, and GitHub Actions.
-- **Affected Files**:
-  - `renovate.json` (new)
-  - `docs/github-actions-runbook.md`
-- **Implementation Steps**:
-  1. Add `renovate.json` configuring package managers (`helmv3`, `dockerfile`, `gomod`, `npm`, `github-actions`).
-  2. Set up automerge rules for patch updates and schedule PR creation during designated maintenance windows.
-  3. Pin dependency version constraints.
-- **Acceptance Criteria**:
-  - Renovate scans the repository and opens automated PRs with changelogs for outdated Helm charts and packages.
 
 ---
 

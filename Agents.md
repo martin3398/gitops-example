@@ -97,11 +97,11 @@ Exit criteria per tool:
 Phase 4 backlog (see `docs/roadmap.md` for task specs):
 1. **Backups & DR (Ceph-Centric)**:
    - `TASK-P4-06`: RKE2 etcd automated snapshots retention and Ceph/local rotation.
+   - `TASK-P4-07`: Automated backup and PITR restore verification drill.
 2. **Policy & Security**:
    - `TASK-P4-02`: CiliumNetworkPolicy least-privilege east-west isolation.
    - `TASK-P4-03`: Pod Security Standards (`baseline`/`restricted`) & Kyverno `Enforce` mode.
-3. **Observability & Maintenance**:
-   - `TASK-P4-04`: Renovate automation for automated dependency and chart updates.
+3. **Observability**:
    - `TASK-P4-05`: Grafana dashboard expansion (Ceph, Postgres, Kafka, Gateway API).
 
 Exit criteria:
