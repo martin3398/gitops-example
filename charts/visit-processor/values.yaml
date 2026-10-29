@@ -27,6 +27,18 @@ env:
 secretName: visit-demo-db
 kafkaTlsSecretName: visit-processor-kafka-tls
 
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
 
 resources:
   requests:

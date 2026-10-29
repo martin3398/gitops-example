@@ -21,20 +21,32 @@ spec:
       imagePullSecrets:
 {{ toYaml . | indent 8 }}
 {{- end }}
+{{- with .Values.podSecurityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+{{- end }}
       containers:
         - name: {{ .Chart.Name }}
+{{- with .Values.securityContext }}
+          securityContext:
+{{ toYaml . | indent 12 }}
+{{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: LOADGEN_CONFIG_FILE
               value: /etc/visit-loadgen/config.env
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: config
               mountPath: /etc/visit-loadgen
               readOnly: true
           resources:
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: config
           configMap:
             name: {{ .Release.Name }}-config

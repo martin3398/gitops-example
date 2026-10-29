@@ -1,0 +1,64 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-pss-labels
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: mutate-default-pss-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              names:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - default
+                - flux-system
+                - kyverno
+                - local-path-storage
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              +(pod-security.kubernetes.io/enforce): baseline
+              +(pod-security.kubernetes.io/enforce-version): v1.30
+              +(pod-security.kubernetes.io/warn): baseline
+              +(pod-security.kubernetes.io/warn-version): latest
+              +(pod-security.kubernetes.io/audit): baseline
+              +(pod-security.kubernetes.io/audit-version): latest
+    - name: check-pss-enforce-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+              names:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - default
+                - flux-system
+                - kyverno
+                - local-path-storage
+      validate:
+        message: "Every tenant/platform namespace must explicitly define 'pod-security.kubernetes.io/enforce' (restricted, baseline, or privileged) and 'pod-security.kubernetes.io/enforce-version'."
+        pattern:
+          metadata:
+            labels:
+              pod-security.kubernetes.io/enforce: "restricted | baseline | privileged"
+              pod-security.kubernetes.io/enforce-version: "?*"
+

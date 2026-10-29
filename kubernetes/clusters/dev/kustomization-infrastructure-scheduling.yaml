@@ -14,3 +14,10 @@ spec:
   prune: true
   wait: true
   timeout: 15m
+  healthChecks:
+    - apiVersion: kyverno.io/v1
+      kind: ClusterPolicy
+      name: tiny-pod-requests
+    - apiVersion: kyverno.io/v1
+      kind: ClusterPolicy
+      name: require-pss-labels

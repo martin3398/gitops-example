@@ -19,8 +19,16 @@ spec:
       imagePullSecrets:
 {{ toYaml . | indent 8 }}
 {{- end }}
+{{- with .Values.podSecurityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+{{- end }}
       containers:
         - name: {{ .Chart.Name }}
+{{- with .Values.securityContext }}
+          securityContext:
+{{ toYaml . | indent 12 }}
+{{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -62,8 +70,10 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.secretName }}
                   key: DB_PASSWORD
-{{- if .Values.kafkaTlsSecretName }}
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+{{- if .Values.kafkaTlsSecretName }}
             - name: kafka-tls
               mountPath: /etc/kafka/tls
               readOnly: true
@@ -82,8 +92,10 @@ spec:
             periodSeconds: 10
           resources:
 {{ toYaml .Values.resources | indent 12 }}
-{{- if .Values.kafkaTlsSecretName }}
       volumes:
+        - name: tmp
+          emptyDir: {}
+{{- if .Values.kafkaTlsSecretName }}
         - name: kafka-tls
           secret:
             secretName: {{ .Values.kafkaTlsSecretName }}

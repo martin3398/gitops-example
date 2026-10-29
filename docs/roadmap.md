@@ -42,6 +42,7 @@ Each future task is structured with explicit objectives, affected files, impleme
 
 - **Phase 4 (Resilience, Policy & Security)**:
   - Cilium East-West Network Isolation (`TASK-P4-02`): 2-Tier Defense-in-Depth network policies combining global platform guardrails (`CiliumClusterwideNetworkPolicy`) for CoreDNS, kubelet health probes, and AWS IMDSv1 protection with service-owned least-privilege micro-segmentation (`CiliumNetworkPolicy`) for Postgres, Kafka mTLS, OpenBao API/Raft, and visit microservices.
+  - Pod Security Standards & Kyverno Enforce Mode (`TASK-P4-03`): Three-tier Kubernetes Pod Security Standards admission (`restricted` on application namespaces, `baseline` on data platform/gateway namespaces, `privileged` with baseline warnings on storage/telemetry daemons), Kyverno policies switched to `validationFailureAction: Enforce`, and hardened non-root security contexts (`RuntimeDefault` seccomp, drop `ALL` capabilities, read-only root filesystems with `/tmp` emptyDir) across all application microservices.
 
 - **Phase 5 (RKE2 Migration)**:
   - Migrated cluster bootstrap and runtime from kubeadm to RKE2.
@@ -259,7 +260,7 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 │ ID           │ Task Title                                  │ Priority       │
 ├──────────────┼─────────────────────────────────────────────┼────────────────┤
 │ TASK-P4-02   │ Cilium Network Policies (East-West Isolation│ COMPLETE (Done)│
-│ TASK-P4-03   │ Pod Security Standards & Kyverno Enforce    │ High           │
+│ TASK-P4-03   │ Pod Security Standards & Kyverno Enforce    │ COMPLETE (Done)│
 │ TASK-P4-05   │ Grafana Platform Dashboards Coverage        │ Medium         │
 │ TASK-P4-06   │ RKE2 etcd Automated Snapshots & Retention   │ Medium         │
 │ TASK-P4-07   │ Automated Backup & PITR Restore Drill       │ Medium         │
@@ -305,24 +306,53 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 
 ---
 
-### `TASK-P4-03`: Pod Security Standards & Kyverno Enforce Mode
+### `TASK-P4-03`: Pod Security Standards & Kyverno Enforce Mode (Complete)
 
 - **Objective**: Enforce Kubernetes Pod Security Standards (`baseline` / `restricted`) and switch Kyverno policies to `Enforce` mode.
 - **Affected Files**:
-  - All `namespace.yaml` files under `kubernetes/apps/` and `kubernetes/infrastructure/`
+  - `kubernetes/apps/base/visit-web/namespace-web.yaml`
+  - `kubernetes/apps/base/visit-processing/namespace-processing.yaml`
+  - `kubernetes/apps/base/visit-loadgen/namespace-loadgen.yaml`
+  - `kubernetes/infrastructure/base/data-postgres/namespace.yaml`
+  - `kubernetes/infrastructure/base/data-kafka/namespace.yaml`
+  - `kubernetes/infrastructure/base/security/openbao/namespace.yaml`
+  - `kubernetes/infrastructure/base/gateway/namespace.yaml`
+  - `kubernetes/infrastructure/base/observability/namespace.yaml`
+  - `kubernetes/infrastructure/base/core-services/storage/rook-ceph-operator/namespace.yaml`
+  - `kubernetes/infrastructure/base/scheduling/policies/clusterpolicy-require-pss-labels.yaml` (new)
   - `kubernetes/infrastructure/base/scheduling/policies/clusterpolicy-tiny-pod-requests.yaml`
   - `kubernetes/apps/overlays/dev/policies/clusterpolicy-prefer-non-ceph-nodes.yaml`
+  - `charts/visit-gateway/values.yaml`
+  - `charts/visit-gateway/templates/deployment.yaml`
+  - `charts/visit-processor/values.yaml`
+  - `charts/visit-processor/templates/deployment.yaml`
+  - `charts/visit-ui/values.yaml`
+  - `charts/visit-ui/templates/deployment.yaml`
+  - `charts/visit-loadgen/values.yaml`
+  - `charts/visit-loadgen/templates/deployment.yaml`
+  - `ansible/playbooks/verify.yml`
   - `docs/kyverno-runbook.md`
-- **Implementation Steps**:
-  1. Label application namespaces (`visit-web`, `visit-processing`, `visit-loadgen`) with:
-     - `pod-security.kubernetes.io/enforce: restricted`
-     - `pod-security.kubernetes.io/enforce-version: latest`
-  2. Label platform namespaces with `pod-security.kubernetes.io/enforce: baseline`.
-  3. Switch Kyverno policies from `validationFailureAction: Audit` to `validationFailureAction: Enforce`.
-  4. Ensure workload security contexts specify non-root user, read-only root filesystems, and drop all capabilities.
+- **Implementation & Architecture Details**:
+  1. **Three-Tier Pod Security Standards (PSS)**:
+     - *Application namespaces* (`visit-web`, `visit-processing`, `visit-loadgen`): Enforce `restricted` profile (`pod-security.kubernetes.io/enforce: restricted`, `enforce-version: v1.30`, `audit: restricted`, `warn: restricted`, version `latest`).
+     - *Data platform & gateway namespaces* (`data-postgres`, `data-kafka`, `openbao`, `gateway`): Enforce `baseline` profile (`pod-security.kubernetes.io/enforce: baseline`, `enforce-version: v1.30`, `audit: baseline`, `warn: baseline`, version `latest`).
+     - *Host storage & telemetry daemons* (`rook-ceph`, `monitoring`): Configured with `pod-security.kubernetes.io/enforce: privileged` (`enforce-version: v1.30`) and `warn: baseline` / `audit: baseline` (version `latest`) to accommodate required hostPath mounts and host networking for NVMe Ceph OSDs, CSI drivers, `node-exporter`, and `promtail`.
+  2. **Workload Security Context Hardening**:
+     - All 4 visit-demo application microservices Helm charts (`visit-gateway`, `visit-processor`, `visit-ui`, `visit-loadgen`) updated with:
+       - Pod level: `runAsNonRoot: true`, `seccompProfile: { type: RuntimeDefault }`
+       - Container level: `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, `runAsNonRoot: true`, `capabilities: { drop: ["ALL"] }`
+       - Ephemeral storage: Dedicated `emptyDir` mounted at `/tmp` to support writeable scratch files while maintaining a read-only rootfs.
+  3. **Kyverno Active Admission Mode & Namespace Validation**:
+     - `require-pss-labels` (new): Enforces that every non-system namespace explicitly defines `pod-security.kubernetes.io/enforce` and `pod-security.kubernetes.io/enforce-version` before it can be created, guaranteeing zero unhardened namespaces.
+     - `tiny-pod-requests`: Transitioned from `validationFailureAction: Audit` to `validationFailureAction: Enforce`.
+     - `prefer-non-ceph-nodes`: Transitioned from `validationFailureAction: Audit` to `validationFailureAction: Enforce`.
+  4. **Automated Verification Drill**:
+     - `ansible/playbooks/verify.yml` asserts PSS labels across all application and platform namespaces, verifies Kyverno `ClusterPolicy` resources are in `Enforce` mode, verifies that unlabelled namespaces are rejected by Kyverno admission, and runs a server dry-run admission rejection test ensuring privileged pods in `visit-web` are rejected with HTTP 403 / Forbidden by PodSecurity admission.
 - **Acceptance Criteria**:
   - Non-compliant pods violating PSS or Kyverno policies are rejected by the admission webhook.
   - All existing platform and application workloads remain healthy.
+  - Automated verification passes in `ansible/playbooks/verify.yml`.
+
 
 ---
 

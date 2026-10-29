@@ -96,14 +96,13 @@ Exit criteria per tool:
 ### Phase 4 - Resilience, Policy & Security
 Current state:
 1. `TASK-P4-02` completed: 2-Tier Defense-in-Depth Cilium network policies implemented (`platform-guardrails` CCNP for CoreDNS, health probes, Prometheus, and IMDS protection; plus namespaced CNPs for `data-postgres`, `data-kafka`, `openbao`, `visit-web`, `visit-processing`, and `visit-loadgen`).
+2. `TASK-P4-03` completed: Three-tier Pod Security Standards admission enforced (`restricted` for app namespaces, `baseline` for platform namespaces, `privileged` for storage/telemetry daemons), Kyverno policies in `Enforce` mode, and hardened non-root security contexts across application microservices.
 
 Phase 4 remaining backlog (see `docs/roadmap.md` for task specs):
 1. **Backups & DR (Ceph-Centric)**:
    - `TASK-P4-06`: RKE2 etcd automated snapshots retention and Ceph/local rotation.
    - `TASK-P4-07`: Automated backup and PITR restore verification drill.
-2. **Policy & Security**:
-   - `TASK-P4-03`: Pod Security Standards (`baseline`/`restricted`) & Kyverno `Enforce` mode.
-3. **Observability**:
+2. **Observability**:
    - `TASK-P4-05`: Grafana dashboard expansion (Ceph, Postgres, Kafka, Gateway API).
 
 Exit criteria:

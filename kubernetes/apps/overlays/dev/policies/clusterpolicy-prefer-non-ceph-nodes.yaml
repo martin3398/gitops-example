@@ -4,7 +4,7 @@ metadata:
   name: prefer-non-ceph-nodes
 spec:
   background: false
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   rules:
     - name: add-soft-non-ceph-affinity
       match:

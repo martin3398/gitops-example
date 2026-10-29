@@ -19,8 +19,16 @@ spec:
       imagePullSecrets:
 {{ toYaml . | indent 8 }}
 {{- end }}
+{{- with .Values.podSecurityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+{{- end }}
       containers:
         - name: {{ .Chart.Name }}
+{{- with .Values.securityContext }}
+          securityContext:
+{{ toYaml . | indent 12 }}
+{{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
@@ -29,6 +37,9 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           readinessProbe:
             httpGet:
               path: {{ .Values.probes.path }}
@@ -43,3 +54,6 @@ spec:
             periodSeconds: 10
           resources:
 {{ toYaml .Values.resources | indent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}

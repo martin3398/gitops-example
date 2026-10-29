@@ -4,7 +4,7 @@ metadata:
   name: tiny-pod-requests
 spec:
   background: false
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   rules:
     - name: force-tiny-container-requests
       match:

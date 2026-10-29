@@ -7,7 +7,7 @@ spec:
   interval: 1m
   targetNamespace: visit-web
   install:
-    createNamespace: true
+    createNamespace: false
     remediation:
       retries: 3
   chart:

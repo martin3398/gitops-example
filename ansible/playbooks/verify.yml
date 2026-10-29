@@ -440,3 +440,114 @@
         executable: /bin/bash
       changed_when: false
 
+    - name: Verify Pod Security Standards namespace labels (TASK-P4-03)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        kubectl=({{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }})
+
+        # Verify restricted profile on application namespaces
+        for ns in visit-web visit-processing visit-loadgen; do
+          enforce="$("${kubectl[@]}" get ns "$ns" -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce}')"
+          version="$("${kubectl[@]}" get ns "$ns" -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce-version}')"
+          test "$enforce" = "restricted"
+          test "$version" = "v1.30"
+        done
+
+        # Verify baseline profile on platform namespaces
+        for ns in data-postgres data-kafka openbao gateway; do
+          enforce="$("${kubectl[@]}" get ns "$ns" -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce}')"
+          version="$("${kubectl[@]}" get ns "$ns" -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce-version}')"
+          test "$enforce" = "baseline"
+          test "$version" = "v1.30"
+        done
+
+        # Verify privileged profile on host/storage daemons namespaces
+        for ns in rook-ceph monitoring; do
+          enforce="$("${kubectl[@]}" get ns "$ns" -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce}')"
+          version="$("${kubectl[@]}" get ns "$ns" -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce-version}')"
+          test "$enforce" = "privileged"
+          test "$version" = "v1.30"
+        done
+        echo "All namespaces correctly labeled with Pod Security Standards"
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Verify Kyverno policies are configured in Enforce mode (TASK-P4-03)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        kubectl=({{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }})
+
+        action_tiny="$("${kubectl[@]}" get clusterpolicy tiny-pod-requests -o jsonpath='{.spec.validationFailureAction}')"
+        test "$action_tiny" = "Enforce"
+
+        action_nodes="$("${kubectl[@]}" get clusterpolicy prefer-non-ceph-nodes -o jsonpath='{.spec.validationFailureAction}')"
+        test "$action_nodes" = "Enforce"
+
+        action_pss="$("${kubectl[@]}" get clusterpolicy require-pss-labels -o jsonpath='{.spec.validationFailureAction}')"
+        test "$action_pss" = "Enforce"
+
+        echo "Kyverno ClusterPolicies are active in Enforce mode"
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Verify Kyverno rejects creation of unlabelled namespace (TASK-P4-03)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        kubectl=({{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }})
+
+        # Dry-run server admission: unlabelled namespace must be rejected by Kyverno
+        output="$(cat <<'EOF' | "${kubectl[@]}" apply --dry-run=server -f - 2>&1 || true
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: test-unlabelled-ns
+        EOF
+        )"
+
+        if echo "$output" | grep -Eq "require-pss-labels|check-pss-enforce-labels|denied the request"; then
+          echo "Kyverno correctly rejected unlabelled namespace creation: $output"
+          exit 0
+        else
+          echo "ERROR: Unlabelled namespace was NOT rejected by Kyverno policy!" >&2
+          echo "Output: $output" >&2
+          exit 1
+        fi
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Verify Pod Security admission webhook rejects non-compliant pods (TASK-P4-03)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        kubectl=({{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }})
+
+        # Dry-run server admission test: privileged pod in visit-web must be rejected
+        output="$(cat <<'EOF' | "${kubectl[@]}" -n visit-web apply --dry-run=server -f - 2>&1 || true
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: pss-rejection-test
+        spec:
+          containers:
+            - name: test
+              image: busybox:1.36
+              securityContext:
+                privileged: true
+        EOF
+        )"
+
+        if echo "$output" | grep -Eq "violates PodSecurity|forbidden"; then
+          echo "Pod Security admission correctly rejected non-compliant pod: $output"
+          exit 0
+        else
+          echo "ERROR: Privileged pod was NOT rejected by Pod Security admission!" >&2
+          echo "Output: $output" >&2
+          exit 1
+        fi
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+

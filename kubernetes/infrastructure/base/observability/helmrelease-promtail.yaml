@@ -12,7 +12,7 @@ spec:
       namespace: monitoring
   targetNamespace: monitoring
   install:
-    createNamespace: true
+    createNamespace: false
     remediation:
       retries: 3
   upgrade:
