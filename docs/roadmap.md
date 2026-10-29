@@ -43,6 +43,7 @@ Each future task is structured with explicit objectives, affected files, impleme
 - **Phase 4 (Resilience, Policy & Security)**:
   - Cilium East-West Network Isolation (`TASK-P4-02`): 2-Tier Defense-in-Depth network policies combining global platform guardrails (`CiliumClusterwideNetworkPolicy`) for CoreDNS, kubelet health probes, and AWS IMDSv1 protection with service-owned least-privilege micro-segmentation (`CiliumNetworkPolicy`) for Postgres, Kafka mTLS, OpenBao API/Raft, and visit microservices.
   - Pod Security Standards & Kyverno Enforce Mode (`TASK-P4-03`): Three-tier Kubernetes Pod Security Standards admission (`restricted` on application namespaces, `baseline` on data platform/gateway namespaces, `privileged` with baseline warnings on storage/telemetry daemons), Kyverno policies switched to `validationFailureAction: Enforce`, and hardened non-root security contexts (`RuntimeDefault` seccomp, drop `ALL` capabilities, read-only root filesystems with `/tmp` emptyDir) across all application microservices.
+  - Grafana Platform Dashboards Coverage (`TASK-P4-05`): Expanded Grafana dashboard coverage with 4 auto-discovered ConfigMaps (`grafana_dashboard: "1"`) providing real-time visibility into Rook-Ceph storage & OSD health, CloudNativePG cluster performance & replication lag, Strimzi Kafka brokers, topics & consumer group lag, and Cilium Gateway API traffic, latency & HTTP error rates.
 
 - **Phase 5 (RKE2 Migration)**:
   - Migrated cluster bootstrap and runtime from kubeadm to RKE2.
@@ -261,7 +262,7 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 ├──────────────┼─────────────────────────────────────────────┼────────────────┤
 │ TASK-P4-02   │ Cilium Network Policies (East-West Isolation│ COMPLETE (Done)│
 │ TASK-P4-03   │ Pod Security Standards & Kyverno Enforce    │ COMPLETE (Done)│
-│ TASK-P4-05   │ Grafana Platform Dashboards Coverage        │ Medium         │
+│ TASK-P4-05   │ Grafana Platform Dashboards Coverage        │ COMPLETE (Done)│
 │ TASK-P4-06   │ RKE2 etcd Automated Snapshots & Retention   │ Medium         │
 │ TASK-P4-07   │ Automated Backup & PITR Restore Drill       │ Medium         │
 └──────────────┴─────────────────────────────────────────────┴────────────────┘
@@ -356,22 +357,27 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 
 ---
 
-### `TASK-P4-05`: Grafana Platform Dashboards Coverage
+### `TASK-P4-05`: Grafana Platform Dashboards Coverage (Complete)
 
 - **Objective**: Expand Grafana dashboard coverage to provide deep visibility into Ceph storage, CloudNativePG, Strimzi Kafka, and Gateway API traffic.
 - **Affected Files**:
-  - `kubernetes/infrastructure/base/observability/dashboards/` (new dashboard configmaps)
+  - `kubernetes/infrastructure/base/observability/dashboards/ceph-overview.yaml` (new)
+  - `kubernetes/infrastructure/base/observability/dashboards/postgres-overview.yaml` (new)
+  - `kubernetes/infrastructure/base/observability/dashboards/kafka-overview.yaml` (new)
+  - `kubernetes/infrastructure/base/observability/dashboards/gateway-overview.yaml` (new)
+  - `kubernetes/infrastructure/base/observability/dashboards/kustomization.yaml` (new)
   - `kubernetes/infrastructure/base/observability/kustomization.yaml`
+  - `ansible/playbooks/verify.yml`
   - `docs/observability-runbook.md`
-- **Implementation Steps**:
-  1. Add dashboard ConfigMaps for:
-     - Ceph Cluster & OSD Health (Rook metrics)
-     - CloudNativePG Cluster Performance & Replication Lag
-     - Strimzi Kafka Brokers, Topics & Consumer Group Lag
-     - Cilium Gateway API Traffic, Latency & HTTP Error Rates
-  2. Label ConfigMaps with `grafana_dashboard: "1"` for Grafana sidecar auto-discovery.
+- **Implementation & Architecture Details**:
+  1. **Auto-Discovery by Sidecar**: All dashboards are deployed as Kubernetes `ConfigMap` resources in the `monitoring` namespace labeled `grafana_dashboard: "1"`, automatically detected, mounted, and provisioned into Grafana by the `kube-prometheus-stack` dashboard sidecar.
+  2. **Ceph Storage & OSD Overview** (`ceph-cluster-overview`): Real-time cluster health status (mapped to `HEALTH_OK`, `HEALTH_WARN`, `HEALTH_ERR`), OSDs up/total (3/3), MON quorum status (3/3), raw capacity utilization %, pool IOPS (read/write), pool throughput bandwidth (read/write bytes/sec), Placement Group (PG) states (clean, active, degraded, undersized), per-daemon OSD storage utilization %, and OSD commit/apply latency.
+  3. **PostgreSQL CloudNativePG Overview** (`postgres-cluster-overview`): Primary instance health, standby instance count (2 standbys), max replication lag (seconds), database size, transaction throughput (commits vs rollbacks per second), active connections vs max limits, CRUD row operations rate, cache hit ratio %, per-pod standby replication lag, and WAL archiving throughput.
+  4. **Strimzi Kafka Cluster & Topics Overview** (`kafka-cluster-overview`): Active broker count (3 brokers), consumer group lag across partitions for `visits.requested`, dead letter queue event counts (`visits.dead-letter`), consumer group member count, message production rate (msg/s), log end offset vs committed offset progression, per-partition consumer lag, and In-Sync Replicas (ISR) health.
+  5. **Cilium Gateway API Overview** (`gateway-api-overview`): Gateway controller and proxy readiness, overall downstream HTTP request rates (req/s), HTTP 5xx error rates, ingress/egress network bandwidth, status code class distributions (2xx, 3xx, 4xx, 5xx), traffic distribution across upstream backend services, upstream latency percentiles (p50, p90, p99), active connections, and gateway CPU/memory usage.
 - **Acceptance Criteria**:
   - Dashboards automatically appear in Grafana under `http://grafana.gitops.local` without manual imports.
+  - All ConfigMaps build cleanly via Kustomize and pass automated discovery validation in `ansible/playbooks/verify.yml`.
 
 ---
 

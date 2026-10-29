@@ -32,6 +32,14 @@ postgres-rw.data-postgres.svc:5432
 2. **WAL Archiving**: PostgreSQL continuously archives WAL segments using `spec.backup.barmanObjectStore` with gzip compression pointing to the OBC-generated `postgres-backups` secret.
 3. **Base Backups**: `ScheduledBackup` `postgres-daily-backup` executes daily base backups (`0 0 * * *`) with `immediate: true` for initial backup upon creation.
 
+## Observability & Dashboards
+
+PostgreSQL cluster health, replication lag, connections, and query performance are continuously monitored in Grafana:
+- **Dashboard**: `PostgreSQL CloudNativePG Overview`
+- **Grafana UID**: `postgres-cluster-overview`
+- **Direct Access**: `http://grafana.gitops.local/d/postgres-cluster-overview`
+- **Key Metrics**: `cnpg_is_primary` (Primary instance health), standby instance count, `cnpg_pg_replication_lag` (max and per-pod lag in seconds), `cnpg_database_size_bytes`, transaction rate (commits/rollbacks per second), active connections vs `max_connections` limit, CRUD row operations rate, buffer cache hit ratio %, and WAL archiving throughput.
+
 ## Validation
 
 Use a workstation with cluster access:

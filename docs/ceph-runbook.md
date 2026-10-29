@@ -77,6 +77,14 @@ kubectl label node worker-2 storage=ceph
 kubectl label node worker-3 storage=ceph
 ```
 
+## Observability & Dashboards
+
+Ceph storage health, OSD status, I/O rates, and Placement Group states are continuously monitored in Grafana:
+- **Dashboard**: `Ceph Storage & OSD Overview`
+- **Grafana UID**: `ceph-cluster-overview`
+- **Direct Access**: `http://grafana.gitops.local/d/ceph-cluster-overview`
+- **Key Metrics**: `ceph_health_status` (OK/WARN/ERR), `ceph_osd_up` / `ceph_osd_in`, `ceph_mon_quorum_status`, `ceph_cluster_total_used_raw_bytes` vs total capacity, pool IOPS and throughput (`Bps`), PG states (`clean`, `active`, `degraded`, `undersized`), per-OSD disk utilization %, and OSD commit/apply latency.
+
 ## Validation
 
 The standard post-deploy verification path is:

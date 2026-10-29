@@ -1,0 +1,227 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-kafka-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  kafka-overview.json: |
+    {
+      "id": null,
+      "uid": "kafka-cluster-overview",
+      "title": "Strimzi Kafka Cluster & Topics Overview",
+      "tags": ["platform", "messaging", "kafka"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "15s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Active Kafka Brokers",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 2},
+                  {"color": "green", "value": 3}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "kafka_brokers",
+              "legendFormat": "Brokers"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Consumer Lag (visits.requested)",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 100},
+                  {"color": "red", "value": 500}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(kafka_consumergroup_lag{topic=\"visits.requested\",consumergroup=\"visit-processor-v1\"})",
+              "legendFormat": "Lag"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "DLQ Total Messages (visits.dead-letter)",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 10}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(kafka_topic_partition_current_offset{topic=\"visits.dead-letter\"})",
+              "legendFormat": "DLQ Messages"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Consumer Group Members",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "green", "value": 1}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "kafka_consumergroup_members{consumergroup=\"visit-processor-v1\"}",
+              "legendFormat": "Members"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Consumer Group Lag over Time",
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 4},
+          "fieldConfig": {
+            "defaults": {
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(kafka_consumergroup_lag) by (consumergroup, topic)",
+              "legendFormat": "{{consumergroup}} - {{topic}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Topic Message Production Rate (msg/s)",
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 4},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "msg/s",
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(kafka_topic_partition_current_offset[5m])) by (topic)",
+              "legendFormat": "{{topic}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Log End Offset vs Committed Offset (visits.requested)",
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 10},
+          "fieldConfig": {
+            "defaults": {
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(kafka_topic_partition_current_offset{topic=\"visits.requested\"})",
+              "legendFormat": "Log End Offset"
+            },
+            {
+              "expr": "sum(kafka_consumergroup_current_offset{topic=\"visits.requested\",consumergroup=\"visit-processor-v1\"})",
+              "legendFormat": "Committed Offset"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Consumer Lag per Partition (visits.requested)",
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 10},
+          "fieldConfig": {
+            "defaults": {
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "kafka_consumergroup_lag{topic=\"visits.requested\",consumergroup=\"visit-processor-v1\"}",
+              "legendFormat": "Partition {{partition}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "In-Sync Replicas (ISR) per Partition",
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 16},
+          "fieldConfig": {
+            "defaults": {
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "kafka_topic_partition_in_sync_replica{topic=~\"visits.*\"}",
+              "legendFormat": "{{topic}} [p{{partition}}]"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Retained Messages in Topics",
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 16},
+          "fieldConfig": {
+            "defaults": {
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(kafka_topic_partition_current_offset{topic=\"visits.requested\"}) - sum(kafka_topic_partition_oldest_offset{topic=\"visits.requested\"})",
+              "legendFormat": "visits.requested"
+            },
+            {
+              "expr": "sum(kafka_topic_partition_current_offset{topic=\"visits.dead-letter\"}) - sum(kafka_topic_partition_oldest_offset{topic=\"visits.dead-letter\"})",
+              "legendFormat": "visits.dead-letter"
+            }
+          ]
+        }
+      ],
+      "templating": {"list": []},
+      "annotations": {"list": []}
+    }

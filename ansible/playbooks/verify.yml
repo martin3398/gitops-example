@@ -106,6 +106,26 @@
         daemonset/monitoring-promtail --timeout=5m
       changed_when: false
 
+    - name: Verify Grafana dashboard ConfigMaps exist with auto-discovery label
+      ansible.builtin.shell: |
+        set -euo pipefail
+        kubectl=({{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }})
+        expected_dashboards=(
+          "grafana-dashboard-flux-overview"
+          "grafana-dashboard-visit-processing-overview"
+          "grafana-dashboard-ceph-overview"
+          "grafana-dashboard-postgres-overview"
+          "grafana-dashboard-kafka-overview"
+          "grafana-dashboard-gateway-overview"
+        )
+        for cm in "${expected_dashboards[@]}"; do
+          test "$("${kubectl[@]}" -n monitoring get configmap "$cm" -l grafana_dashboard=1 -o jsonpath='{.metadata.name}')" = "$cm"
+        done
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+
     - name: Wait for OpenBao pods readiness
       ansible.builtin.command: >-
         {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n openbao wait pod

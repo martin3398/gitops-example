@@ -11,3 +11,5 @@ resources:
   - helmrelease-promtail.yaml
   - dashboard-gitops-flux.yaml
   - dashboard-visit-processing-overview.yaml
+  - dashboards
+

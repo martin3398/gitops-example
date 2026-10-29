@@ -101,6 +101,14 @@ DLQ messages contain a structured JSON envelope:
 }
 ```
 
+## Observability & Dashboards
+
+Kafka brokers, topic throughput, consumer lag, and Dead Letter Queue events are continuously monitored in Grafana:
+- **Dashboard**: `Strimzi Kafka Cluster & Topics Overview`
+- **Grafana UID**: `kafka-cluster-overview`
+- **Direct Access**: `http://grafana.gitops.local/d/kafka-cluster-overview`
+- **Key Metrics**: `kafka_brokers` (active broker count), `kafka_consumergroup_lag` (`visits.requested` lag), `kafka_topic_partition_current_offset` (`visits.dead-letter` DLQ message count), `kafka_consumergroup_members`, message production rate (`msg/s`), committed vs log end offset tracking, and `kafka_topic_partition_in_sync_replica` (ISR health).
+
 ## Validation
 
 The standard post-deploy verification path is:

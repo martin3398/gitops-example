@@ -94,6 +94,14 @@ kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-stack-grafana 
 kubectl -n openbao port-forward svc/openbao-ui 8200:8200
 ```
 
+## Observability & Dashboards
+
+Cilium Gateway API traffic rates, error codes, and upstream routing latency are continuously monitored in Grafana:
+- **Dashboard**: `Cilium Gateway API Overview`
+- **Grafana UID**: `gateway-api-overview`
+- **Direct Access**: `http://grafana.gitops.local/d/gateway-api-overview`
+- **Key Metrics**: Gateway controller and proxy pod readiness, overall HTTP request rate (`req/s`), HTTP 5xx error rate, ingress/egress network bandwidth, HTTP status code class distributions (2xx/3xx/4xx/5xx), upstream target request volume, and p50/p90/p99 latency percentiles.
+
 ## Validation & Health Checks
 
 Verify Gateway and HTTPRoute statuses:

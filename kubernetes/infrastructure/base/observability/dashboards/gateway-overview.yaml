@@ -1,0 +1,237 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-gateway-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  gateway-overview.json: |
+    {
+      "id": null,
+      "uid": "gateway-api-overview",
+      "title": "Cilium Gateway API Overview",
+      "tags": ["platform", "networking", "gateway"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "15s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Gateway Ready Status",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "green", "value": 1}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_ready{namespace=\"gateway\",condition=\"true\"}) or sum(kube_pod_status_ready{namespace=~\"kube-system|gateway\",pod=~\"(?i).*cilium-envoy.*|.*dev-gateway.*\"}) or vector(1)",
+              "legendFormat": "Gateway Ready"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "HTTP Request Rate (req/s)",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(envoy_http_downstream_rq_total[5m])) or sum(rate(envoy_cluster_upstream_rq_total[5m])) or sum(rate(cilium_http_requests_total[5m])) or vector(0)",
+              "legendFormat": "Req / sec"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "HTTP 5xx Error Rate",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "red", "value": 0.001}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(envoy_http_downstream_rq_xx{envoy_response_code_class=\"5\"}[5m])) or sum(rate(envoy_cluster_upstream_rq_xx{envoy_response_code_class=\"5\"}[5m])) or vector(0)",
+              "legendFormat": "5xx / sec"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Ingress Network Bandwidth",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps",
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(container_network_receive_bytes_total{namespace=~\"gateway|kube-system\",pod=~\"(?i).*cilium.*|.*gateway.*\"}[5m]))",
+              "legendFormat": "Ingress Bandwidth"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Requests by Status Code Class",
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 4},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(envoy_http_downstream_rq_xx[5m])) by (envoy_response_code_class) or sum(rate(envoy_cluster_upstream_rq_xx[5m])) by (envoy_response_code_class)",
+              "legendFormat": "HTTP {{envoy_response_code_class}}xx"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Gateway Traffic by Upstream Target",
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 4},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(envoy_cluster_upstream_rq_total[5m])) by (envoy_cluster_name) or sum(rate(envoy_http_downstream_rq_total[5m])) by (envoy_http_conn_manager_prefix)",
+              "legendFormat": "{{envoy_cluster_name}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Upstream Latency / Duration (p50, p90, p99)",
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 10},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(envoy_cluster_upstream_rq_time_bucket[5m])) by (le)) or histogram_quantile(0.50, sum(rate(envoy_http_downstream_rq_time_bucket[5m])) by (le))",
+              "legendFormat": "p50 Latency"
+            },
+            {
+              "expr": "histogram_quantile(0.90, sum(rate(envoy_cluster_upstream_rq_time_bucket[5m])) by (le)) or histogram_quantile(0.90, sum(rate(envoy_http_downstream_rq_time_bucket[5m])) by (le))",
+              "legendFormat": "p90 Latency"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(envoy_cluster_upstream_rq_time_bucket[5m])) by (le)) or histogram_quantile(0.99, sum(rate(envoy_http_downstream_rq_time_bucket[5m])) by (le))",
+              "legendFormat": "p99 Latency"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Gateway Network Ingress & Egress Bandwidth",
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 10},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps",
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(container_network_receive_bytes_total{namespace=~\"gateway|kube-system\",pod=~\"(?i).*cilium.*|.*gateway.*\"}[5m]))",
+              "legendFormat": "RX (Ingress)"
+            },
+            {
+              "expr": "sum(rate(container_network_transmit_bytes_total{namespace=~\"gateway|kube-system\",pod=~\"(?i).*cilium.*|.*gateway.*\"}[5m]))",
+              "legendFormat": "TX (Egress)"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Active Connections & Rate",
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 16},
+          "fieldConfig": {
+            "defaults": {
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(envoy_http_downstream_cx_active) or sum(envoy_cluster_upstream_cx_active)",
+              "legendFormat": "Active Connections"
+            },
+            {
+              "expr": "sum(rate(envoy_http_downstream_cx_total[5m])) or sum(rate(envoy_cluster_upstream_cx_total[5m]))",
+              "legendFormat": "Connection Rate (conn/s)"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Gateway Pod CPU Usage",
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 16},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"gateway|kube-system\",pod=~\"(?i).*cilium-envoy.*|.*dev-gateway.*\",container!=\"\"}[5m])) by (pod)",
+              "legendFormat": "{{pod}} (Cores)"
+            }
+          ]
+        }
+      ],
+      "templating": {"list": []},
+      "annotations": {"list": []}
+    }

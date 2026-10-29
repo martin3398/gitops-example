@@ -1,0 +1,280 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-ceph-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  ceph-overview.json: |
+    {
+      "id": null,
+      "uid": "ceph-cluster-overview",
+      "title": "Ceph Storage & OSD Overview",
+      "tags": ["platform", "storage", "ceph"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "15s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Cluster Health Status",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {"text": "HEALTH_OK", "color": "green"},
+                    "1": {"text": "HEALTH_WARN", "color": "yellow"},
+                    "2": {"text": "HEALTH_ERR", "color": "red"}
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 2}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "ceph_health_status",
+              "legendFormat": "Health"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "OSDs Up / Total",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "green", "value": 1}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(ceph_osd_up)",
+              "legendFormat": "OSDs Up"
+            },
+            {
+              "expr": "count(ceph_osd_up)",
+              "legendFormat": "OSDs Total"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Monitors in Quorum",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "green", "value": 3}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(ceph_mon_quorum_status)",
+              "legendFormat": "In Quorum"
+            },
+            {
+              "expr": "count(ceph_mon_quorum_status)",
+              "legendFormat": "Total MONs"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Raw Capacity Used %",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 70},
+                  {"color": "red", "value": 85}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "(ceph_cluster_total_used_raw_bytes / ceph_cluster_total_bytes) * 100",
+              "legendFormat": "Used %"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Cluster Raw Capacity",
+          "gridPos": {"h": 6, "w": 8, "x": 0, "y": 4},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "decbytes",
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "ceph_cluster_total_bytes",
+              "legendFormat": "Total Raw"
+            },
+            {
+              "expr": "ceph_cluster_total_used_raw_bytes",
+              "legendFormat": "Used Raw"
+            },
+            {
+              "expr": "ceph_cluster_total_used_bytes",
+              "legendFormat": "User Data"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Pool IOPS (Read / Write)",
+          "gridPos": {"h": 6, "w": 8, "x": 8, "y": 4},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "iops",
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(ceph_pool_rd[5m]))",
+              "legendFormat": "Read IOPS"
+            },
+            {
+              "expr": "sum(rate(ceph_pool_wr[5m]))",
+              "legendFormat": "Write IOPS"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Pool Throughput (Read / Write Bandwidth)",
+          "gridPos": {"h": 6, "w": 8, "x": 16, "y": 4},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps",
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(ceph_pool_rd_bytes[5m]))",
+              "legendFormat": "Read Bandwidth"
+            },
+            {
+              "expr": "sum(rate(ceph_pool_wr_bytes[5m]))",
+              "legendFormat": "Write Bandwidth"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Placement Groups (PG) Status",
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 10},
+          "fieldConfig": {
+            "defaults": {
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "ceph_pg_clean",
+              "legendFormat": "Clean"
+            },
+            {
+              "expr": "ceph_pg_active",
+              "legendFormat": "Active"
+            },
+            {
+              "expr": "ceph_pg_degraded",
+              "legendFormat": "Degraded"
+            },
+            {
+              "expr": "ceph_pg_undersized",
+              "legendFormat": "Undersized"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "OSD Storage Utilization % by Daemon",
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 10},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": {"axisPlacement": "auto"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 70},
+                  {"color": "red", "value": 85}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "expr": "(ceph_osd_stat_bytes_used / ceph_osd_stat_bytes) * 100",
+              "legendFormat": "{{ceph_daemon}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "OSD Commit & Apply Latency",
+          "gridPos": {"h": 6, "w": 24, "x": 0, "y": 16},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": {"axisPlacement": "auto"}
+            }
+          },
+          "targets": [
+            {
+              "expr": "ceph_osd_perf_commit_latency_seconds",
+              "legendFormat": "{{ceph_daemon}} commit latency"
+            },
+            {
+              "expr": "ceph_osd_perf_apply_latency_seconds",
+              "legendFormat": "{{ceph_daemon}} apply latency"
+            }
+          ]
+        }
+      ],
+      "templating": {"list": []},
+      "annotations": {"list": []}
+    }
