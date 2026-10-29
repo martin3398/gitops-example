@@ -31,4 +31,4 @@ spec:
       visitGatewayUrl: http://visit-web-visit-gateway/api
     image:
       repository: ghcr.io/martin3398/visit-ui # {"$imagepolicy": "flux-system:visit-web:name"}
-      tag: 20261003141133-a8cca5a4 # {"$imagepolicy": "flux-system:visit-web:tag"}
+      tag: 20261029104112-5fef63d0 # {"$imagepolicy": "flux-system:visit-web:tag"}
