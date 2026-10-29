@@ -20,7 +20,7 @@ Dynamically parse what you find in `docs/roadmap.md`:
 - **Current Phase Status**: Extract the status overview across all phases (e.g. Phase 1 through Phase 6+).
 - **Implemented Work (Done)**: Identify what baselines and tasks have already been marked complete.
 - **Open / Remaining Tasks**: Extract all remaining task blocks (identified by `TASK-...` IDs), including:
-  - Task ID (e.g., `TASK-P3-02`, `TASK-P4-02`)
+  - Task ID (e.g., `TASK-P3-04`, `TASK-P4-06`)
   - Title and Phase
   - Priority (High / Medium / Low)
   - Objective

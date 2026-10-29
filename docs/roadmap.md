@@ -414,12 +414,4 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
   - Restore drill executes end-to-end without manual intervention.
   - Asserts database consistency and logs backup age and recovery time.
 
----
-
-# Out of Scope / Dropped Tasks
-
-### `TASK-P6-01`: TLS & Edge Certificate Automation (`cert-manager`) (Dropped)
-
-- **Status**: DROPPED / OUT OF SCOPE
-- **Rationale**: Per [Agents.md](file:///home/martin/Dokumente/git/gitops-example/Agents.md), TLS and certificate management are explicitly out of scope for this AWS lab phase (`cert-manager` is deferred; ingress exposure is provided over HTTP via Cilium Gateway API on host port 30080 mapped to the AWS NLB). Implementing public ACME automation against internal `.gitops.local` / `nip.io` domains introduces external DNS delegation overhead with no architectural benefit for the demo workloads.
 
