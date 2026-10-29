@@ -16,6 +16,7 @@
       - infrastructure-security
       - infrastructure-data-postgres
       - infrastructure-data-kafka
+      - infrastructure-observability-kafka
       - app-policies
       - app-visit-web
       - app-visit-processing
@@ -47,9 +48,13 @@
       ansible.builtin.command: >-
         {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n flux-system wait
         kustomizations.kustomize.toolkit.fluxcd.io/{{ item }}
-        --for=condition=Ready --timeout=10m
+        --for=condition=Ready --timeout=30s
       loop: "{{ flux_kustomizations }}"
+      register: flux_kustomization_wait
       changed_when: false
+      retries: 30
+      delay: 5
+      until: flux_kustomization_wait.rc == 0
 
     - name: Wait for all Flux HelmReleases readiness
       ansible.builtin.command: >-
@@ -474,7 +479,7 @@
         done
 
         # Verify baseline profile on platform namespaces
-        for ns in data-postgres data-kafka openbao gateway; do
+        for ns in data-postgres data-kafka openbao gateway external-secrets; do
           enforce="$("${kubectl[@]}" get ns "$ns" -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce}')"
           version="$("${kubectl[@]}" get ns "$ns" -o jsonpath='{.metadata.labels.pod-security\.kubernetes\.io/enforce-version}')"
           test "$enforce" = "baseline"
