@@ -1,0 +1,37 @@
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: ClusterGenerator
+metadata:
+  name: openbao-postgres-visit-gateway
+spec:
+  kind: VaultDynamicSecret
+  generator:
+    vaultDynamicSecretSpec:
+      path: database/creds/visit-gateway
+      method: GET
+      resultType: Data
+      provider:
+        server: http://openbao.openbao.svc:8200
+        version: v2
+        auth:
+          kubernetes:
+            mountPath: kubernetes
+            role: eso-sync
+---
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: ClusterGenerator
+metadata:
+  name: openbao-postgres-visit-processor
+spec:
+  kind: VaultDynamicSecret
+  generator:
+    vaultDynamicSecretSpec:
+      path: database/creds/visit-processor
+      method: GET
+      resultType: Data
+      provider:
+        server: http://openbao.openbao.svc:8200
+        version: v2
+        auth:
+          kubernetes:
+            mountPath: kubernetes
+            role: eso-sync

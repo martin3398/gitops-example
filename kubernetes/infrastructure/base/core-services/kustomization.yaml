@@ -6,5 +6,6 @@ resources:
   - operators/cloudnative-pg
   - operators/external-secrets
   - operators/kyverno
+  - operators/reloader
   - operators/strimzi
   - storage/rook-ceph-operator

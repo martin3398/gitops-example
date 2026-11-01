@@ -31,7 +31,6 @@ env:
   DB_HOST: postgres-rw.data-postgres.svc
   DB_PORT: "5432"
   DB_NAME: app
-  DB_USER: app
 
 secretName: visit-demo-db
 kafkaTlsSecretName: visit-gateway-kafka-tls

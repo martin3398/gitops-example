@@ -81,10 +81,11 @@ Current state:
 3. Ceph baseline implemented with `ceph-block` as default StorageClass.
 4. Postgres implemented with CloudNativePG (3 instances on Ceph) + continuous WAL archiving and daily base backups to Ceph RGW (`TASK-P3-01` completed).
 5. Distributed Loki on Ceph S3 RGW and custom metric autoscaling on Kafka lag.
+6. OpenBao Dynamic Postgres Secrets Engine (`TASK-P3-04` completed with `database` secrets engine, dynamic roles `visit-gateway` and `visit-processor` with 1h TTL, ESO `VaultDynamicSecret` generators in `visit-web` and `visit-processing`, and automated lease revocation).
 
 Phase 3 hardening backlog (see `docs/roadmap.md` for task specs):
-- `TASK-P3-04`: OpenBao dynamic PostgreSQL secrets engine and rotation.
 - `TASK-P3-07`: Ceph OSD failure drills and Loki S3 retention lifecycle rules.
+- `TASK-P3-08`: Kafka event stream archiving to Ceph RGW S3.
 
 
 Exit criteria per tool:
@@ -135,6 +136,7 @@ Exit criteria:
 - Destructive or cost-impacting infrastructure actions, especially `tofu apply`, `tofu destroy`, cluster rebuilds, and secret resets, require explicit human direction.
 - OpenTofu state backend for this lab uses S3 with DynamoDB locking; avoid local-state-only workflows once backend is initialized.
 - Infrastructure apply/destroy operations in CI remain manual-gated.
+- Prefer clean breaking changes over dirty hacks, conditional switches, or dual-mode fallbacks when migrating architecture components.
 
 ## Current Deployment Model
 

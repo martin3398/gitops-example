@@ -9,4 +9,5 @@ resources:
   - objectbucketclaim.yaml
   - cronjob-snapshot.yaml
   - cilium-network-policy.yaml
+  - clustergenerator-postgres.yaml
 

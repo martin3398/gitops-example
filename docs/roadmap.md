@@ -96,7 +96,7 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 │ ID           │ Task Title                                  │ Priority       │
 ├──────────────┼─────────────────────────────────────────────┼────────────────┤
 │ TASK-P3-02   │ OpenBao Scheduled Raft Snapshots to Ceph RGW│ COMPLETE (Done)│
-│ TASK-P3-04   │ OpenBao Dynamic Postgres Secrets Engine     │ Medium         │
+│ TASK-P3-04   │ OpenBao Dynamic Postgres Secrets Engine     │ COMPLETE (Done)│
 │ TASK-P3-05   │ Kafka Listener Security (mTLS) & ACLs       │ COMPLETE (Done)│
 │ TASK-P3-06   │ Dead Letter Queue (DLQ) for Visit Events    │ COMPLETE (Done)│
 │ TASK-P3-07   │ Ceph OSD Failure Drill & S3 Retention Policy│ Low            │
@@ -134,22 +134,37 @@ This platform adheres to an on-premise, cloud-agnostic **Two-Tier (3-2-1) Backup
 
 ---
 
-### `TASK-P3-04`: OpenBao Dynamic Postgres Secrets Engine
+### `TASK-P3-04`: OpenBao Dynamic Postgres Secrets Engine (Complete)
 
 - **Objective**: Replace static Postgres credentials with OpenBao's PostgreSQL secrets engine to issue dynamic, short-lived database credentials for application consumers.
 - **Affected Files**:
+  - `kubernetes/infrastructure/base/security/openbao/cilium-network-policy.yaml`
+  - `kubernetes/infrastructure/base/data-postgres/cilium-network-policy.yaml`
+  - `kubernetes/infrastructure/base/data-postgres/cluster.yaml`
   - `ansible/roles/openbao_bootstrap/tasks/main.yml`
-  - `kubernetes/infrastructure/base/data-postgres/externalsecret-app-user.yaml`
+  - `kubernetes/apps/base/visit-web/vaultdynamicsecret-gateway-db.yaml` (new)
   - `kubernetes/apps/base/visit-web/externalsecret-web.yaml`
+  - `kubernetes/apps/base/visit-web/kustomization.yaml`
+  - `kubernetes/apps/base/visit-processing/vaultdynamicsecret-processor-db.yaml` (new)
   - `kubernetes/apps/base/visit-processing/externalsecret-processing.yaml`
+  - `kubernetes/apps/base/visit-processing/kustomization.yaml`
+  - `charts/visit-gateway/templates/deployment.yaml`
+  - `charts/visit-gateway/values.yaml`
+  - `charts/visit-processor/templates/deployment.yaml`
+  - `charts/visit-processor/values.yaml`
+  - `ansible/playbooks/verify.yml`
   - `docs/openbao-runbook.md`
-- **Implementation Steps**:
-  1. Configure OpenBao `database` secrets engine with Postgres plugin connection details.
-  2. Define database roles for `visit-gateway` (read-write) and `visit-processor` (read-write) with configurable TTL (e.g., 1 hour) and automatic rotation.
-  3. Update External Secrets or application deployment to consume dynamically issued DB credentials.
+- **Implementation & Architecture Details**:
+  1. **Cilium Network Isolation**: Updated Tier 2 East-West Cilium Network Policies (`openbao-server-isolation` and `postgres-isolation`) to permit TCP port 5432 ingress/egress between `openbao` and `data-postgres`.
+  2. **Schema Ownership & Drop Safety**: Configured administrative user `app` with `CREATEROLE` in CloudNativePG `Cluster` (`spec.managed.roles`). The `visits` table is pre-created and owned permanently by `app`, ensuring dynamic roles are strictly granted operational DML (`SELECT, INSERT`) without owning objects, allowing clean automated user revocation without PostgreSQL dependency errors.
+  3. **Database Secrets Engine & Dynamic Roles**: Mounted `database/` engine using `postgresql-database-plugin` with admin connection to `postgres-rw.data-postgres.svc:5432/app`. Created dynamic roles `visit-gateway` and `visit-processor` with 1-hour TTL, 24-hour max TTL, and explicit revocation statements.
+  4. **ESO VaultDynamicSecret Generators**: Deployed `VaultDynamicSecret` generators (`generators.external-secrets.io/v1alpha1`) in `visit-web` and `visit-processing` authenticated via Kubernetes auth role `eso-sync`. `ExternalSecret` reconciles every 45 minutes (`refreshInterval: 45m`) and maps `.username` and `.password` into Secret `visit-demo-db`.
+  5. **Helm Chart Integration**: Updated Helm charts to pull both `DB_USER` and `DB_PASSWORD` directly from `visit-demo-db` via `secretKeyRef`.
+  6. **Automated Verification**: Added comprehensive verification tasks in `ansible/playbooks/verify.yml` asserting OpenBao database engine status, dynamic role configuration, generator existence, dynamic username format (`^v-`), and executing an automated lease creation and revocation drill against PostgreSQL `pg_roles`.
 - **Acceptance Criteria**:
   - OpenBao dynamically provisions temporary Postgres users and revokes them upon TTL expiry.
   - `visit-gateway` and `visit-processor` connect cleanly with dynamic credentials.
+  - Automated verification passes in `ansible/playbooks/verify.yml`.
 
 ---
 

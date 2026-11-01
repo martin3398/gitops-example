@@ -35,7 +35,7 @@ spec:
             - port: "8201"
               protocol: TCP
   egress:
-    # Allow OpenBao peer communication on API and Raft ports
+    # 1. Allow OpenBao peer communication on API and Raft ports
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: openbao
@@ -44,6 +44,15 @@ spec:
             - port: "8200"
               protocol: TCP
             - port: "8201"
+              protocol: TCP
+    # 2. Allow connecting to PostgreSQL on port 5432 for dynamic database credentials management
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-postgres
+            cnpg.io/cluster: postgres
+      toPorts:
+        - ports:
+            - port: "5432"
               protocol: TCP
 ---
 apiVersion: cilium.io/v2

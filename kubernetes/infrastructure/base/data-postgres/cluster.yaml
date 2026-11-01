@@ -32,6 +32,14 @@ spec:
       owner: app
       secret:
         name: app-user
+  managed:
+    roles:
+      - name: app
+        ensure: present
+        login: true
+        superuser: false
+        createdb: true
+        createrole: true
   backup:
     barmanObjectStore:
       destinationPath: s3://postgres-backups/

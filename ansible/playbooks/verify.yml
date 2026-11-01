@@ -177,6 +177,72 @@
         --all --all-namespaces --for=condition=Ready --timeout=5m
       changed_when: false
 
+    - name: Verify OpenBao database secrets engine and dynamic credentials (TASK-P3-04)
+      ansible.builtin.shell: |
+        set -euo pipefail
+        kubectl=({{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }})
+
+        # 1. Retrieve root token from control plane secret store
+        bao_root_token=""
+        if [ -f /root/.secrets/openbao-init.dev.json ]; then
+          bao_root_token="$(jq -r '.root_token' /root/.secrets/openbao-init.dev.json)"
+        fi
+
+        # 2. Verify database engine connection configuration
+        "${kubectl[@]}" -n openbao exec openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$bao_root_token" \
+          bao read -format=json database/config/postgres | jq -e '.data.plugin_name == "postgresql-database-plugin"' >/dev/null
+
+        # 3. Verify dynamic roles exist
+        "${kubectl[@]}" -n openbao exec openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$bao_root_token" \
+          bao read -format=json database/roles/visit-gateway | jq -e '.data.db_name == "postgres"' >/dev/null
+
+        "${kubectl[@]}" -n openbao exec openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$bao_root_token" \
+          bao read -format=json database/roles/visit-processor | jq -e '.data.db_name == "postgres"' >/dev/null
+
+        # 4. Verify platform ClusterGenerators and dedicated workload ServiceAccounts exist
+        "${kubectl[@]}" get clustergenerator openbao-postgres-visit-gateway >/dev/null
+        "${kubectl[@]}" get clustergenerator openbao-postgres-visit-processor >/dev/null
+        "${kubectl[@]}" -n visit-web get sa visit-gateway >/dev/null
+        "${kubectl[@]}" -n visit-processing get sa visit-processor >/dev/null
+        "${kubectl[@]}" -n reloader wait --for=condition=Available deploy --all --timeout=5m >/dev/null
+
+        # 5. Verify projected Secrets contain dynamic usernames starting with v-
+        gw_user="$("${kubectl[@]}" -n visit-web get secret visit-demo-db -o jsonpath='{.data.DB_USER}' | base64 -d)"
+        test -n "$gw_user"
+        [[ "$gw_user" =~ ^v- ]] || (echo "Expected dynamic DB_USER in visit-web matching ^v-, got: $gw_user" >&2 && exit 1)
+
+        proc_user="$("${kubectl[@]}" -n visit-processing get secret visit-demo-db -o jsonpath='{.data.DB_USER}' | base64 -d)"
+        test -n "$proc_user"
+        [[ "$proc_user" =~ ^v- ]] || (echo "Expected dynamic DB_USER in visit-processing matching ^v-, got: $proc_user" >&2 && exit 1)
+
+        # 6. Dynamic lease generation and revocation drill
+        cred_json="$("${kubectl[@]}" -n openbao exec openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$bao_root_token" \
+          bao read -format=json database/creds/visit-gateway)"
+        test_lease_id="$(echo "$cred_json" | jq -r '.lease_id')"
+        test_username="$(echo "$cred_json" | jq -r '.data.username')"
+        test -n "$test_lease_id"
+        test -n "$test_username"
+
+        # Assert dynamic role exists in PostgreSQL pg_roles
+        pg_primary="$("${kubectl[@]}" -n data-postgres get cluster postgres -o jsonpath='{.status.targetPrimary}' 2>/dev/null || true)"
+        if [ -z "$pg_primary" ]; then pg_primary="postgres-1"; fi
+        "${kubectl[@]}" -n data-postgres exec -c postgres "$pg_primary" -- \
+          psql -U postgres -d app -tAc "SELECT 1 FROM pg_roles WHERE rolname = '$test_username'" | grep -q "1"
+
+        # Revoke the lease
+        "${kubectl[@]}" -n openbao exec openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$bao_root_token" \
+          bao lease revoke "$test_lease_id" >/dev/null
+
+        # Assert dynamic role has been removed from PostgreSQL pg_roles
+        if "${kubectl[@]}" -n data-postgres exec -c postgres "$pg_primary" -- \
+          psql -U postgres -d app -tAc "SELECT 1 FROM pg_roles WHERE rolname = '$test_username'" | grep -q "1"; then
+          echo "ERROR: Revoked role $test_username still present in PostgreSQL pg_roles!" >&2
+          exit 1
+        fi
+      args:
+        executable: /bin/bash
+      changed_when: false
+
     - name: Wait for Postgres cluster readiness
       ansible.builtin.command: >-
         {{ rke2_kubectl_path }} --kubeconfig {{ kubeconfig }} -n data-postgres wait

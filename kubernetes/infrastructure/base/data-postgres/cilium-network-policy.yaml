@@ -10,7 +10,7 @@ spec:
     matchLabels:
       cnpg.io/cluster: postgres
   ingress:
-    # 1. Allow PostgreSQL connections on port 5432 from authorized consumers and peers
+    # 1. Allow PostgreSQL connections on port 5432 from authorized consumers, OpenBao, and peers
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: visit-web
@@ -19,27 +19,34 @@ spec:
             k8s:io.kubernetes.pod.namespace: visit-processing
             app.kubernetes.io/name: visit-processor
         - matchLabels:
+            k8s:io.kubernetes.pod.namespace: openbao
+            app.kubernetes.io/name: openbao
+        - matchLabels:
             k8s:io.kubernetes.pod.namespace: data-postgres
       toPorts:
         - ports:
             - port: "5432"
               protocol: TCP
-    # 2. Allow CloudNativePG operator communication on instance-manager status port 8000
+    # 2. Allow CloudNativePG operator and peer instance-manager status coordination on port 8000
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: flux-system
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: data-postgres
       toPorts:
         - ports:
             - port: "8000"
               protocol: TCP
   egress:
-    # 1. Allow peer PostgreSQL pod communication for streaming replication
+    # 1. Allow peer PostgreSQL pod communication for streaming replication and instance coordination
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: data-postgres
       toPorts:
         - ports:
             - port: "5432"
+              protocol: TCP
+            - port: "8000"
               protocol: TCP
     # 2. Allow continuous WAL archiving and Barman base backups to Ceph RGW (S3) in rook-ceph
     - toEndpoints:

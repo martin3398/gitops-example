@@ -166,6 +166,12 @@
     path "secret/data/dev/*" {
       capabilities = ["read"]
     }
+    path "database/creds/visit-gateway" {
+      capabilities = ["read"]
+    }
+    path "database/creds/visit-processor" {
+      capabilities = ["read"]
+    }
     EOF
   args:
     executable: /bin/bash
@@ -222,6 +228,113 @@
     {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
     exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
     bao kv put -mount=secret dev/platform/postgres/app-user username=app password={{ openbao_db_password | quote }}
+  changed_when: true
+  no_log: true
+
+- name: Determine Postgres primary pod name
+  ansible.builtin.shell: |
+    set -euo pipefail
+    primary="$( {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n data-postgres get cluster postgres -o jsonpath='{.status.targetPrimary}' 2>/dev/null || true)"
+    if [ -z "$primary" ]; then
+      primary="$( {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n data-postgres get cluster postgres -o jsonpath='{.status.currentPrimary}' 2>/dev/null || true)"
+    fi
+    if [ -z "$primary" ]; then
+      primary="postgres-1"
+    fi
+    echo "$primary"
+  args:
+    executable: /bin/bash
+  register: openbao_pg_primary_pod
+  changed_when: false
+
+- name: Ensure Postgres app user has CREATEROLE privilege
+  ansible.builtin.shell: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n data-postgres
+    exec -c postgres {{ openbao_pg_primary_pod.stdout }} -- psql -U postgres -d app -c "ALTER ROLE app WITH CREATEROLE;"
+  changed_when: true
+  failed_when: false
+
+- name: Ensure visits table and sequence exist in Postgres
+  ansible.builtin.shell: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n data-postgres
+    exec -c postgres {{ openbao_pg_primary_pod.stdout }} -- psql -U postgres -d app -c "CREATE TABLE IF NOT EXISTS visits (id BIGSERIAL PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()); ALTER TABLE visits OWNER TO app;"
+  changed_when: true
+  failed_when: false
+
+- name: Ensure OpenBao database secrets engine exists
+  ansible.builtin.shell: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+    bao secrets enable database >/dev/null 2>&1 || true
+  args:
+    executable: /bin/bash
+  changed_when: false
+  no_log: true
+
+- name: Configure OpenBao Postgres database connection
+  ansible.builtin.command: >-
+    {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }}
+    exec {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }}
+    bao write database/config/postgres
+    plugin_name=postgresql-database-plugin
+    allowed_roles=visit-gateway,visit-processor
+    connection_url=postgresql://{{ '{{' }}username{{ '}}' }}:{{ '{{' }}password{{ '}}' }}@postgres-rw.data-postgres.svc:5432/app?sslmode=disable
+    username=app
+    password={{ openbao_db_password | quote }}
+  changed_when: true
+  no_log: true
+
+- name: Configure OpenBao dynamic role for visit-gateway
+  ansible.builtin.shell: |
+    set -o pipefail
+    cat <<'EOF' | {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }} exec -i {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }} bao write database/roles/visit-gateway -
+    {
+      "db_name": "postgres",
+      "default_ttl": "1h",
+      "max_ttl": "24h",
+      "creation_statements": [
+        "CREATE ROLE \"{% raw %}{{name}}{% endraw %}\" WITH LOGIN PASSWORD '{% raw %}{{password}}{% endraw %}' VALID UNTIL '{% raw %}{{expiration}}{% endraw %}';",
+        "GRANT USAGE ON SCHEMA public TO \"{% raw %}{{name}}{% endraw %}\";",
+        "GRANT SELECT, INSERT ON visits TO \"{% raw %}{{name}}{% endraw %}\";",
+        "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO \"{% raw %}{{name}}{% endraw %}\";"
+      ],
+      "revocation_statements": [
+        "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM \"{% raw %}{{name}}{% endraw %}\";",
+        "REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM \"{% raw %}{{name}}{% endraw %}\";",
+        "REVOKE USAGE ON SCHEMA public FROM \"{% raw %}{{name}}{% endraw %}\";",
+        "DROP ROLE IF EXISTS \"{% raw %}{{name}}{% endraw %}\";"
+      ]
+    }
+    EOF
+  args:
+    executable: /bin/bash
+  changed_when: true
+  no_log: true
+
+- name: Configure OpenBao dynamic role for visit-processor
+  ansible.builtin.shell: |
+    set -o pipefail
+    cat <<'EOF' | {{ rke2_kubectl_path }} --kubeconfig {{ openbao_kubeconfig }} -n {{ openbao_namespace }} exec -i {{ openbao_leader_pod }} -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN={{ openbao_root_token | quote }} bao write database/roles/visit-processor -
+    {
+      "db_name": "postgres",
+      "default_ttl": "1h",
+      "max_ttl": "24h",
+      "creation_statements": [
+        "CREATE ROLE \"{% raw %}{{name}}{% endraw %}\" WITH LOGIN PASSWORD '{% raw %}{{password}}{% endraw %}' VALID UNTIL '{% raw %}{{expiration}}{% endraw %}';",
+        "GRANT USAGE ON SCHEMA public TO \"{% raw %}{{name}}{% endraw %}\";",
+        "GRANT SELECT, INSERT ON visits TO \"{% raw %}{{name}}{% endraw %}\";",
+        "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO \"{% raw %}{{name}}{% endraw %}\";"
+      ],
+      "revocation_statements": [
+        "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM \"{% raw %}{{name}}{% endraw %}\";",
+        "REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM \"{% raw %}{{name}}{% endraw %}\";",
+        "REVOKE USAGE ON SCHEMA public FROM \"{% raw %}{{name}}{% endraw %}\";",
+        "DROP ROLE IF EXISTS \"{% raw %}{{name}}{% endraw %}\";"
+      ]
+    }
+    EOF
+  args:
+    executable: /bin/bash
   changed_when: true
   no_log: true
 

@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Release.Name }}
+  annotations:
+    secret.reloader.stakater.com/reload: {{ .Values.secretName | quote }}
 spec:
   revisionHistoryLimit: 5
   replicas: {{ .Values.replicaCount }}
@@ -15,6 +17,8 @@ spec:
         app.kubernetes.io/name: {{ .Chart.Name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      serviceAccountName: {{ .Values.serviceAccountName | default .Chart.Name }}
+      automountServiceAccountToken: false
 {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
 {{ toYaml . | indent 8 }}
@@ -60,7 +64,10 @@ spec:
             - name: DB_NAME
               value: {{ .Values.env.DB_NAME | quote }}
             - name: DB_USER
-              value: {{ .Values.env.DB_USER | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: DB_USER
             - name: RATE_LIMIT_PER_SEC
               value: {{ .Values.env.RATE_LIMIT_PER_SEC | quote }}
             - name: MAX_RETRIES

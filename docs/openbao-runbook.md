@@ -226,10 +226,69 @@ The restore procedure automatically:
 4. Allows Raft consensus to sync and re-unseals the leader and follower pods if needed.
 5. Verifies Raft peer membership and asserts that stored secrets remain intact.
 
+## Dynamic PostgreSQL Secrets Engine (TASK-P3-04)
+
+OpenBao dynamically provisions short-lived, least-privilege PostgreSQL credentials for the application microservices (`visit-gateway` and `visit-processor`), completely eliminating long-lived shared passwords for data plane access.
+
+### Architecture
+
+1. **Database Secrets Engine**: OpenBao's `database` engine is mounted at `database/` using the native `postgresql-database-plugin`. It maintains an administrative connection pool to `postgres-rw.data-postgres.svc:5432/app` as database owner `app` (configured with `CREATEROLE`).
+2. **Cilium Network Isolation**: East-west network policies (`openbao-server-isolation` and `postgres-isolation`) explicitly permit TCP port 5432 traffic from OpenBao pods in `openbao` to the PostgreSQL cluster in `data-postgres`.
+3. **Dynamic Roles**:
+   - `visit-gateway`: Configured with 1-hour default TTL (`max_ttl: 24h`). Creates temporary user `v-token-visit-gat-...` and grants `SELECT, INSERT` on table `visits` and sequences.
+   - `visit-processor`: Configured with 1-hour default TTL (`max_ttl: 24h`). Creates temporary user `v-token-visit-proc-...` and grants `SELECT, INSERT` on table `visits` and sequences.
+4. **Table Ownership & Drop Safety**:
+   - The `visits` table and primary sequence are owned permanently by administrative user `app`.
+   - Dynamic users are strictly granted operational DML privileges and never own database objects, allowing OpenBao to cleanly revoke and drop expired roles (`DROP ROLE IF EXISTS ...`) without encountering PostgreSQL dependency lock errors.
+5. **Platform ClusterGenerators & Stakater Reloader**:
+   - `ClusterGenerator` resources (`generators.external-secrets.io/v1alpha1`) are defined centrally at the platform layer in `kubernetes/infrastructure/base/security/openbao/clustergenerator-postgres.yaml`.
+   - ClusterGenerators authenticate to OpenBao via ESO's trusted controller ServiceAccount (`external-secrets-external-secrets` in `external-secrets`) using the scoped `eso-sync` role.
+   - Applications (`visit-web` and `visit-processing`) are pure consumers: their `ExternalSecret` simply references the `ClusterGenerator` by name (`openbao-postgres-visit-gateway` / `openbao-postgres-visit-processor`), completely eliminating OpenBao endpoints, auth plumbing, or dummy ServiceAccounts from application overlays.
+   - Stakater Reloader is deployed cluster-wide in namespace `reloader`. When ESO updates Secret `visit-demo-db` on its 45-minute cycle, Reloader detects the SHA change and immediately performs a zero-downtime rolling restart of the annotated `visit-gateway` and `visit-processor` deployments before the 1-hour lease expires.
+   - Microservices consume both credentials dynamically via `valueFrom: secretKeyRef` in their Helm charts.
+
+### Operational & Diagnostic Commands
+
+1. Check database secrets engine configuration:
+```bash
+kubectl -n openbao exec openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$BAO_TOKEN" \
+  bao read database/config/postgres
+```
+
+2. Inspect configured roles:
+```bash
+kubectl -n openbao exec openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$BAO_TOKEN" \
+  bao read database/roles/visit-gateway
+```
+
+3. Generate a dynamic test credential:
+```bash
+kubectl -n openbao exec openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$BAO_TOKEN" \
+  bao read database/creds/visit-gateway
+```
+
+4. Inspect active leases for database credentials:
+```bash
+kubectl -n openbao exec openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$BAO_TOKEN" \
+  bao list sys/leases/lookup/database/creds/visit-gateway
+```
+
+5. Revoke an active lease on demand:
+```bash
+kubectl -n openbao exec openbao-0 -- env BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$BAO_TOKEN" \
+  bao lease revoke -prefix database/creds/visit-gateway
+```
+
+6. Verify dynamic roles in PostgreSQL:
+```bash
+kubectl -n data-postgres exec -c postgres postgres-1 -- \
+  psql -U postgres -d app -c "\du v-*"
+```
+
 ## Notes & Roadmap Hardening Tasks
 
 - **Unsealing Model**: Auto-unseal is omitted for this lab; unsealing and Raft joining are fully automated by the Ansible bootstrap role (`task ansible:openbao`).
 - **TLS / HTTPS**: Currently plaintext HTTP; TLS certificate automation is deferred / out of scope per Agents.md.
 - **Raft Snapshots & Disaster Recovery (`TASK-P3-02`)**: Complete. Automated CronJob snapshots to S3/Ceph RGW and recovery playbook (`ansible/playbooks/openbao-restore.yml`).
-- **Dynamic Database Credentials (`TASK-P3-04`)**: Replace deterministic dev seeding with OpenBao's PostgreSQL secrets engine.
-- **Network Policy Isolation (`TASK-P4-02`)**: Complete. Enforced via `openbao-server-isolation` and `openbao-snapshot-isolation` (`CiliumNetworkPolicy`) restricting port 8200 API access strictly to Envoy Gateway proxy (`reserved:ingress`), External Secrets Operator, and snapshot CronJob; port 8201 restricted to Raft peers; egress restricted to Ceph RGW (`rook-ceph:80`) and Kubernetes API server.
+- **Dynamic Database Credentials (`TASK-P3-04`)**: Complete. OpenBao PostgreSQL secrets engine configured with dynamic roles (`visit-gateway`, `visit-processor`), ESO `VaultDynamicSecret` generators, and automated lease revocation.
+- **Network Policy Isolation (`TASK-P4-02`)**: Complete. Enforced via `openbao-server-isolation` and `openbao-snapshot-isolation` (`CiliumNetworkPolicy`) restricting port 8200 API access strictly to Envoy Gateway proxy (`reserved:ingress`), External Secrets Operator, and snapshot CronJob; port 8201 restricted to Raft peers; egress restricted to Ceph RGW (`rook-ceph:80`), PostgreSQL (`data-postgres:5432`), and Kubernetes API server.

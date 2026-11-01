@@ -20,7 +20,6 @@ env:
   DB_HOST: postgres-rw.data-postgres.svc
   DB_PORT: "5432"
   DB_NAME: app
-  DB_USER: app
   RATE_LIMIT_PER_SEC: "1"
   MAX_RETRIES: "3"
 
